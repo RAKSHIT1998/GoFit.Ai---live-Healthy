@@ -267,7 +267,7 @@ struct HomeDashboardView: View {
                         )
                         .frame(
                             width: geo.size.width *
-                                min(waterIntake / AppConstants.defaultWaterGoal, 1),
+                                min(AppConstants.defaultWaterGoal > 0 ? waterIntake / AppConstants.defaultWaterGoal : 0, 1),
                             height: 12
                         )
                 }

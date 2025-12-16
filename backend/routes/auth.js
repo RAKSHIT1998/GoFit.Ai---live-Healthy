@@ -36,7 +36,7 @@ router.post('/register', async (req, res) => {
       fastingPreference: fastingPreference || 'none',
       subscription: {
         status: 'free'
-        // plan is not set for free users - will be set when they subscribe
+        // plan field is intentionally omitted for free users
       }
     });
 

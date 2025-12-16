@@ -266,7 +266,13 @@ struct FastingView: View {
         let elapsed = Date().timeIntervalSince(start)
         let total = TimeInterval(fastingWindowHours * 3600)
         timeRemaining = max(0, total - elapsed)
-        progress = min(1.0, elapsed / total)
+        
+        // Prevent division by zero
+        if total > 0 {
+            progress = min(1.0, elapsed / total)
+        } else {
+            progress = 0
+        }
         
         if timeRemaining == 0 {
             endFast()

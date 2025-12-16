@@ -55,6 +55,14 @@ const userSchema = new mongoose.Schema({
     plan: {
       type: String,
       required: false,
+      sparse: true, // Don't index null/undefined values
+      set: function(value) {
+        // Convert null to undefined to avoid validation issues
+        if (value === null || value === '') {
+          return undefined;
+        }
+        return value;
+      },
       validate: {
         validator: function(value) {
           // Allow null, undefined, empty string, or valid enum values
@@ -106,10 +114,24 @@ const userSchema = new mongoose.Schema({
 
 // Clean up subscription.plan if it's null/undefined before validation
 userSchema.pre('validate', function(next) {
+  if (this.subscription) {
+    // If plan is null or undefined, delete it entirely to avoid validation
+    if (this.subscription.plan === null || this.subscription.plan === undefined) {
+      delete this.subscription.plan;
+    }
+  }
+  next();
+});
+
+// Clean up subscription.plan before saving (additional safety)
+userSchema.pre('save', function(next) {
   if (this.subscription && (this.subscription.plan === null || this.subscription.plan === undefined)) {
-    // Remove the plan field if it's null/undefined to avoid validation errors
-    if (this.isNew || this.isModified('subscription.plan')) {
-      this.subscription.plan = undefined;
+    // Use $unset to remove the field entirely
+    if (!this.isNew) {
+      this.$unset = this.$unset || {};
+      this.$unset['subscription.plan'] = '';
+    } else {
+      delete this.subscription.plan;
     }
   }
   next();
