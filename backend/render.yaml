@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: gofit-ai-backend
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Add your environment variables in Render dashboard:
+      # - MONGODB_URI
+      # - REDIS_HOST
+      # - REDIS_PORT
+      # - JWT_SECRET
+      # - OPENAI_API_KEY
+      # - AWS_ACCESS_KEY_ID
+      # - AWS_SECRET_ACCESS_KEY
+      # - AWS_REGION
+      # - S3_BUCKET_NAME
+      # - APPLE_SHARED_SECRET
+      # - APPLE_BUNDLE_ID
+      # - ALLOWED_ORIGINS
+

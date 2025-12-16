@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B27DDA182EEF07DF0047CE53 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27DDA162EEF07D70047CE53 /* HealthKit.framework */; };
+		B27DDA1A2EEF07E10047CE53 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; };
+		B2F86E452EED7C8F009F03C0 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		B2484AA22EEC79A7009D604B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,9 +30,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B24022212EED789700CDE033 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		B2484A8D2EEC79A2009D604B /* GoFit.Ai - live Healthy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GoFit.Ai - live Healthy.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2484AA12EEC79A7009D604B /* GoFit.Ai - live HealthyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "GoFit.Ai - live HealthyTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2484AAB2EEC79A7009D604B /* GoFit.Ai - live HealthyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "GoFit.Ai - live HealthyUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B27DDA162EEF07D70047CE53 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -65,6 +74,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B27DDA1A2EEF07E10047CE53 /* StoreKit.framework in Frameworks */,
+				B27DDA182EEF07DF0047CE53 /* HealthKit.framework in Frameworks */,
+				B2F86E452EED7C8F009F03C0 /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,12 +97,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B24022202EED789700CDE033 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B27DDA162EEF07D70047CE53 /* HealthKit.framework */,
+				B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */,
+				B24022212EED789700CDE033 /* StoreKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B2484A842EEC79A2009D604B = {
 			isa = PBXGroup;
 			children = (
 				B2484A8F2EEC79A2009D604B /* GoFit.Ai - live Healthy */,
 				B2484AA42EEC79A7009D604B /* GoFit.Ai - live HealthyTests */,
 				B2484AAE2EEC79A7009D604B /* GoFit.Ai - live HealthyUITests */,
+				B24022202EED789700CDE033 /* Frameworks */,
 				B2484A8E2EEC79A2009D604B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -286,8 +309,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos*]" = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = "GoFit.Ai - live Healthy/GoFit_Ai___live_Healthy.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"GoFit.Ai - live Healthy/Preview Content\"";
@@ -295,18 +321,34 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCameraUsageDescription = "GoFit.ai needs camera access to take photos of your meals.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "GoFit.ai needs access to your health data to sync steps, heart rate, and calories.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "GoFit.ai needs to write weight and water intake data to Health.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "GoFit.ai needs to save images for your meal logs.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "GoFit.ai needs photo library access to choose meal photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				INFOPLIST_KEY_WKWatchOnly = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				"IPHONEOS_DEPLOYMENT_TARGET[sdk=iphoneos*]" = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rakshit.Gofit.ai.GoFit-Ai---live-Healthy";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rakshit.Gofit.ai.GoFit-Ai-live-Healthy";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -317,8 +359,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=iphoneos*]" = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = "GoFit.Ai - live Healthy/GoFit_Ai___live_Healthy.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"GoFit.Ai - live Healthy/Preview Content\"";
@@ -326,18 +371,34 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCameraUsageDescription = "GoFit.ai needs camera access to take photos of your meals.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "GoFit.ai needs access to your health data to sync steps, heart rate, and calories.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "GoFit.ai needs to write weight and water intake data to Health.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "GoFit.ai needs to save images for your meal logs.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "GoFit.ai needs photo library access to choose meal photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				INFOPLIST_KEY_WKWatchOnly = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				"IPHONEOS_DEPLOYMENT_TARGET[sdk=iphoneos*]" = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.rakshit.Gofit.ai.GoFit-Ai---live-Healthy";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rakshit.Gofit.ai.GoFit-Ai-live-Healthy";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -1,12 +1,10 @@
-//___FILEHEADER___
+import XCTest
 
-import Testing
-@testable import ___VARIABLE_productName:identifier___
+final class GoFit_Ai___live_HealthyTests: XCTestCase {
 
-struct ___FILEBASENAME:identifier___ {
-
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    func testExample() throws {
+        // Write your test here
+        XCTAssertTrue(true)
     }
 
 }

@@ -72,33 +72,27 @@ struct FastingView: View {
         }
     }
     
-    // MARK: - Timer Circle
     private var timerCircle: some View {
         ZStack {
-            // Background circle
             Circle()
                 .stroke(Color(.systemGray5), lineWidth: 20)
                 .frame(width: 220, height: 220)
-            
-            // Progress circle
+
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(
-                    Design.Colors.primaryGradient,
-                    style: StrokeStyle(lineWidth: 20, lineCap: .round)
-                )
+                .stroke(style: StrokeStyle(lineWidth: 20, lineCap: .round))
+                .foregroundStyle(Design.Colors.primaryGradient)
                 .frame(width: 220, height: 220)
                 .rotationEffect(.degrees(-90))
                 .animation(Design.Animation.spring, value: progress)
-            
-            // Content
+
             VStack(spacing: 8) {
                 if isFasting {
                     Text(timeString(from: timeRemaining))
                         .font(.system(size: 42, weight: .bold, design: .rounded))
                         .foregroundColor(Design.Colors.primary)
-                        .contentTransition(.numericText)
-                    
+                        .animation(.easeInOut(duration: 0.2), value: timeRemaining)
+
                     Text("remaining")
                         .font(Design.Typography.caption)
                         .foregroundColor(.secondary)
@@ -106,18 +100,15 @@ struct FastingView: View {
                     Text("Ready to Fast")
                         .font(Design.Typography.headline)
                         .foregroundColor(.secondary)
-                    
+
                     Text("\(fastingWindowHours)h")
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundColor(Design.Colors.primary)
                 }
             }
         }
-        .scaleEffect(animateTimer ? 1.0 : 0.8)
-        .opacity(animateTimer ? 1.0 : 0.0)
-        .animation(Design.Animation.spring as Animation, value: animateTimer)
     }
-    
+
     // MARK: - Status Card
     private var statusCard: some View {
         VStack(spacing: Design.Spacing.md) {
