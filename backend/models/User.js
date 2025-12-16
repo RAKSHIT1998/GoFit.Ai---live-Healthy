@@ -54,8 +54,17 @@ const userSchema = new mongoose.Schema({
     },
     plan: {
       type: String,
-      enum: ['monthly', 'yearly'],
-      required: false
+      required: false,
+      validate: {
+        validator: function(value) {
+          // Allow null, undefined, empty string, or valid enum values
+          if (!value || value === null || value === undefined || value === '') {
+            return true;
+          }
+          return ['monthly', 'yearly'].includes(value);
+        },
+        message: 'Plan must be either monthly or yearly'
+      }
     },
     startDate: Date,
     endDate: Date,
@@ -93,6 +102,17 @@ const userSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Clean up subscription.plan if it's null/undefined before validation
+userSchema.pre('validate', function(next) {
+  if (this.subscription && (this.subscription.plan === null || this.subscription.plan === undefined)) {
+    // Remove the plan field if it's null/undefined to avoid validation errors
+    if (this.isNew || this.isModified('subscription.plan')) {
+      this.subscription.plan = undefined;
+    }
+  }
+  next();
 });
 
 // Hash password before saving
