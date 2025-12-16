@@ -70,14 +70,22 @@ final class AuthService {
         // Check for error response
         guard 200...299 ~= http.statusCode else {
             // Try to decode error message from backend
-            if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
-               let message = errorData["message"] {
-                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
-            } else if let errorString = String(data: data, encoding: .utf8) {
-                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorString])
+            var errorMessage = "Registration failed"
+            
+            // Try to decode as JSON
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let message = json["message"] as? String {
+                    errorMessage = message
+                } else if let error = json["error"] as? String {
+                    errorMessage = error
+                }
+            } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
+                errorMessage = errorString
             } else {
-                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Registration failed with status code \(http.statusCode)"])
+                errorMessage = "Registration failed with status code \(http.statusCode)"
             }
+            
+            throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
         let token = try JSONDecoder().decode(AuthToken.self, from: data)

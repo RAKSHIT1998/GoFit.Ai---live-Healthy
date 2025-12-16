@@ -56,7 +56,21 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Registration failed', error: error.message });
+    
+    // Extract more detailed error message
+    let errorMessage = 'Registration failed';
+    if (error.name === 'ValidationError') {
+      // Mongoose validation error
+      const firstError = Object.values(error.errors)[0];
+      errorMessage = firstError?.message || error.message || 'Validation failed';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(500).json({ 
+      message: errorMessage,
+      error: error.message 
+    });
   }
 });
 

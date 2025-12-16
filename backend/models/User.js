@@ -55,10 +55,11 @@ const userSchema = new mongoose.Schema({
     plan: {
       type: String,
       required: false,
+      default: undefined, // Explicitly set default to undefined, not null
       sparse: true, // Don't index null/undefined values
       set: function(value) {
         // Convert null to undefined to avoid validation issues
-        if (value === null || value === '') {
+        if (value === null || value === '' || value === undefined) {
           return undefined;
         }
         return value;
@@ -66,6 +67,7 @@ const userSchema = new mongoose.Schema({
       validate: {
         validator: function(value) {
           // Allow null, undefined, empty string, or valid enum values
+          // This validator should never be called with null due to the setter, but just in case
           if (!value || value === null || value === undefined || value === '') {
             return true;
           }
