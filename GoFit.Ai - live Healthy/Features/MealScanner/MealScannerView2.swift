@@ -22,13 +22,16 @@ struct MealScannerView2: View {
                     )
                 // Square guide
                 GeometryReader { geo in
-                    let size = min(geo.size.width, geo.size.height) * 0.6
+                    let width = geo.size.width.isFinite && !geo.size.width.isNaN ? geo.size.width : 0
+                    let height = geo.size.height.isFinite && !geo.size.height.isNaN ? geo.size.height : 0
+                    let size = min(width, height) * 0.6
+                    let validSize = size.isFinite && !size.isNaN && size > 0 ? size : 100
                     Rectangle()
                         .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                        .frame(width: size, height: size)
+                        .frame(width: validSize, height: validSize)
                         .foregroundColor(.white)
                         .opacity(0.6)
-                        .position(x: geo.size.width/2, y: geo.size.height/2)
+                        .position(x: width > 0 ? width/2 : 0, y: height > 0 ? height/2 : 0)
                 }
             }
             .padding()

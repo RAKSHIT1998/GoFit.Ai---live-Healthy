@@ -80,8 +80,10 @@ struct FastingView: View {
 
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(style: StrokeStyle(lineWidth: 20, lineCap: .round))
-                .foregroundStyle(Design.Colors.primaryGradient)
+                .stroke(
+                    Design.Colors.primaryGradient,
+                    style: StrokeStyle(lineWidth: 20, lineCap: .round)
+                )
                 .frame(width: 220, height: 220)
                 .rotationEffect(.degrees(-90))
                 .animation(Design.Animation.spring, value: progress)
@@ -107,6 +109,9 @@ struct FastingView: View {
                 }
             }
         }
+        .scaleEffect(animateTimer ? 1.0 : 0.8)
+        .opacity(animateTimer ? 1.0 : 0.0)
+        .animation(Design.Animation.spring, value: animateTimer)
     }
 
     // MARK: - Status Card

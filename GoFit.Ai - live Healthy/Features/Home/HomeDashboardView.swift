@@ -257,6 +257,21 @@ struct HomeDashboardView: View {
                         .fill(Color(.systemGray5))
                         .frame(height: 12)
 
+                    let progress: CGFloat = {
+                        guard AppConstants.defaultWaterGoal > 0,
+                              waterIntake.isFinite,
+                              !waterIntake.isNaN else {
+                            return 0.0
+                        }
+                        let calculated = min(waterIntake / AppConstants.defaultWaterGoal, 1.0)
+                        return calculated.isFinite && !calculated.isNaN ? calculated : 0.0
+                    }()
+                    
+                    let barWidth: CGFloat = {
+                        let width = geo.size.width * progress
+                        return width.isFinite && !width.isNaN ? width : 0.0
+                    }()
+
                     RoundedRectangle(cornerRadius: 8)
                         .fill(
                             LinearGradient(
@@ -265,11 +280,7 @@ struct HomeDashboardView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(
-                            width: geo.size.width *
-                                min(AppConstants.defaultWaterGoal > 0 ? waterIntake / AppConstants.defaultWaterGoal : 0, 1),
-                            height: 12
-                        )
+                        .frame(width: barWidth, height: 12)
                 }
             }
             .frame(height: 12)
@@ -333,10 +344,16 @@ struct HomeDashboardView: View {
                     body: nil
                 )
 
-            todayCalories = "\(Int(summary.calories))"
-            todayProtein = "\(Int(summary.protein))g"
-            todayCarbs = "\(Int(summary.carbs))g"
-            todayFat = "\(Int(summary.fat))g"
+            // Validate and sanitize values to prevent NaN
+            let calories = summary.calories.isFinite && !summary.calories.isNaN ? summary.calories : 0
+            let protein = summary.protein.isFinite && !summary.protein.isNaN ? summary.protein : 0
+            let carbs = summary.carbs.isFinite && !summary.carbs.isNaN ? summary.carbs : 0
+            let fat = summary.fat.isFinite && !summary.fat.isNaN ? summary.fat : 0
+
+            todayCalories = "\(Int(calories))"
+            todayProtein = "\(Int(protein))g"
+            todayCarbs = "\(Int(carbs))g"
+            todayFat = "\(Int(fat))g"
         } catch {
             print("Summary error:", error)
         }
@@ -355,10 +372,12 @@ struct HomeDashboardView: View {
                 )
 
             if fasting.status == "fasting",
-               let remaining = fasting.remainingHours {
+               let remaining = fasting.remainingHours,
+               remaining.isFinite && !remaining.isNaN {
 
                 let h = Int(remaining)
-                let m = Int((remaining - Double(h)) * 60)
+                let minutes = (remaining - Double(h)) * 60
+                let m = minutes.isFinite && !minutes.isNaN ? Int(minutes) : 0
                 fastingStatus = "\(h)h \(m)m"
             } else {
                 fastingStatus = "Not fasting"
@@ -379,7 +398,8 @@ struct HomeDashboardView: View {
 
     private func addWater() {
         withAnimation {
-            waterIntake += 0.25
+            let newValue = waterIntake + 0.25
+            waterIntake = newValue.isFinite && !newValue.isNaN ? newValue : waterIntake
         }
 
         Task {
