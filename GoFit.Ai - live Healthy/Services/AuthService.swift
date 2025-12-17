@@ -56,16 +56,42 @@ final class AuthService {
     // Signup
     func signup(name: String, email: String, password: String) async throws -> AuthToken {
         let url = baseURL.appendingPathComponent("auth/register")
+        
+        // Debug logging
+        print("🔵 Registration request URL: \(url.absoluteString)")
+        print("🔵 Base URL: \(baseURL.absoluteString)")
+        
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = ["name": name, "email": email, "password": password]
         req.httpBody = try JSONEncoder().encode(body)
         
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        // Log request body (without password for security)
+        if let bodyString = String(data: req.httpBody!, encoding: .utf8) {
+            let sanitized = bodyString.replacingOccurrences(of: "\"password\":\"[^\"]+\"", with: "\"password\":\"***\"", options: .regularExpression)
+            print("🔵 Request body: \(sanitized)")
+        }
+        
+        let (data, resp): (Data, URLResponse)
+        do {
+            (data, resp) = try await URLSession.shared.data(for: req)
+        } catch {
+            // Network error (connection failed, timeout, etc.)
+            print("❌ Network error during registration: \(error.localizedDescription)")
+            if let urlError = error as? URLError {
+                print("❌ URLError code: \(urlError.code.rawValue)")
+                print("❌ URLError description: \(urlError.localizedDescription)")
+            }
+            throw error
+        }
+        
         guard let http = resp as? HTTPURLResponse else {
+            print("❌ Invalid response type: \(type(of: resp))")
             throw URLError(.badServerResponse)
         }
+        
+        print("🔵 Response status code: \(http.statusCode)")
         
         // Check for error response
         guard 200...299 ~= http.statusCode else {
