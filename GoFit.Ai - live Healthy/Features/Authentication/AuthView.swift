@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct AuthView: View {
     @EnvironmentObject var auth: AuthViewModel
@@ -123,6 +124,43 @@ struct AuthView: View {
                     }
                     .padding(.top, 8)
                     
+                    // Divider
+                    HStack {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.3))
+                            .frame(height: 1)
+                        Text("or")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 12)
+                        Rectangle()
+                            .fill(Color.white.opacity(0.3))
+                            .frame(height: 1)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+                    
+                    // Sign in with Apple
+                    Button(action: {
+                        handleAppleSignInButton()
+                    }) {
+                        HStack {
+                            Image(systemName: "applelogo")
+                                .font(.system(size: 18, weight: .semibold))
+                            Text("Continue with Apple")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(12)
+                    }
+                    .disabled(isLoading)
+                    .opacity(isLoading ? 0.6 : 1.0)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    
                     // Optional: Phone OTP (can be added later)
                     if isLoginMode {
                         Button(action: {
@@ -208,6 +246,47 @@ struct AuthView: View {
                         }
                     } else if let nsError = error as NSError? {
                         // Try to extract message from userInfo
+                        if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
+                            errorMessage = message
+                        } else {
+                            errorMessage = error.localizedDescription
+                        }
+                    } else {
+                        errorMessage = error.localizedDescription
+                    }
+                    isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func handleAppleSignInButton() {
+        errorMessage = nil
+        isLoading = true
+        
+        Task {
+            do {
+                try await auth.signInWithApple()
+                await MainActor.run {
+                    isLoading = false
+                    if !isLoginMode {
+                        showingPaywall = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    if let urlError = error as? URLError {
+                        switch urlError.code {
+                        case .notConnectedToInternet:
+                            errorMessage = "No internet connection. Please check your network."
+                        case .timedOut:
+                            errorMessage = "Connection timed out. Please try again."
+                        case .cannotFindHost:
+                            errorMessage = "Cannot reach server. Please check your connection."
+                        default:
+                            errorMessage = "Network error: \(urlError.localizedDescription)"
+                        }
+                    } else if let nsError = error as NSError? {
                         if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
                             errorMessage = message
                         } else {

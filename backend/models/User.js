@@ -16,7 +16,16 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: {
     type: String,
-    required: true
+    required: function() {
+      // Password is required only if user doesn't have Apple ID
+      return !this.appleId;
+    }
+  },
+  appleId: {
+    type: String,
+    unique: true,
+    sparse: true, // Allow multiple null values
+    trim: true
   },
   phone: {
     type: String,
@@ -141,13 +150,18 @@ userSchema.pre('save', function(next) {
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('passwordHash')) return next();
+  // Only hash password if it's modified and exists (not for Apple-only users)
+  if (!this.isModified('passwordHash') || !this.passwordHash) return next();
   this.passwordHash = await bcrypt.hash(this.passwordHash, 10);
   next();
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  // Apple users don't have passwords
+  if (!this.passwordHash) {
+    return false;
+  }
   return await bcrypt.compare(candidatePassword, this.passwordHash);
 };
 

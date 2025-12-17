@@ -94,6 +94,39 @@ final class AuthViewModel: ObservableObject {
         saveLocalState()
     }
     
+    // Sign in with Apple
+    func signInWithApple() async throws {
+        let result = try await AppleSignInService.shared.signIn()
+        let token = try await AuthService.shared.signInWithApple(
+            idToken: result.idToken,
+            userIdentifier: result.userIdentifier,
+            email: result.email,
+            name: result.fullName
+        )
+        self.token = token
+        self.isLoggedIn = true
+        
+        // Update name and email if provided
+        if let name = result.fullName, !name.isEmpty {
+            self.name = name
+        }
+        if let email = result.email, !email.isEmpty {
+            self.email = email
+        }
+        
+        // Fetch user profile
+        if let me: UserProfile = try? await NetworkManager.shared.request("auth/me", method: "GET", body: nil) {
+            self.userId = me.id
+            if self.name.isEmpty {
+                self.name = me.name
+            }
+            if self.email.isEmpty {
+                self.email = me.email
+            }
+        }
+        saveLocalState()
+    }
+    
     // Skip authentication (development only)
     func skipAuthentication() {
         guard EnvironmentConfig.skipAuthentication else { return }

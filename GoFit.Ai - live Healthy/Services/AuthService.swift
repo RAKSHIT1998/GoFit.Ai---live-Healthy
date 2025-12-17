@@ -157,4 +157,46 @@ final class AuthService {
             throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
         }
     }
+    
+    // Sign in with Apple
+    func signInWithApple(idToken: String, userIdentifier: String, email: String?, name: String?) async throws -> AuthToken {
+        let url = baseURL.appendingPathComponent("auth/apple")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 30.0
+        
+        let body: [String: Any?] = [
+            "idToken": idToken,
+            "userIdentifier": userIdentifier,
+            "email": email,
+            "name": name
+        ]
+        
+        // Remove nil values
+        let cleanBody = body.compactMapValues { $0 }
+        req.httpBody = try JSONSerialization.data(withJSONObject: cleanBody)
+        
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        guard 200...299 ~= http.statusCode else {
+            var errorMessage = "Apple Sign In failed"
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = json["message"] as? String {
+                errorMessage = message
+            } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
+                errorMessage = errorString
+            } else {
+                errorMessage = "Apple Sign In failed with status code \(http.statusCode)"
+            }
+            throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+        }
+        
+        let token = try JSONDecoder().decode(AuthToken.self, from: data)
+        saveToken(token)
+        return token
+    }
 }

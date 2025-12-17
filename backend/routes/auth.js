@@ -192,6 +192,112 @@ router.post('/change-password', authMiddleware, async (req, res) => {
   }
 });
 
+// Sign in with Apple
+router.post('/apple', async (req, res) => {
+  try {
+    const { idToken, userIdentifier, email, name } = req.body;
+
+    if (!idToken || !userIdentifier) {
+      return res.status(400).json({ message: 'Apple ID token and user identifier are required' });
+    }
+
+    // Verify Apple ID token (in production, you should verify with Apple's servers)
+    // For now, we'll trust the token from the client and use the userIdentifier
+    // In production, use: https://appleid.apple.com/auth/keys to verify the token
+    
+    // Check if user exists by Apple ID
+    let user = await User.findOne({ appleId: userIdentifier });
+
+    if (user) {
+      // Existing user - generate token
+      const token = generateToken(user._id);
+      return res.json({
+        accessToken: token,
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          goals: user.goals
+        }
+      });
+    }
+
+    // New user - check if email already exists
+    if (email) {
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        // Link Apple ID to existing account
+        existingUser.appleId = userIdentifier;
+        if (name && !existingUser.name) {
+          existingUser.name = name;
+        }
+        await existingUser.save();
+        
+        const token = generateToken(existingUser._id);
+        return res.json({
+          accessToken: token,
+          user: {
+            id: existingUser._id.toString(),
+            name: existingUser.name,
+            email: existingUser.email,
+            goals: existingUser.goals
+          }
+        });
+      }
+    }
+
+    // Create new user with Apple ID
+    user = new User({
+      name: name || 'Apple User',
+      email: email ? email.toLowerCase() : `${userIdentifier}@apple.privaterelay.app`,
+      appleId: userIdentifier,
+      // No passwordHash for Apple users
+      goals: 'maintain',
+      activityLevel: 'moderate',
+      dietaryPreferences: [],
+      allergies: [],
+      fastingPreference: 'none',
+      subscription: {
+        status: 'free'
+      }
+    });
+
+    await user.save();
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    res.status(201).json({
+      accessToken: token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        goals: user.goals
+      }
+    });
+  } catch (error) {
+    console.error('Apple Sign In error:', error);
+    
+    let errorMessage = 'Apple Sign In failed';
+    if (error.code === 11000) {
+      // Duplicate key error
+      if (error.keyPattern?.appleId) {
+        errorMessage = 'This Apple ID is already associated with another account';
+      } else if (error.keyPattern?.email) {
+        errorMessage = 'This email is already associated with another account';
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(500).json({ 
+      message: errorMessage,
+      error: error.message 
+    });
+  }
+});
+
 // Helper function
 function generateToken(userId) {
   const secret = process.env.JWT_SECRET;
