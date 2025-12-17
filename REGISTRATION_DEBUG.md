@@ -8,7 +8,7 @@ First, verify your backend is running and accessible:
 
 ```bash
 # Test if backend is reachable
-curl https://gofit-ai-live-healthy.onrender.com/health
+curl https://gofit-ai-live-healthy-1.onrender.com/health
 
 # Should return: {"status":"ok","timestamp":"..."}
 ```
@@ -55,7 +55,7 @@ Registration error: ValidationError: ...
 Test the registration endpoint with curl:
 
 ```bash
-curl -X POST https://gofit-ai-live-healthy.onrender.com/api/auth/register \
+curl -X POST https://gofit-ai-live-healthy-1.onrender.com/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test User",

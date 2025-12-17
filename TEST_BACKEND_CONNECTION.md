@@ -3,7 +3,7 @@
 ## ✅ Configuration Status
 
 Your app is now configured to use:
-**`https://gofit-ai-live-healthy.onrender.com/api`**
+**`https://gofit-ai-live-healthy-1.onrender.com/api`**
 
 All services are using this URL:
 - ✅ `NetworkManager` → Uses `EnvironmentConfig.apiBaseURL`
@@ -16,7 +16,7 @@ All services are using this URL:
 
 Open in browser or run:
 ```bash
-curl https://gofit-ai-live-healthy.onrender.com/health
+curl https://gofit-ai-live-healthy-1.onrender.com/health
 ```
 
 **Expected response:**

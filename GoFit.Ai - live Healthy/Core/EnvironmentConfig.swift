@@ -2,7 +2,7 @@ import Foundation
 
 struct EnvironmentConfig {
     // Render backend URL - Your deployed backend service
-    private static let renderBackendURL = "https://gofit-ai-live-healthy.onrender.com/api"
+    private static let renderBackendURL = "https://gofit-ai-live-healthy-1.onrender.com/api"
     
     static var apiBaseURL: String {
         #if DEBUG
