@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import User from '../models/User.js';
 
@@ -30,23 +29,25 @@ async function createTestUser() {
     const existingUser = await User.findOne({ email: testEmail });
     if (existingUser) {
       console.log('⚠️  Test user already exists with this email');
-      console.log('\n📋 Test User Credentials:');
+      console.log('\n📋 Existing User Information:');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`Email:    ${testEmail}`);
-      console.log(`Password: ${testPassword}`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      console.log(`Name:     ${existingUser.name}`);
+      console.log(`Password: [Cannot retrieve - password is hashed]`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('\n💡 Options:');
+      console.log('   1. Use a different email (the script will generate a new one)');
+      console.log('   2. Delete this user from MongoDB if you want to recreate it');
+      console.log('   3. Use password reset functionality if available\n');
       await mongoose.disconnect();
       return;
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(testPassword, 10);
-
-    // Create user
+    // Create user - pass plain password, pre-save hook will hash it
     const user = new User({
       name: testName,
       email: testEmail,
-      passwordHash: passwordHash,
+      passwordHash: testPassword, // Will be hashed by pre-save hook
       goals: 'maintain',
       activityLevel: 'moderate',
       dietaryPreferences: [],
