@@ -19,6 +19,26 @@ struct OnboardingScreens: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
+                // Skip button (dev mode only)
+                if EnvironmentConfig.skipAuthentication {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            // Skip onboarding and go straight to app
+                            auth.didFinishOnboarding = true
+                            auth.saveLocalState()
+                        }) {
+                            Text("Skip")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                }
+                
                 // Progress indicator
                 ProgressView(value: Double(viewModel.currentStep + 1), total: Double(viewModel.totalSteps))
                     .progressViewStyle(LinearProgressViewStyle(tint: .white))
@@ -103,12 +123,20 @@ struct OnboardingScreens: View {
     
     private func completeOnboarding() {
         // Save onboarding data to auth view model
-        auth.name = viewModel.name
+        auth.name = viewModel.name.isEmpty ? "User" : viewModel.name
         auth.goal = viewModel.goal.rawValue
         auth.dietPrefs = viewModel.dietaryPreferences.map { $0.rawValue }
+        auth.weightKg = 70 // Default if not set
+        auth.heightCm = 170 // Default if not set
         
-        // Show permissions screen
-        showingPermissions = true
+        // If skip authentication is enabled, skip permissions too
+        if EnvironmentConfig.skipAuthentication {
+            auth.didFinishOnboarding = true
+            auth.saveLocalState()
+        } else {
+            // Show permissions screen
+            showingPermissions = true
+        }
     }
 }
 
