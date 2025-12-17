@@ -4,6 +4,10 @@ struct EnvironmentConfig {
     // Render backend URL - Your deployed backend service
     private static let renderBackendURL = "https://gofit-ai-live-healthy-1.onrender.com/api"
     
+    // ⚠️ DEVELOPMENT ONLY: Set to true to skip authentication
+    // ⚠️ NEVER enable this in production builds!
+    static let skipAuthentication: Bool = true
+    
     static var apiBaseURL: String {
         #if DEBUG
         // Using Render backend for development

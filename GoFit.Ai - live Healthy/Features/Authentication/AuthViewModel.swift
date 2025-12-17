@@ -21,6 +21,20 @@ final class AuthViewModel: ObservableObject {
 
     init() {
         loadLocalState()
+        
+        // Skip authentication if enabled in EnvironmentConfig
+        if EnvironmentConfig.skipAuthentication {
+            self.isLoggedIn = true
+            self.userId = "dev-user-\(UUID().uuidString.prefix(8))"
+            self.name = self.name.isEmpty ? "Dev User" : self.name
+            self.email = self.email.isEmpty ? "dev@example.com" : self.email
+            // Create a mock token for development (won't work with backend, but prevents errors)
+            let mockToken = AuthToken(accessToken: "dev-token-skip-auth", expiresAt: nil)
+            self.token = mockToken
+            AuthService.shared.saveToken(mockToken) // Save to keychain so NetworkManager can read it
+            return
+        }
+        
         if let t = AuthService.shared.readToken() {
             self.token = t
             // Optionally you can decode a userId from token if you embed it, or fetch /me
@@ -77,6 +91,26 @@ final class AuthViewModel: ObservableObject {
         self.token = nil
         self.isLoggedIn = false
         self.userId = nil
+        saveLocalState()
+    }
+    
+    // Skip authentication (development only)
+    func skipAuthentication() {
+        guard EnvironmentConfig.skipAuthentication else { return }
+        self.isLoggedIn = true
+        if self.userId == nil {
+            self.userId = "dev-user-\(UUID().uuidString.prefix(8))"
+        }
+        if self.name.isEmpty {
+            self.name = "Dev User"
+        }
+        if self.email.isEmpty {
+            self.email = "dev@example.com"
+        }
+        // Create a mock token for development (won't work with backend, but prevents errors)
+        let mockToken = AuthToken(accessToken: "dev-token-skip-auth", expiresAt: nil)
+        self.token = mockToken
+        AuthService.shared.saveToken(mockToken) // Save to keychain so NetworkManager can read it
         saveLocalState()
     }
 }

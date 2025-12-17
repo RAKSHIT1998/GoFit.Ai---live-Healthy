@@ -135,6 +135,18 @@ struct AuthView: View {
                         .padding(.top, 8)
                     }
                     
+                    // Skip authentication button (development only)
+                    if EnvironmentConfig.skipAuthentication {
+                        Button(action: {
+                            auth.skipAuthentication()
+                        }) {
+                            Text("Skip Authentication (Dev Mode)")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                                .padding(.top, 16)
+                        }
+                    }
+                    
                     Spacer(minLength: 40)
                 }
             }
