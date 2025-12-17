@@ -311,7 +311,7 @@ struct ActivityStep: View {
                 }
             }
             .padding(.horizontal, 24)
-            
+
             Spacer()
         }
         .padding(.top, 40)

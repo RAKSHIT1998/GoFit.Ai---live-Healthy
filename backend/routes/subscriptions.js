@@ -1,68 +1,85 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
-import verifyReceipt from 'apple-receipt-verify';
 
 const router = express.Router();
 
-// Verify Apple receipt
+/**
+ * StoreKit 2 verification happens on-device (iOS).
+ * This endpoint syncs the already-verified subscription state to the backend.
+ */
 router.post('/verify', authMiddleware, async (req, res) => {
   try {
-    const { receiptData, productId } = req.body;
+    const { transactionData, productId, transactionId } = req.body;
 
-    if (!receiptData) {
-      return res.status(400).json({ message: 'Receipt data is required' });
+    if (!transactionData || !productId) {
+      return res.status(400).json({ message: 'Transaction data and product ID are required' });
     }
 
-    // Verify with Apple
-    const options = {
-      receipt: receiptData,
-      secret: process.env.APPLE_SHARED_SECRET,
-      production: process.env.NODE_ENV === 'production',
-      excludeOldTransactions: false
-    };
-
-    const result = await verifyReceipt(options);
-
-    if (result.status !== 0) {
-      return res.status(400).json({ message: 'Invalid receipt', status: result.status });
+    // Decode base64 transaction data
+    let transaction;
+    try {
+      const decoded = Buffer.from(transactionData, 'base64').toString('utf-8');
+      transaction = JSON.parse(decoded);
+    } catch (error) {
+      return res.status(400).json({ message: 'Invalid transaction data format' });
     }
 
-    // Process receipt
-    const latestReceipt = result.latest_receipt_info?.[result.latest_receipt_info.length - 1];
-    const transactionId = latestReceipt?.transaction_id;
-    const originalTransactionId = latestReceipt?.original_transaction_id;
-    const expiresDate = latestReceipt?.expires_date_ms 
-      ? new Date(parseInt(latestReceipt.expires_date_ms))
-      : null;
+    // Extract subscription information from StoreKit 2 transaction
+    // StoreKit 2 transaction JSON structure:
+    // - signedDate: ISO 8601 date string
+    // - productID: product identifier
+    // - transactionID: transaction ID
+    // - originalTransactionID: original transaction ID
+    // - purchaseDate: purchase date
+    // - expiresDate: expiration date (for subscriptions)
+    // - isUpgrade: boolean
+    // - revocationDate: revocation date if refunded
+    // - environment: "Production" or "Sandbox"
 
-    const isTrial = latestReceipt?.is_trial_period === 'true';
+    const expiresDateStr = transaction.expiresDate;
+    const expiresDate = expiresDateStr ? new Date(expiresDateStr) : null;
     const isActive = expiresDate && expiresDate > new Date();
+    
+    // Check if transaction is revoked
+    const isRevoked = transaction.revocationDate !== null && transaction.revocationDate !== undefined;
+    
+    // Determine if trial (StoreKit 2 doesn't explicitly mark trials, but we can infer from product)
+    // For now, we'll check if it's within the first 3 days as a trial indicator
+    const purchaseDate = transaction.purchaseDate ? new Date(transaction.purchaseDate) : new Date();
+    const daysSincePurchase = (new Date() - purchaseDate) / (1000 * 60 * 60 * 24);
+    const isTrial = daysSincePurchase <= 3 && isActive;
 
     // Update user subscription
     const user = await User.findById(req.user._id);
-    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     user.subscription = {
-      status: isActive ? (isTrial ? 'trial' : 'active') : 'expired',
+      status: isRevoked ? 'cancelled' : (isActive ? (isTrial ? 'trial' : 'active') : 'expired'),
       plan: productId.includes('yearly') ? 'yearly' : 'monthly',
-      startDate: new Date(),
+      startDate: purchaseDate,
       endDate: expiresDate,
       trialEndDate: isTrial ? expiresDate : null,
-      appleTransactionId: transactionId,
-      appleOriginalTransactionId: originalTransactionId
+      appleTransactionId: transaction.transactionID?.toString() || transactionId?.toString(),
+      appleOriginalTransactionId: transaction.originalTransactionID?.toString()
     };
 
     await user.save();
 
     res.json({
-      isValid: true,
+      success: true,
       subscriptionStatus: user.subscription.status,
       plan: user.subscription.plan,
       expiresDate: expiresDate
     });
   } catch (error) {
-    console.error('Verify receipt error:', error);
-    res.status(500).json({ message: 'Failed to verify receipt', error: error.message });
+    console.error('Subscription sync error:', error);
+    res.status(500).json({ 
+      message: 'Failed to sync subscription', 
+      error: error.message 
+    });
   }
 });
 
@@ -70,6 +87,13 @@ router.post('/verify', authMiddleware, async (req, res) => {
 router.get('/status', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    
+    if (!user || !user.subscription) {
+      return res.json({
+        hasActiveSubscription: false,
+        subscription: null
+      });
+    }
     
     // Check if subscription is still valid
     if (user.subscription.endDate && user.subscription.endDate < new Date()) {

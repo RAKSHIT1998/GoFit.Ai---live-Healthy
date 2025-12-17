@@ -26,8 +26,7 @@
     "cors": "^2.8.5",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
-    "node-cron": "^3.0.2",
-    "apple-receipt-verify": "^1.8.0"
+    "node-cron": "^3.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
