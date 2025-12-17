@@ -61,16 +61,8 @@ final class NetworkManager {
         req.httpBody = body
 
         let (d, r) = try await URLSession.shared.data(for: req)
-        guard let httpResponse = r as? HTTPURLResponse else {
+        guard let httpResponse = r as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
             let statusCode = (r as? HTTPURLResponse)?.statusCode ?? -1
-            if let err = String(data: d, encoding: .utf8) {
-                throw NSError(domain: "UploadError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: err])
-            }
-            throw URLError(.badServerResponse)
-        }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let statusCode = httpResponse.statusCode
             if let err = String(data: d, encoding: .utf8) {
                 throw NSError(domain: "UploadError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: err])
             }

@@ -64,20 +64,28 @@ class HealthKitService: ObservableObject {
         let startOfDay = calendar.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-            guard let self = self, let result = result, let sum = result.sumQuantity() else {
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
                 if let error = error {
-                    print("Error reading steps: \(error)")
+                    continuation.resume(throwing: error)
+                    return
                 }
-                return
+                
+                guard let result = result, let sum = result.sumQuantity() else {
+                    continuation.resume(throwing: HealthKitError.invalidType)
+                    return
+                }
+                
+                let steps = Int(sum.doubleValue(for: HKUnit.count()))
+                
+                Task { @MainActor [weak self] in
+                    self?.todaySteps = steps
+                    continuation.resume()
+                }
             }
             
-            Task { @MainActor in
-                self.todaySteps = Int(sum.doubleValue(for: HKUnit.count()))
-            }
+            healthStore.execute(query)
         }
-        
-        healthStore.execute(query)
     }
     
     // Read today's active calories
@@ -91,20 +99,28 @@ class HealthKitService: ObservableObject {
         let startOfDay = calendar.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-            guard let self = self, let result = result, let sum = result.sumQuantity() else {
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
                 if let error = error {
-                    print("Error reading active calories: \(error)")
+                    continuation.resume(throwing: error)
+                    return
                 }
-                return
+                
+                guard let result = result, let sum = result.sumQuantity() else {
+                    continuation.resume(throwing: HealthKitError.invalidType)
+                    return
+                }
+                
+                let calories = sum.doubleValue(for: HKUnit.kilocalorie())
+                
+                Task { @MainActor [weak self] in
+                    self?.todayActiveCalories = calories
+                    continuation.resume()
+                }
             }
             
-            Task { @MainActor in
-                self.todayActiveCalories = sum.doubleValue(for: HKUnit.kilocalorie())
-            }
+            healthStore.execute(query)
         }
-        
-        healthStore.execute(query)
     }
     
     // Read heart rate
@@ -114,31 +130,55 @@ class HealthKitService: ObservableObject {
         }
         
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-        let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
-            guard let self = self, let sample = samples?.first as? HKQuantitySample else {
-                return
-            }
-            
-            Task { @MainActor in
-                self.averageHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-            }
-        }
         
-        healthStore.execute(query)
-        
-        // Read resting heart rate
-        if let restingType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) {
-            let restingQuery = HKSampleQuery(sampleType: restingType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
-                guard let self = self, let sample = samples?.first as? HKQuantitySample else {
+        // Read average heart rate
+        try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
                     return
                 }
                 
-                Task { @MainActor in
-                    self.restingHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                guard let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume()
+                    return
+                }
+                
+                let heartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                
+                Task { @MainActor [weak self] in
+                    self?.averageHeartRate = heartRate
+                    continuation.resume()
                 }
             }
             
-            healthStore.execute(restingQuery)
+            healthStore.execute(query)
+        }
+        
+        // Read resting heart rate
+        if let restingType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) {
+            try await withCheckedThrowingContinuation { continuation in
+                let restingQuery = HKSampleQuery(sampleType: restingType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    guard let sample = samples?.first as? HKQuantitySample else {
+                        continuation.resume()
+                        return
+                    }
+                    
+                    let restingRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                    
+                    Task { @MainActor [weak self] in
+                        self?.restingHeartRate = restingRate
+                        continuation.resume()
+                    }
+                }
+                
+                healthStore.execute(restingQuery)
+            }
         }
     }
     
