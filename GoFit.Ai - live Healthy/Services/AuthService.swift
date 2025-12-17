@@ -69,8 +69,28 @@ final class AuthService {
         
         // Log request body (without password for security)
         if let bodyString = String(data: req.httpBody!, encoding: .utf8) {
-            let sanitized = bodyString.replacingOccurrences(of: "\"password\":\"[^\"]+\"", with: "\"password\":\"***\"", options: .regularExpression)
-            print("🔵 Request body: \(sanitized)")
+            // Parse JSON and redact password to handle escaped characters correctly
+            if let jsonData = bodyString.data(using: .utf8),
+               var jsonObject = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                jsonObject["password"] = "***"
+                if let sanitizedData = try? JSONSerialization.data(withJSONObject: jsonObject, options: []),
+                   let sanitized = String(data: sanitizedData, encoding: .utf8) {
+                    print("🔵 Request body: \(sanitized)")
+                } else {
+                    print("🔵 Request body: [unable to sanitize]")
+                }
+            } else {
+                // Fallback: use regex if JSON parsing fails (shouldn't happen, but safer)
+                // This regex handles escaped quotes: matches any character including escaped quotes
+                let pattern = "\"password\":\"((?:[^\"\\\\]|\\\\.)*)\""
+                if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                    let range = NSRange(bodyString.startIndex..., in: bodyString)
+                    let sanitized = regex.stringByReplacingMatches(in: bodyString, options: [], range: range, withTemplate: "\"password\":\"***\"")
+                    print("🔵 Request body: \(sanitized)")
+                } else {
+                    print("🔵 Request body: [unable to sanitize]")
+                }
+            }
         }
         
         let (data, resp): (Data, URLResponse)
