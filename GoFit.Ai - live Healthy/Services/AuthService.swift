@@ -27,6 +27,7 @@ final class AuthService {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 30.0 // 30 second timeout
         let body = ["email": email, "password": password]
         req.httpBody = try JSONEncoder().encode(body)
         
@@ -64,6 +65,7 @@ final class AuthService {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 30.0 // 30 second timeout
         let body = ["name": name, "email": email, "password": password]
         req.httpBody = try JSONEncoder().encode(body)
         
