@@ -86,12 +86,36 @@ Fasting Preference: ${context.user.fastingPreference}
 Recent meals: ${JSON.stringify(context.recentMeals.slice(0, 5))}
 
 Return a JSON object with:
-- mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] } - each item has name, calories, protein, carbs, fat
-- workoutPlan: { exercises: [] } - each exercise has name, duration (minutes), calories, type
+- mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] } 
+  Each meal item should have:
+  - name: string
+  - calories: number
+  - protein: number (grams)
+  - carbs: number (grams)
+  - fat: number (grams)
+  - ingredients: array of strings (list of ingredients)
+  - instructions: string (step-by-step cooking instructions)
+  - prepTime: number (minutes)
+  - servings: number
+
+- workoutPlan: { exercises: [] }
+  Each exercise should have:
+  - name: string
+  - duration: number (minutes)
+  - calories: number (estimated calories burned)
+  - type: string (cardio, strength, flexibility, hiit, etc.)
+  - instructions: string (detailed step-by-step instructions on how to perform the exercise)
+  - sets: number (for strength training, null for cardio)
+  - reps: string (e.g., "10-12" or "30 seconds" or "as many as possible")
+  - restTime: number (seconds between sets, null for continuous exercises)
+  - difficulty: string (beginner, intermediate, advanced)
+  - muscleGroups: array of strings (e.g., ["chest", "triceps", "shoulders"])
+  - equipment: array of strings (e.g., ["dumbbells", "mat"] or ["none"] for bodyweight)
+
 - hydrationGoal: { targetLiters: number }
 - insights: [string array of personalized insights]
 
-Return ONLY valid JSON, no markdown.`;
+Return ONLY valid JSON, no markdown. Make sure all meal items have complete recipes with ingredients and instructions, and all exercises have detailed instructions on how to perform them.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4",
@@ -116,21 +140,71 @@ Return ONLY valid JSON, no markdown.`;
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     recommendationData = JSON.parse(jsonMatch ? jsonMatch[0] : content);
   } catch (error) {
-    // Fallback recommendation
+    // Fallback recommendation with full details
     recommendationData = {
       mealPlan: {
-        breakfast: [{ name: "Oatmeal with fruits", calories: 300, protein: 10, carbs: 50, fat: 5 }],
-        lunch: [{ name: "Grilled chicken salad", calories: 400, protein: 30, carbs: 20, fat: 15 }],
-        dinner: [{ name: "Salmon with vegetables", calories: 500, protein: 35, carbs: 30, fat: 20 }],
-        snacks: [{ name: "Greek yogurt", calories: 150, protein: 15, carbs: 10, fat: 5 }]
+        breakfast: [{
+          name: "Oatmeal with fruits",
+          calories: 300,
+          protein: 10,
+          carbs: 50,
+          fat: 5,
+          ingredients: ["1 cup rolled oats", "1 cup water or milk", "1/2 cup mixed berries", "1 tbsp honey", "1 tbsp chopped nuts"],
+          instructions: "1. Bring water or milk to a boil. 2. Add oats and reduce heat to medium. 3. Cook for 5 minutes, stirring occasionally. 4. Remove from heat and let sit for 2 minutes. 5. Top with berries, honey, and nuts.",
+          prepTime: 10,
+          servings: 1
+        }],
+        lunch: [{
+          name: "Grilled chicken salad",
+          calories: 400,
+          protein: 30,
+          carbs: 20,
+          fat: 15,
+          ingredients: ["150g chicken breast", "2 cups mixed greens", "1/2 cup cherry tomatoes", "1/4 cup cucumber", "2 tbsp olive oil", "1 tbsp lemon juice", "Salt and pepper"],
+          instructions: "1. Season chicken with salt and pepper. 2. Grill for 6-7 minutes per side until cooked through. 3. Let rest for 5 minutes, then slice. 4. Toss greens with tomatoes and cucumber. 5. Mix olive oil and lemon juice for dressing. 6. Top salad with chicken and drizzle with dressing.",
+          prepTime: 20,
+          servings: 1
+        }],
+        dinner: [{
+          name: "Salmon with vegetables",
+          calories: 500,
+          protein: 35,
+          carbs: 30,
+          fat: 20,
+          ingredients: ["200g salmon fillet", "1 cup mixed vegetables (broccoli, carrots, bell peppers)", "2 tbsp olive oil", "Lemon wedges", "Garlic powder", "Salt and pepper"],
+          instructions: "1. Preheat oven to 400°F. 2. Season salmon with salt, pepper, and garlic powder. 3. Toss vegetables with olive oil and seasonings. 4. Place salmon and vegetables on a baking sheet. 5. Bake for 15-18 minutes until salmon flakes easily. 6. Serve with lemon wedges.",
+          prepTime: 25,
+          servings: 1
+        }],
+        snacks: [{
+          name: "Greek yogurt with berries",
+          calories: 150,
+          protein: 15,
+          carbs: 10,
+          fat: 5,
+          ingredients: ["1 cup Greek yogurt", "1/2 cup mixed berries", "1 tbsp honey"],
+          instructions: "1. Scoop Greek yogurt into a bowl. 2. Top with fresh berries. 3. Drizzle with honey. 4. Enjoy immediately.",
+          prepTime: 2,
+          servings: 1
+        }]
       },
       workoutPlan: {
-        exercises: [
-          { name: "30 min walk", duration: 30, calories: 150, type: "cardio" }
-        ]
+        exercises: [{
+          name: "30 Minute Brisk Walk",
+          duration: 30,
+          calories: 150,
+          type: "cardio",
+          instructions: "1. Start with a 5-minute warm-up at a slow pace. 2. Increase to a brisk walking pace where you can still hold a conversation but feel your heart rate increase. 3. Maintain this pace for 20 minutes. 4. Cool down with 5 minutes of slower walking. 5. Focus on good posture: stand tall, engage your core, and swing your arms naturally.",
+          sets: null,
+          reps: "30 minutes continuous",
+          restTime: null,
+          difficulty: "beginner",
+          muscleGroups: ["legs", "core", "cardiovascular"],
+          equipment: ["none"]
+        }]
       },
       hydrationGoal: { targetLiters: 2.5 },
-      insights: ["Stay hydrated throughout the day"]
+      insights: ["Stay hydrated throughout the day", "Aim for 8-10 glasses of water daily"]
     };
   }
 

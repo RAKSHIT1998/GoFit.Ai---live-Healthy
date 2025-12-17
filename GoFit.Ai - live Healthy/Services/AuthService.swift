@@ -49,9 +49,25 @@ final class AuthService {
             }
         }
         
-        let token = try JSONDecoder().decode(AuthToken.self, from: data)
-        saveToken(token)
-        return token
+        // Decode response - backend returns { accessToken, user }
+        do {
+            // Try to decode as AuthTokenResponse first (with user data)
+            if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
+                let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
+                saveToken(token)
+                return token
+            }
+            // Fallback: try direct AuthToken decode
+            let token = try JSONDecoder().decode(AuthToken.self, from: data)
+            saveToken(token)
+            return token
+        } catch {
+            print("❌ Failed to decode AuthToken from login response")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Response: \(responseString)")
+            }
+            throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
+        }
     }
 
     // Signup
@@ -143,8 +159,14 @@ final class AuthService {
         }
         
         // Decode response - backend returns { accessToken, user }
-        // AuthToken only needs accessToken, so this should work
         do {
+            // Try to decode as AuthTokenResponse first (with user data)
+            if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
+                let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
+                saveToken(token)
+                return token
+            }
+            // Fallback: try direct AuthToken decode
             let token = try JSONDecoder().decode(AuthToken.self, from: data)
             saveToken(token)
             return token
@@ -195,8 +217,37 @@ final class AuthService {
             throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
-        let token = try JSONDecoder().decode(AuthToken.self, from: data)
-        saveToken(token)
-        return token
+        // Decode response - backend returns { accessToken, user }
+        do {
+            // Try to decode as AuthTokenResponse first (with user data)
+            if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
+                let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
+                saveToken(token)
+                return token
+            }
+            // Fallback: try direct AuthToken decode
+            let token = try JSONDecoder().decode(AuthToken.self, from: data)
+            saveToken(token)
+            return token
+        } catch {
+            print("❌ Failed to decode AuthToken from Apple Sign In response")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Response: \(responseString)")
+            }
+            throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
+        }
     }
+}
+
+// MARK: - Response Models
+struct AuthTokenResponse: Codable {
+    let accessToken: String
+    let user: UserResponse?
+}
+
+struct UserResponse: Codable {
+    let id: String
+    let name: String
+    let email: String
+    let goals: String?
 }

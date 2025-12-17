@@ -79,10 +79,18 @@ struct AuthView: View {
                     
                     // Error message
                     if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 24)
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.subheadline)
+                                .foregroundColor(.red)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(12)
+                        .padding(.horizontal, 24)
                     }
                     
                     // Action button
@@ -90,7 +98,7 @@ struct AuthView: View {
                         HStack {
                             if isLoading {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.7, blue: 0.6)))
                             } else {
                                 Text(isLoginMode ? "Sign In" : "Create Account")
                                     .fontWeight(.semibold)
@@ -103,7 +111,7 @@ struct AuthView: View {
                         .cornerRadius(12)
                     }
                     .disabled(isLoading || !isFormValid)
-                    .opacity(isFormValid ? 1 : 0.6)
+                    .opacity((isLoading || !isFormValid) ? 0.6 : 1.0)
                     .padding(.horizontal, 24)
                     
                     // Toggle mode
@@ -111,6 +119,11 @@ struct AuthView: View {
                         withAnimation(.spring()) {
                             isLoginMode.toggle()
                             errorMessage = nil
+                            // Clear form when switching modes
+                            if isLoginMode {
+                                name = ""
+                                confirmPassword = ""
+                            }
                         }
                     }) {
                         HStack {
@@ -212,7 +225,33 @@ struct AuthView: View {
     }
     
     private func handleAuth() {
+        // Clear previous errors
         errorMessage = nil
+        
+        // Validate form before submitting
+        guard isFormValid else {
+            if isLoginMode {
+                if email.isEmpty || password.isEmpty {
+                    errorMessage = "Please fill in all fields"
+                } else if !Validators.isValidEmail(email) {
+                    errorMessage = "Please enter a valid email address"
+                }
+            } else {
+                if name.isEmpty {
+                    errorMessage = "Name is required"
+                } else if email.isEmpty || !Validators.isValidEmail(email) {
+                    errorMessage = "Please enter a valid email address"
+                } else if password.isEmpty {
+                    errorMessage = "Password is required"
+                } else if password.count < 8 {
+                    errorMessage = "Password must be at least 8 characters"
+                } else if password != confirmPassword {
+                    errorMessage = "Passwords do not match"
+                }
+            }
+            return
+        }
+        
         isLoading = true
         
         Task {
@@ -221,12 +260,20 @@ struct AuthView: View {
                     try await auth.login(email: email, password: password)
                     await MainActor.run {
                         isLoading = false
+                        // Clear form on success
+                        email = ""
+                        password = ""
                     }
                 } else {
                     try await auth.signup(name: name, email: email, password: password)
                     // After successful signup, show paywall
                     await MainActor.run {
                         isLoading = false
+                        // Clear form on success
+                        name = ""
+                        email = ""
+                        password = ""
+                        confirmPassword = ""
                         showingPaywall = true
                     }
                 }

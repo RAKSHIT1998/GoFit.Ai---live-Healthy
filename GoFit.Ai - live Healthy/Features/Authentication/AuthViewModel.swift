@@ -43,8 +43,11 @@ final class AuthViewModel: ObservableObject {
         
         if let t = AuthService.shared.readToken() {
             self.token = t
-            // Optionally you can decode a userId from token if you embed it, or fetch /me
             self.isLoggedIn = true
+            // Try to fetch user profile to restore session
+            Task {
+                await refreshUserProfile()
+            }
         }
     }
 
@@ -79,25 +82,75 @@ final class AuthViewModel: ObservableObject {
 
     // MARK: - Auth flows (async)
     func login(email: String, password: String) async throws {
-        let token = try await AuthService.shared.login(email: email, password: password)
+        // Validate input
+        guard !email.isEmpty, !password.isEmpty else {
+            throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Email and password are required"])
+        }
+        
+        guard Validators.isValidEmail(email) else {
+            throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Please enter a valid email address"])
+        }
+        
+        // Perform login
+        let token = try await AuthService.shared.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
         self.token = token
         self.isLoggedIn = true
-        // Optionally fetch /me to get userId
-        if let me: UserProfile = try? await NetworkManager.shared.request("auth/me", method: "GET", body: nil) {
+        
+        // Fetch user profile to get complete user data
+        do {
+            let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             self.userId = me.id
+            self.email = me.email
+            self.name = me.name
+            // Update local state with fetched data
+            saveLocalState()
+        } catch {
+            // If /me fails, still mark as logged in but log the error
+            print("⚠️ Failed to fetch user profile after login: \(error.localizedDescription)")
+            // Use email from login form as fallback
+            self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            saveLocalState()
         }
-        saveLocalState()
     }
 
     func signup(name: String, email: String, password: String) async throws {
-        let token = try await AuthService.shared.signup(name: name, email: email, password: password)
+        // Validate input
+        guard !name.isEmpty, !email.isEmpty, !password.isEmpty else {
+            throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Name, email, and password are required"])
+        }
+        
+        guard Validators.isValidEmail(email) else {
+            throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Please enter a valid email address"])
+        }
+        
+        guard Validators.isValidPassword(password) else {
+            throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Password must be at least 8 characters long"])
+        }
+        
+        // Perform signup
+        let token = try await AuthService.shared.signup(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+            password: password
+        )
         self.token = token
         self.isLoggedIn = true
-        // Optionally fetch profile
-        if let me: UserProfile = try? await NetworkManager.shared.request("auth/me", method: "GET", body: nil) {
+        
+        // Fetch user profile to get complete user data
+        do {
+            let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             self.userId = me.id
+            self.email = me.email
+            self.name = me.name
+            // Update local state with fetched data
+            saveLocalState()
+        } catch {
+            // If /me fails, use the data from signup form
+            print("⚠️ Failed to fetch user profile after signup: \(error.localizedDescription)")
+            self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            saveLocalState()
         }
-        saveLocalState()
     }
 
     func logout() {
@@ -129,7 +182,8 @@ final class AuthViewModel: ObservableObject {
         }
         
         // Fetch user profile
-        if let me: UserProfile = try? await NetworkManager.shared.request("auth/me", method: "GET", body: nil) {
+        do {
+            let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             self.userId = me.id
             if self.name.isEmpty {
                 self.name = me.name
@@ -137,8 +191,12 @@ final class AuthViewModel: ObservableObject {
             if self.email.isEmpty {
                 self.email = me.email
             }
+            saveLocalState()
+        } catch {
+            print("⚠️ Failed to fetch user profile after Apple Sign In: \(error.localizedDescription)")
+            // Still save state with what we have
+            saveLocalState()
         }
-        saveLocalState()
     }
     
     // Skip authentication (development only)
@@ -164,6 +222,25 @@ final class AuthViewModel: ObservableObject {
         self.token = mockToken
         AuthService.shared.saveToken(mockToken) // Save to keychain so NetworkManager can read it
         saveLocalState()
+    }
+    
+    // Refresh user profile from backend
+    func refreshUserProfile() async {
+        guard !EnvironmentConfig.skipAuthentication, isLoggedIn else { return }
+        
+        do {
+            let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
+            await MainActor.run {
+                self.userId = me.id
+                self.email = me.email
+                self.name = me.name
+                saveLocalState()
+            }
+        } catch {
+            print("⚠️ Failed to refresh user profile: \(error.localizedDescription)")
+            // If refresh fails, user might need to login again
+            // But don't log them out automatically - let them try to use the app
+        }
     }
     
     // Reset app state (useful for testing)

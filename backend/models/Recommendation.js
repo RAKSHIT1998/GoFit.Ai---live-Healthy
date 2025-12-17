@@ -23,28 +23,44 @@ const recommendationSchema = new mongoose.Schema({
       calories: Number,
       protein: Number,
       carbs: Number,
-      fat: Number
+      fat: Number,
+      ingredients: [String],
+      instructions: String,
+      prepTime: Number, // minutes
+      servings: Number
     }],
     lunch: [{
       name: String,
       calories: Number,
       protein: Number,
       carbs: Number,
-      fat: Number
+      fat: Number,
+      ingredients: [String],
+      instructions: String,
+      prepTime: Number,
+      servings: Number
     }],
     dinner: [{
       name: String,
       calories: Number,
       protein: Number,
       carbs: Number,
-      fat: Number
+      fat: Number,
+      ingredients: [String],
+      instructions: String,
+      prepTime: Number,
+      servings: Number
     }],
     snacks: [{
       name: String,
       calories: Number,
       protein: Number,
       carbs: Number,
-      fat: Number
+      fat: Number,
+      ingredients: [String],
+      instructions: String,
+      prepTime: Number,
+      servings: Number
     }]
   },
   workoutPlan: {
@@ -52,7 +68,14 @@ const recommendationSchema = new mongoose.Schema({
       name: String,
       duration: Number, // minutes
       calories: Number,
-      type: String // cardio, strength, etc.
+      type: String, // cardio, strength, etc.
+      instructions: String, // How to perform the exercise
+      sets: Number, // For strength training
+      reps: String, // e.g., "10-12" or "30 seconds"
+      restTime: Number, // seconds between sets
+      difficulty: String, // beginner, intermediate, advanced
+      muscleGroups: [String], // e.g., ["chest", "triceps"]
+      equipment: [String] // e.g., ["dumbbells", "mat"] or ["none"]
     }]
   },
   hydrationGoal: {
