@@ -2,7 +2,13 @@
 
 This guide shows you how to create a test user account for logging into the app.
 
+## ⚠️ Security Notice
+
+**Never commit test credentials to version control!** Always use the script to generate random credentials, or use unique credentials that are not documented in the repository.
+
 ## Method 1: Using the Script (Recommended)
+
+The script generates random credentials automatically, ensuring they're unique and not committed to version control.
 
 ### Prerequisites
 - Backend dependencies installed (`npm install`)
@@ -30,7 +36,7 @@ This guide shows you how to create a test user account for logging into the app.
    - Create a test user in MongoDB
    - Display the email and password
 
-4. **Use the credentials shown to login in the app!**
+4. **Save the credentials securely** (password manager, not in git!)
 
 ### Example Output:
 ```
@@ -51,16 +57,19 @@ Password: TestPass123!abc123
 If your backend is running, you can create a user via the registration endpoint:
 
 ```bash
-curl -X POST https://gofit-ai-live-healthy-1.onrender.com/api/auth/register \
+curl -X POST <YOUR_BACKEND_URL>/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Test User",
-    "email": "testuser@example.com",
-    "password": "TestPassword123!"
+    "name": "Your Test Name",
+    "email": "your-unique-email@example.com",
+    "password": "YourSecurePassword123!"
   }'
 ```
 
-**Note:** Replace the email and password with your desired credentials.
+**Important:**
+- Replace `<YOUR_BACKEND_URL>` with your actual backend URL
+- Use **unique credentials** that are not documented anywhere
+- **Never commit these credentials to git**
 
 ## Method 3: Manual MongoDB Insert (Advanced)
 
@@ -72,31 +81,12 @@ If you have direct MongoDB access:
 ```javascript
 db.users.insertOne({
   name: "Test User",
-  email: "testuser@example.com",
+  email: "your-unique-email@example.com",
   passwordHash: "$2a$10$..." // bcrypt hash of your password
 })
 ```
 
-**Note:** You'll need to hash the password using bcrypt first.
-
-## Quick Test Credentials
-
-If you just want to test quickly, here's a pre-generated account you can create:
-
-**Email:** `testuser_demo@gofit.ai`  
-**Password:** `TestPass123!demo`
-
-Run this curl command to create it:
-
-```bash
-curl -X POST https://gofit-ai-live-healthy-1.onrender.com/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Demo User",
-    "email": "testuser_demo@gofit.ai",
-    "password": "TestPass123!demo"
-  }'
-```
+**Note:** You'll need to hash the password using bcrypt first. The User model's pre-save hook will handle this automatically if you use the script or API.
 
 ## Troubleshooting
 
@@ -108,6 +98,7 @@ curl -X POST https://gofit-ai-live-healthy-1.onrender.com/api/auth/register \
 ### "User already exists" error
 - The email is already registered
 - Use a different email or delete the existing user
+- The script generates random emails to avoid this
 
 ### Script not found
 - Make sure you're in the `backend` directory
@@ -125,3 +116,4 @@ curl -X POST https://gofit-ai-live-healthy-1.onrender.com/api/auth/register \
 
 - The script generates random credentials each time to avoid conflicts
 
+- **Security Best Practice:** Always use the script to generate random credentials rather than hardcoding them
