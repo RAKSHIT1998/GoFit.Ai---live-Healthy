@@ -85,11 +85,28 @@ final class AuthService {
                 errorMessage = "Registration failed with status code \(http.statusCode)"
             }
             
+            // Log for debugging
+            print("❌ Registration error: \(errorMessage) (Status: \(http.statusCode))")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Response: \(responseString)")
+            }
+            
             throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
-        let token = try JSONDecoder().decode(AuthToken.self, from: data)
-        saveToken(token)
-        return token
+        // Decode response - backend returns { accessToken, user }
+        // AuthToken only needs accessToken, so this should work
+        do {
+            let token = try JSONDecoder().decode(AuthToken.self, from: data)
+            saveToken(token)
+            return token
+        } catch {
+            // If decoding fails, log the response for debugging
+            print("❌ Failed to decode AuthToken from response")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Response: \(responseString)")
+            }
+            throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
+        }
     }
 }
