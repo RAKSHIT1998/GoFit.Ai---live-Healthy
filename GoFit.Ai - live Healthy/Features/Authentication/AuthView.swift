@@ -14,112 +14,101 @@ struct AuthView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [
-                    Color(red: 0.2, green: 0.7, blue: 0.6), // Teal Green
-                    Color(red: 0.3, green: 0.8, blue: 0.7)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Clean white background
+            Color.white
+                .ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: 32) {
-                    Spacer(minLength: 60)
+                VStack(spacing: Design.Spacing.xl) {
+                    Spacer(minLength: 40)
                     
                     // Logo and title
-                    VStack(spacing: 16) {
-                        LogoViewLight(size: .large, showText: false)
+                    VStack(spacing: Design.Spacing.md) {
+                        LogoView(size: .large, showText: false, color: Design.Colors.primary)
+                            .padding(.top, Design.Spacing.xl)
                         
                         Text("GoFit.Ai")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(Design.Typography.display)
+                            .foregroundColor(.primary)
                         
                         Text(isLoginMode ? "Welcome back!" : "Create your account")
-                            .font(.title3)
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(Design.Typography.title3)
+                            .foregroundColor(.secondary)
                     }
                     
-                    // Form
-                    VStack(spacing: 20) {
-                        if !isLoginMode {
+                    // Form Card
+                    ModernCard {
+                        VStack(spacing: Design.Spacing.md) {
+                            if !isLoginMode {
+                                CustomTextField(
+                                    placeholder: "Full Name",
+                                    text: $name,
+                                    icon: "person.fill"
+                                )
+                            }
+                            
                             CustomTextField(
-                                placeholder: "Full Name",
-                                text: $name,
-                                icon: "person.fill"
+                                placeholder: "Email",
+                                text: $email,
+                                icon: "envelope.fill",
+                                keyboardType: .emailAddress
                             )
-                        }
-                        
-                        CustomTextField(
-                            placeholder: "Email",
-                            text: $email,
-                            icon: "envelope.fill",
-                            keyboardType: .emailAddress
-                        )
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
-                        
-                        CustomSecureField(
-                            placeholder: "Password",
-                            text: $password,
-                            icon: "lock.fill"
-                        )
-                        
-                        if !isLoginMode {
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+                            
                             CustomSecureField(
-                                placeholder: "Confirm Password",
-                                text: $confirmPassword,
+                                placeholder: "Password",
+                                text: $password,
                                 icon: "lock.fill"
                             )
+                            
+                            if !isLoginMode {
+                                CustomSecureField(
+                                    placeholder: "Confirm Password",
+                                    text: $confirmPassword,
+                                    icon: "lock.fill"
+                                )
+                            }
                         }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, Design.Spacing.md)
                     
                     // Error message
                     if let error = errorMessage {
-                        HStack(spacing: 8) {
+                        HStack(spacing: Design.Spacing.sm) {
                             Image(systemName: "exclamationmark.circle.fill")
                                 .foregroundColor(.red)
+                                .font(Design.Typography.subheadline)
                             Text(error)
-                                .font(.subheadline)
+                                .font(Design.Typography.body)
                                 .foregroundColor(.red)
                         }
-                        .padding()
+                        .padding(Design.Spacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.red.opacity(0.1))
-                        .cornerRadius(12)
-                        .padding(.horizontal, 24)
+                        .cornerRadius(Design.Radius.medium)
+                        .padding(.horizontal, Design.Spacing.md)
                     }
                     
                     // Action button
                     Button(action: handleAuth) {
-                        HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.7, blue: 0.6)))
-                            } else {
-                                Text(isLoginMode ? "Sign In" : "Create Account")
-                                    .fontWeight(.semibold)
-                            }
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text(isLoginMode ? "Sign In" : "Create Account")
                         }
-                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(12)
                     }
+                    .buttonStyle(ModernButtonStyle())
                     .disabled(isLoading || !isFormValid)
                     .opacity((isLoading || !isFormValid) ? 0.6 : 1.0)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, Design.Spacing.md)
                     
                     // Toggle mode
                     Button(action: {
-                        withAnimation(.spring()) {
+                        withAnimation(Design.Animation.spring) {
                             isLoginMode.toggle()
                             errorMessage = nil
-                            // Clear form when switching modes
                             if isLoginMode {
                                 name = ""
                                 confirmPassword = ""
@@ -128,30 +117,30 @@ struct AuthView: View {
                     }) {
                         HStack {
                             Text(isLoginMode ? "Don't have an account? " : "Already have an account? ")
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.secondary)
                             Text(isLoginMode ? "Sign Up" : "Sign In")
-                                .foregroundColor(.white)
+                                .foregroundColor(Design.Colors.primary)
                                 .fontWeight(.semibold)
                         }
-                        .font(.body)
+                        .font(Design.Typography.body)
                     }
-                    .padding(.top, 8)
+                    .padding(.top, Design.Spacing.md)
                     
                     // Divider
                     HStack {
                         Rectangle()
-                            .fill(Color.white.opacity(0.3))
+                            .fill(Color.gray.opacity(0.3))
                             .frame(height: 1)
                         Text("or")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.horizontal, 12)
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, Design.Spacing.md)
                         Rectangle()
-                            .fill(Color.white.opacity(0.3))
+                            .fill(Color.gray.opacity(0.3))
                             .frame(height: 1)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
+                    .padding(.horizontal, Design.Spacing.md)
+                    .padding(.top, Design.Spacing.lg)
                     
                     // Sign in with Apple
                     Button(action: {
@@ -159,20 +148,20 @@ struct AuthView: View {
                     }) {
                         HStack {
                             Image(systemName: "applelogo")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(Design.Typography.headline)
                             Text("Continue with Apple")
                                 .fontWeight(.semibold)
                         }
                         .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(12)
                     }
+                    .buttonStyle(ModernSecondaryButtonStyle(
+                        borderColor: .black.opacity(0.2),
+                        foregroundColor: .black
+                    ))
                     .disabled(isLoading)
                     .opacity(isLoading ? 0.6 : 1.0)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 8)
+                    .padding(.horizontal, Design.Spacing.md)
+                    .padding(.top, Design.Spacing.sm)
                     
                     // Optional: Phone OTP (can be added later)
                     if isLoginMode {
@@ -349,7 +338,7 @@ struct AuthView: View {
     }
 }
 
-// MARK: - Custom Text Field
+// MARK: - Custom Text Field (Modern Design)
 struct CustomTextField: View {
     let placeholder: String
     @Binding var text: String
@@ -357,23 +346,28 @@ struct CustomTextField: View {
     var keyboardType: UIKeyboardType = .default
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Design.Spacing.md) {
             Image(systemName: icon)
-                .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
-                .frame(width: 20)
+                .foregroundColor(Design.Colors.primary)
+                .font(Design.Typography.subheadline)
+                .frame(width: 24)
             
             TextField(placeholder, text: $text)
+                .font(Design.Typography.body)
                 .keyboardType(keyboardType)
                 .textInputAutocapitalization(.never)
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .padding(Design.Spacing.md)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .cornerRadius(Design.Radius.medium)
+        .overlay(
+            RoundedRectangle(cornerRadius: Design.Radius.medium)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
     }
 }
 
-// MARK: - Custom Secure Field
+// MARK: - Custom Secure Field (Modern Design)
 struct CustomSecureField: View {
     let placeholder: String
     @Binding var text: String
@@ -381,25 +375,36 @@ struct CustomSecureField: View {
     @State private var isSecure = true
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Design.Spacing.md) {
             Image(systemName: icon)
-                .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
-                .frame(width: 20)
+                .foregroundColor(Design.Colors.primary)
+                .font(Design.Typography.subheadline)
+                .frame(width: 24)
             
             if isSecure {
                 SecureField(placeholder, text: $text)
+                    .font(Design.Typography.body)
             } else {
                 TextField(placeholder, text: $text)
+                    .font(Design.Typography.body)
             }
             
-            Button(action: { isSecure.toggle() }) {
+            Button(action: { 
+                withAnimation(Design.Animation.springFast) {
+                    isSecure.toggle()
+                }
+            }) {
                 Image(systemName: isSecure ? "eye.slash.fill" : "eye.fill")
                     .foregroundColor(.gray)
+                    .font(Design.Typography.subheadline)
             }
         }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .padding(Design.Spacing.md)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .cornerRadius(Design.Radius.medium)
+        .overlay(
+            RoundedRectangle(cornerRadius: Design.Radius.medium)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
     }
 }

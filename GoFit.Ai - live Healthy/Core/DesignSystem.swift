@@ -40,17 +40,26 @@ struct AppDesign {
         static let heart = Color(red: 1.0, green: 0.2, blue: 0.3) // Red
     }
     
-    // Typography
+    // Typography - Consistent, Modern Scale
     struct Typography {
-        static let largeTitle = Font.system(size: 34, weight: .bold, design: .rounded)
+        // Display & Titles
+        static let display = Font.system(size: 36, weight: .bold, design: .rounded)
+        static let largeTitle = Font.system(size: 32, weight: .bold, design: .rounded)
         static let title = Font.system(size: 28, weight: .bold, design: .rounded)
-        static let title2 = Font.system(size: 22, weight: .semibold, design: .rounded)
-        static let headline = Font.system(size: 17, weight: .semibold, design: .rounded)
-        static let body = Font.system(size: 17, weight: .regular, design: .rounded)
-        static let callout = Font.system(size: 16, weight: .regular, design: .rounded)
-        static let subheadline = Font.system(size: 15, weight: .regular, design: .rounded)
+        static let title2 = Font.system(size: 24, weight: .semibold, design: .rounded)
+        static let title3 = Font.system(size: 20, weight: .semibold, design: .rounded)
+        
+        // Body Text
+        static let headline = Font.system(size: 18, weight: .semibold, design: .rounded)
+        static let body = Font.system(size: 16, weight: .regular, design: .rounded)
+        static let bodyBold = Font.system(size: 16, weight: .semibold, design: .rounded)
+        static let callout = Font.system(size: 15, weight: .regular, design: .rounded)
+        static let subheadline = Font.system(size: 15, weight: .medium, design: .rounded)
+        
+        // Supporting Text
         static let footnote = Font.system(size: 13, weight: .regular, design: .rounded)
         static let caption = Font.system(size: 12, weight: .regular, design: .rounded)
+        static let caption2 = Font.system(size: 11, weight: .regular, design: .rounded)
     }
     
     // Spacing

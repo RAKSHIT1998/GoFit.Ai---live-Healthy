@@ -26,13 +26,23 @@ struct MealHistoryView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(.systemGroupedBackground)
+                Color.white
                     .ignoresSafeArea()
                 
                 if loading && meals.isEmpty {
-                    ProgressView("Loading meals...")
+                    VStack(spacing: Design.Spacing.md) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading meals...")
+                            .font(Design.Typography.body)
+                            .foregroundColor(.secondary)
+                    }
                 } else if meals.isEmpty {
-                    emptyState
+                    EmptyStateView(
+                        icon: "fork.knife.circle",
+                        title: "No Meals Yet",
+                        message: "Start scanning your meals to see them here"
+                    )
                 } else {
                     ScrollView {
                         LazyVStack(spacing: Design.Spacing.md) {
@@ -53,6 +63,7 @@ struct MealHistoryView: View {
                         dismiss()
                     }
                     .foregroundColor(Design.Colors.primary)
+                    .font(Design.Typography.body)
                 }
             }
             .task {
@@ -61,25 +72,6 @@ struct MealHistoryView: View {
             .refreshable {
                 await loadMeals()
             }
-        }
-    }
-    
-    // MARK: - Empty State
-    private var emptyState: some View {
-        VStack(spacing: Design.Spacing.lg) {
-            Image(systemName: "fork.knife.circle")
-                .font(.system(size: 64))
-                .foregroundColor(Design.Colors.primary.opacity(0.5))
-            
-            Text("No Meals Yet")
-                .font(Design.Typography.title)
-                .foregroundColor(.primary)
-            
-            Text("Start scanning your meals to see them here")
-                .font(Design.Typography.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Design.Spacing.xl)
         }
     }
     
@@ -144,7 +136,7 @@ struct MealHistoryCard: View {
                 }
             }) {
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Design.Spacing.xs) {
                         Text(meal.date.formatted(date: .abbreviated, time: .shortened))
                             .font(Design.Typography.headline)
                             .foregroundColor(.primary)
@@ -156,9 +148,10 @@ struct MealHistoryCard: View {
                     
                     Spacer()
                     
-                    VStack(alignment: .trailing, spacing: 4) {
+                    VStack(alignment: .trailing, spacing: Design.Spacing.xs) {
                         Text("\(Int(meal.totalCalories))")
                             .font(Design.Typography.title2)
+                            .fontWeight(.bold)
                             .foregroundColor(Design.Colors.calories)
                         Text("kcal")
                             .font(Design.Typography.caption)
@@ -167,7 +160,7 @@ struct MealHistoryCard: View {
                     
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .foregroundColor(.secondary)
-                        .font(.caption)
+                        .font(Design.Typography.caption)
                 }
                 .padding(Design.Spacing.lg)
             }
@@ -176,6 +169,7 @@ struct MealHistoryCard: View {
             // Expanded Content
             if isExpanded {
                 Divider()
+                    .padding(.horizontal, Design.Spacing.lg)
                 
                 VStack(spacing: Design.Spacing.md) {
                     ForEach(meal.items.indices, id: \.self) { index in
@@ -183,7 +177,7 @@ struct MealHistoryCard: View {
                     }
                     
                     // Macros Summary
-                    HStack(spacing: Design.Spacing.lg) {
+                    HStack(spacing: Design.Spacing.md) {
                         MacroBadge(label: "Protein", value: meal.items.reduce(0) { $0 + $1.protein }, color: Design.Colors.protein)
                         MacroBadge(label: "Carbs", value: meal.items.reduce(0) { $0 + $1.carbs }, color: Design.Colors.carbs)
                         MacroBadge(label: "Fat", value: meal.items.reduce(0) { $0 + $1.fat }, color: Design.Colors.fat)
@@ -194,7 +188,9 @@ struct MealHistoryCard: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .cardStyle()
+        .background(Color.white)
+        .cornerRadius(Design.Radius.large)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
     }
 }
 

@@ -32,15 +32,9 @@ struct PaywallView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                LinearGradient(
-                    colors: [
-                        Design.Colors.primary.opacity(0.1),
-                        Color(.systemGroupedBackground)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                // Clean white background
+                Color.white
+                    .ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: Design.Spacing.xl) {

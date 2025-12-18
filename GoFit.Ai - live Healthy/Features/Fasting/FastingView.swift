@@ -13,16 +13,9 @@ struct FastingView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [
-                        Design.Colors.primary.opacity(0.1),
-                        Color(.systemGroupedBackground)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                // Clean white background
+                Color.white
+                    .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: Design.Spacing.xl) {
@@ -50,7 +43,7 @@ struct FastingView: View {
                             .padding(.bottom, Design.Spacing.xl)
                     }
                 }
-                }
+            }
             .navigationTitle("Intermittent Fasting")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -59,6 +52,7 @@ struct FastingView: View {
                         dismiss()
                     }
                     .foregroundColor(Design.Colors.primary)
+                    .font(Design.Typography.body)
                 }
             }
             .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
@@ -153,7 +147,9 @@ struct FastingView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .cardStyle()
+        .background(Color.white)
+        .cornerRadius(Design.Radius.large)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Preset Windows
@@ -211,7 +207,9 @@ struct FastingView: View {
             Spacer()
         }
         .padding(Design.Spacing.lg)
-        .cardStyle()
+        .background(Color.white)
+        .cornerRadius(Design.Radius.large)
+        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Action Button

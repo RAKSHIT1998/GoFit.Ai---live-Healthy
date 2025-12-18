@@ -62,55 +62,35 @@ struct WorkoutSuggestionsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [
-                        Color(.systemGroupedBackground),
-                        Color(.systemGroupedBackground).opacity(0.5)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                // Clean white background
+                Color.white
+                    .ignoresSafeArea()
                 
                 if isLoading {
                     VStack(spacing: Design.Spacing.md) {
                         ProgressView()
-                            .scaleEffect(1.5)
+                            .scaleEffect(1.2)
                         Text("Generating AI recommendations...")
-                            .font(Design.Typography.subheadline)
+                            .font(Design.Typography.body)
                             .foregroundColor(.secondary)
                     }
                 } else if let error = errorMessage {
-                    VStack(spacing: Design.Spacing.lg) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.orange)
-                        Text("Oops!")
-                            .font(Design.Typography.title)
-                        Text(error)
-                            .font(Design.Typography.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, Design.Spacing.lg)
-                        
-                        Button(action: {
+                    EmptyStateView(
+                        icon: "exclamationmark.triangle.fill",
+                        title: "Oops!",
+                        message: error,
+                        action: {
                             Task { await loadRecommendations() }
-                        }) {
-                            Text("Try Again")
-                                .font(Design.Typography.headline)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, Design.Spacing.xl)
-                                .padding(.vertical, Design.Spacing.md)
-                                .background(Design.Colors.primary)
-                                .cornerRadius(Design.Radius.medium)
-                        }
-                    }
+                        },
+                        actionTitle: "Try Again"
+                    )
                 } else if let rec = recommendation {
                     ScrollView {
                         VStack(spacing: Design.Spacing.lg) {
                             // Tab Selector
                             tabSelector
+                                .padding(.horizontal, Design.Spacing.md)
+                                .padding(.top, Design.Spacing.md)
                             
                             // Content based on selected tab
                             if selectedTab == 0 {
@@ -124,11 +104,18 @@ struct WorkoutSuggestionsView: View {
                                 insightsCard(rec.insights)
                             }
                         }
-                        .padding(.horizontal, Design.Spacing.md)
                         .padding(.bottom, Design.Spacing.xl)
                     }
                 } else {
-                    emptyState
+                    EmptyStateView(
+                        icon: "sparkles",
+                        title: "No Recommendations",
+                        message: "Tap refresh to generate AI-powered meal and workout recommendations",
+                        action: {
+                            Task { await loadRecommendations() }
+                        },
+                        actionTitle: "Generate"
+                    )
                 }
             }
             .navigationTitle("AI Recommendations")
@@ -140,6 +127,7 @@ struct WorkoutSuggestionsView: View {
                     }) {
                         Image(systemName: "arrow.clockwise")
                             .foregroundColor(Design.Colors.primary)
+                            .font(Design.Typography.headline)
                     }
                 }
             }
@@ -173,18 +161,19 @@ struct WorkoutSuggestionsView: View {
         Button(action: action) {
             HStack(spacing: Design.Spacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(Design.Typography.subheadline)
+                    .fontWeight(.semibold)
                 Text(title)
                     .font(Design.Typography.subheadline)
                     .fontWeight(.semibold)
             }
             .foregroundColor(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, Design.Spacing.sm)
+            .padding(.vertical, Design.Spacing.md)
             .background(
                 Group {
                     if isSelected {
-                        Design.Colors.primaryGradient
+                        Design.Colors.primary
                     } else {
                         Color.clear
                     }

@@ -7,16 +7,9 @@ struct OnboardingScreens: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [
-                    Color(red: 0.2, green: 0.7, blue: 0.6), // Teal Green
-                    Color(red: 0.3, green: 0.8, blue: 0.7)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Clean white background
+            Color.white
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Skip button (dev mode only)
