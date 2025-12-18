@@ -6,6 +6,9 @@ struct ParsedItem: Codable {
     let protein: Double?
     let carbs: Double?
     let fat: Double?
+    let sugar: Double? // Added sugar field
+    let portionSize: String? // Added portion size
+    let confidence: Double? // AI confidence score
 }
 
 // DTO expected by backend when saving corrected meal
@@ -16,4 +19,5 @@ struct ParsedItemDTO: Codable {
     let protein: Double?
     let carbs: Double?
     let fat: Double?
+    let sugar: Double? // Added sugar field
 }

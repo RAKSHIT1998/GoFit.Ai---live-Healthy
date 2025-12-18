@@ -111,10 +111,10 @@ router.get('/summary', authMiddleware, async (req, res) => {
   }
 });
 
-// Log water
+// Log water/liquid
 router.post('/water', authMiddleware, async (req, res) => {
   try {
-    const { amount, timestamp } = req.body;
+    const { amount, beverageType, beverageName, calories, timestamp } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Valid amount is required' });
@@ -123,6 +123,9 @@ router.post('/water', authMiddleware, async (req, res) => {
     const log = new WaterLog({
       userId: req.user._id,
       amount,
+      beverageType: beverageType || 'water',
+      beverageName: beverageName || '',
+      calories: calories || 0,
       timestamp: timestamp ? new Date(timestamp) : new Date(),
       source: 'manual'
     });
@@ -132,7 +135,7 @@ router.post('/water', authMiddleware, async (req, res) => {
     res.status(201).json(log);
   } catch (error) {
     console.error('Log water error:', error);
-    res.status(500).json({ message: 'Failed to log water', error: error.message });
+    res.status(500).json({ message: 'Failed to log liquid', error: error.message });
   }
 });
 

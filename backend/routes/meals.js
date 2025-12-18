@@ -7,7 +7,7 @@ const router = express.Router();
 // Save meal
 router.post('/save', authMiddleware, async (req, res) => {
   try {
-    const { items, imageUrl, imageKey, totalCalories, totalProtein, totalCarbs, totalFat, mealType, timestamp, aiVersion } = req.body;
+    const { items, imageUrl, imageKey, totalCalories, totalProtein, totalCarbs, totalFat, totalSugar, mealType, timestamp, aiVersion } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'Items array is required' });
@@ -22,6 +22,7 @@ router.post('/save', authMiddleware, async (req, res) => {
       totalProtein: totalProtein || items.reduce((sum, item) => sum + (item.protein || 0), 0),
       totalCarbs: totalCarbs || items.reduce((sum, item) => sum + (item.carbs || 0), 0),
       totalFat: totalFat || items.reduce((sum, item) => sum + (item.fat || 0), 0),
+      totalSugar: totalSugar || items.reduce((sum, item) => sum + (item.sugar || 0), 0),
       mealType: mealType || 'snack',
       timestamp: timestamp ? new Date(timestamp) : new Date(),
       aiVersion: aiVersion || 'unknown'
@@ -79,8 +80,9 @@ router.get('/summary/today', authMiddleware, async (req, res) => {
       protein: acc.protein + (meal.totalProtein || 0),
       carbs: acc.carbs + (meal.totalCarbs || 0),
       fat: acc.fat + (meal.totalFat || 0),
+      sugar: acc.sugar + (meal.totalSugar || 0),
       mealCount: acc.mealCount + 1
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0, mealCount: 0 });
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, mealCount: 0 });
 
     res.json(summary);
   } catch (error) {

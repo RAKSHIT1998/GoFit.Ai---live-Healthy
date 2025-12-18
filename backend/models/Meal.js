@@ -13,8 +13,10 @@ const mealSchema = new mongoose.Schema({
     protein: Number,
     carbs: Number,
     fat: Number,
+    sugar: Number, // Added sugar field
     portionSize: String,
-    confidence: Number // AI confidence score
+    qtyText: String, // For manual entries (e.g., "1 cup", "200g")
+    confidence: Number // AI confidence score (0-1)
   }],
   imageUrl: String, // S3 URL
   imageKey: String, // S3 key for deletion
@@ -22,6 +24,7 @@ const mealSchema = new mongoose.Schema({
   totalProtein: Number,
   totalCarbs: Number,
   totalFat: Number,
+  totalSugar: Number, // Added total sugar
   mealType: {
     type: String,
     enum: ['breakfast', 'lunch', 'dinner', 'snack'],

@@ -65,14 +65,34 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     const base64Image = file.buffer.toString('base64');
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4o", // Updated to latest model
       messages: [
+        {
+          role: "system",
+          content: "You are a nutrition expert. Analyze food images and provide accurate nutritional information including calories, macronutrients, and sugar content."
+        },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Analyze this food image and return a JSON array of food items. For each item, provide: name, estimated calories, protein (grams), carbs (grams), fat (grams), portion size (e.g., '1 cup', '200g'), and confidence (0-1). Return ONLY valid JSON, no markdown."
+              text: `Analyze this food image carefully and identify ALL food items visible. For each food item, provide detailed nutritional information.
+
+Return a JSON array where each item has:
+- name: string (specific food name, e.g., "Grilled Chicken Breast" not just "chicken")
+- calories: number (estimated calories for the portion shown)
+- protein: number (grams of protein)
+- carbs: number (grams of carbohydrates)
+- fat: number (grams of fat)
+- sugar: number (grams of sugar - IMPORTANT: include this field)
+- portionSize: string (estimated portion, e.g., "200g", "1 cup", "1 medium piece")
+- confidence: number (0-1, how confident you are in the identification)
+
+Be specific and accurate. If you see multiple items (e.g., rice, chicken, vegetables), list each separately.
+Estimate portion sizes based on common serving sizes and what's visible in the image.
+Include sugar content for all items (even if 0 for items like plain chicken).
+
+Return ONLY valid JSON array, no markdown, no explanations, just the JSON.`
             },
             {
               type: "image_url",
@@ -83,7 +103,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
           ]
         }
       ],
-      max_tokens: 1000
+      max_tokens: 2000,
+      temperature: 0.3 // Lower temperature for more consistent results
     });
 
     const content = response.choices[0].message.content;
@@ -106,6 +127,7 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
         protein: 10,
         carbs: 30,
         fat: 5,
+        sugar: 5,
         portionSize: "1 serving",
         confidence: 0.5
       }];
@@ -116,8 +138,9 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       calories: acc.calories + (item.calories || 0),
       protein: acc.protein + (item.protein || 0),
       carbs: acc.carbs + (item.carbs || 0),
-      fat: acc.fat + (item.fat || 0)
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      fat: acc.fat + (item.fat || 0),
+      sugar: acc.sugar + (item.sugar || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
 
     res.json({
       items,
@@ -127,7 +150,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       totalProtein: totals.protein,
       totalCarbs: totals.carbs,
       totalFat: totals.fat,
-      aiVersion: "gpt-4-vision-preview"
+      totalSugar: totals.sugar,
+      aiVersion: "gpt-4o"
     });
   } catch (error) {
     console.error('Photo analysis error:', error);

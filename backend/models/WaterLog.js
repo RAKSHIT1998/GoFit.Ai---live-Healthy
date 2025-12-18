@@ -11,6 +11,19 @@ const waterLogSchema = new mongoose.Schema({
     type: Number,
     required: true // in liters
   },
+  beverageType: {
+    type: String,
+    enum: ['water', 'soda', 'soft_drink', 'juice', 'coffee', 'tea', 'alcohol', 'beer', 'wine', 'liquor', 'other'],
+    default: 'water'
+  },
+  beverageName: {
+    type: String, // e.g., "Coca Cola", "Red Wine", "Whiskey"
+    default: ''
+  },
+  calories: {
+    type: Number, // Optional calories for the beverage
+    default: 0
+  },
   timestamp: {
     type: Date,
     default: Date.now,

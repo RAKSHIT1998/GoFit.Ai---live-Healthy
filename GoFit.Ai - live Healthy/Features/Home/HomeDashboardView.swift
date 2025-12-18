@@ -11,6 +11,7 @@ struct HomeDashboardView: View {
     @State private var showingHistory = false
     @State private var showingFasting = false
     @State private var showingWorkout = false
+    @State private var showingLiquidLog = false
 
     @State private var todayCalories = "—"
     @State private var todayProtein = "—"
@@ -84,6 +85,9 @@ struct HomeDashboardView: View {
             }
             .sheet(isPresented: $showingWorkout) {
                 WorkoutSuggestionsView().environmentObject(auth)
+            }
+            .sheet(isPresented: $showingLiquidLog) {
+                LiquidLogView().environmentObject(auth)
             }
             .onAppear {
                 withAnimation(Design.Animation.spring) {
@@ -174,7 +178,7 @@ struct HomeDashboardView: View {
 
                 QuickActionButton(
                     icon: "drop.fill",
-                    label: "Water",
+                    label: "Liquid",
                     color: Design.Colors.water,
                     gradient: LinearGradient(
                         colors: [Design.Colors.water, Design.Colors.water.opacity(0.7)],
@@ -182,7 +186,7 @@ struct HomeDashboardView: View {
                         endPoint: .bottomTrailing
                     )
                 ) {
-                    addWater()
+                    showingLiquidLog = true
                 }
 
                 QuickActionButton(

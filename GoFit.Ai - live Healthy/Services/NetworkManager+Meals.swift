@@ -11,9 +11,22 @@ extension NetworkManager {
         }
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Calculate totals
+        let totalCalories = items.reduce(0) { $0 + $1.calories }
+        let totalProtein = items.reduce(0) { $0 + ($1.protein ?? 0) }
+        let totalCarbs = items.reduce(0) { $0 + ($1.carbs ?? 0) }
+        let totalFat = items.reduce(0) { $0 + ($1.fat ?? 0) }
+        let totalSugar = items.reduce(0) { $0 + ($1.sugar ?? 0) }
+        
         let payload: [String: Any] = [
-            "userId": (userId ?? NSNull()) as Any,
-            "items": try JSONEncoder().encodeToJSONObject(items)
+            "items": try JSONEncoder().encodeToJSONObject(items),
+            "totalCalories": totalCalories,
+            "totalProtein": totalProtein,
+            "totalCarbs": totalCarbs,
+            "totalFat": totalFat,
+            "totalSugar": totalSugar,
+            "mealType": "snack", // Default, can be changed
+            "timestamp": ISO8601DateFormatter().string(from: Date())
         ]
 
         req.httpBody = try JSONSerialization.data(withJSONObject: payload, options: [])

@@ -16,6 +16,8 @@ struct MealScannerView3: View {
     @State private var editableItems: [EditableParsedItem] = []
     @State private var showEditScreen = false
 
+    @State private var showManualLog = false
+    
     var body: some View {
         VStack {
             ZStack {
@@ -42,38 +44,105 @@ struct MealScannerView3: View {
             .padding()
 
             HStack(spacing: 20) {
-                Button(action: { isTaking = true }) { Label("Capture", systemImage: "camera") }
-                Button(action: {
-                    if let _ = capturedImage { showPreview = true }
-                }) { Label("Preview", systemImage: "eye") }
+                Button(action: { isTaking = true }) { 
+                    Label("Capture", systemImage: "camera")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+                Button(action: { showManualLog = true }) { 
+                    Label("Manual Log", systemImage: "pencil")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.gray.opacity(0.2))
+                        .foregroundColor(.primary)
+                        .cornerRadius(12)
+                }
             }
+            .padding(.horizontal)
             .padding(.bottom)
+            
+            if let img = capturedImage {
+                Button(action: { showPreview = true }) {
+                    Label("Preview & Upload", systemImage: "eye")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
 
             if isUploading { ProgressView("Uploading & analyzing...") }
 
             if let resp = uploadResult {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Parsed items:")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("AI Analysis Results")
                         .font(.headline)
+                        .padding(.bottom, 4)
+                    
                     if let items = resp.parsedItems, !items.isEmpty {
                         ForEach(items, id: \.name) { it in
-                            HStack {
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text(it.name)
-                                Spacer()
-                                if let cal = it.calories { Text("\(Int(cal)) kcal") }
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                
+                                HStack(spacing: 12) {
+                                    if let cal = it.calories {
+                                        Label("\(Int(cal))", systemImage: "flame.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.orange)
+                                    }
+                                    if let prot = it.protein {
+                                        Label("\(Int(prot))g", systemImage: "p.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                    }
+                                    if let carbs = it.carbs {
+                                        Label("\(Int(carbs))g", systemImage: "c.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
+                                    if let fat = it.fat {
+                                        Label("\(Int(fat))g", systemImage: "f.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.purple)
+                                    }
+                                    if let sugar = it.sugar {
+                                        Label("\(Int(sugar))g", systemImage: "s.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                                
+                                if let portion = it.portionSize {
+                                    Text("Portion: \(portion)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
                         }
-                        Button("Edit & Save") {
+                        
+                        Button("Edit & Save Meal") {
                             // map to editable and show editor
                             let items = resp.parsedItems ?? []
                             editableItems = items.map { item in
                                 EditableParsedItem(
                                     name: item.name,
-                                    qtyText: "", // ParsedItem doesn't have qtyText, will be editable in EditParsedItemsView
+                                    qtyText: item.portionSize ?? "", // Use portionSize if available
                                     calories: item.calories ?? 0,
                                     protein: item.protein ?? 0,
                                     carbs: item.carbs ?? 0,
-                                    fat: item.fat ?? 0
+                                    fat: item.fat ?? 0,
+                                    sugar: item.sugar ?? 0 // Include sugar
                                 )
                             }
                             showEditScreen = true
@@ -113,6 +182,10 @@ struct MealScannerView3: View {
         }
         .sheet(isPresented: $showPicker) {
             PHPickerWrapper(image: $capturedImage)
+        }
+        .sheet(isPresented: $showManualLog) {
+            ManualMealLogView()
+                .environmentObject(authVM)
         }
         .sheet(isPresented: $showEditScreen) {
             NavigationView {
@@ -155,7 +228,7 @@ struct MealScannerView3: View {
         defer { isUploading = false }
         do {
             // convert editable items to a DTO the backend expects
-            let dto = parsedItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat) }
+            let dto = parsedItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
             let saved = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
             // set uploadResult from returned saved response if needed
             uploadResult = saved

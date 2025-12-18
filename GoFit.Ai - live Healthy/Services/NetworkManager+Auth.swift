@@ -76,8 +76,14 @@ final class NetworkManager {
             }
             throw URLError(.badServerResponse)
         }
-        let decoded = try JSONDecoder().decode(ServerMealResponse.self, from: d)
-        return decoded
+        // Photo analyze returns PhotoAnalysisResponse, not ServerMealResponse
+        let decoded = try JSONDecoder().decode(PhotoAnalysisResponse.self, from: d)
+        // Convert to ServerMealResponse format for compatibility
+        return ServerMealResponse(
+            mealId: nil,
+            parsedItems: decoded.items,
+            recommendations: nil
+        )
     }
 }
 

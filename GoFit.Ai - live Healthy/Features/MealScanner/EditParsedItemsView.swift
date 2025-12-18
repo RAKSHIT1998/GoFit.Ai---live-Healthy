@@ -8,6 +8,7 @@ struct EditableParsedItem: Identifiable, Hashable {
     var protein: Double
     var carbs: Double
     var fat: Double
+    var sugar: Double // Added sugar field
 }
 
 struct EditParsedItemsView: View {
@@ -32,15 +33,19 @@ struct EditParsedItemsView: View {
                     HStack {
                         TextField("Protein g", value: $it.protein, format: .number)
                             .keyboardType(.decimalPad)
-                            .frame(width: 90)
+                            .frame(width: 80)
                             .textFieldStyle(.roundedBorder)
                         TextField("Carbs g", value: $it.carbs, format: .number)
                             .keyboardType(.decimalPad)
-                            .frame(width: 90)
+                            .frame(width: 80)
                             .textFieldStyle(.roundedBorder)
                         TextField("Fat g", value: $it.fat, format: .number)
                             .keyboardType(.decimalPad)
-                            .frame(width: 90)
+                            .frame(width: 80)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Sugar g", value: $it.sugar, format: .number)
+                            .keyboardType(.decimalPad)
+                            .frame(width: 80)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
