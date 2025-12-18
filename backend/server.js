@@ -90,9 +90,34 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
+// Validate required environment variables
+function validateEnv() {
+  const required = ['JWT_SECRET', 'MONGODB_URI'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error('❌ Missing required environment variables:');
+    missing.forEach(key => {
+      console.error(`   - ${key}`);
+    });
+    console.error('\n📝 Please set these in your Render dashboard:');
+    console.error('   Service → Environment → Add Environment Variable');
+    console.error('\n💡 See RENDER_ENV_SETUP.md for detailed instructions');
+    return false;
+  }
+  
+  return true;
+}
+
 // Start server
 async function startServer() {
   try {
+    // Validate environment variables first
+    if (!validateEnv()) {
+      console.error('❌ Server startup aborted due to missing environment variables');
+      process.exit(1);
+    }
+    
     // Connect to MongoDB (required)
     await connectDB();
     
@@ -106,6 +131,7 @@ async function startServer() {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`✅ Required environment variables loaded`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
