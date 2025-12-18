@@ -9,15 +9,10 @@ Your Render backend is missing the `JWT_SECRET` environment variable.
 
 ## The Solution (5 Minutes)
 
-### Step 1: Generate JWT_SECRET
-I've generated one for you:
+### Step 1: Your JWT_SECRET
+Use this JWT_SECRET:
 ```
-wd5Esdj1x/GjxG//4QZ31KIvYL0TpgFmpg13XR1mmPc=
-```
-
-**Or generate your own:**
-```bash
-openssl rand -base64 32
+88cff1d65c68bab07aea0daa8292b0b4
 ```
 
 ### Step 2: Add to Render
@@ -30,7 +25,7 @@ openssl rand -base64 32
 #### Required Variables:
 ```
 Key: JWT_SECRET
-Value: wd5Esdj1x/GjxG//4QZ31KIvYL0TpgFmpg13XR1mmPc=
+Value: 88cff1d65c68bab07aea0daa8292b0b4
 ```
 
 ```

@@ -1,0 +1,14 @@
+# Copy and paste these into Render Dashboard → Environment
+
+JWT_SECRET=88cff1d65c68bab07aea0daa8292b0b4
+
+MONGODB_URI=mongodb+srv://rakshitbargotra_db_user:Admin9858@cluster0.3ia87nv.mongodb.net/gofitai?retryWrites=true&w=majority
+
+OPENAI_API_KEY=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
+
+NODE_ENV=production
+
+PORT=3000
+
+REDIS_ENABLED=false
+

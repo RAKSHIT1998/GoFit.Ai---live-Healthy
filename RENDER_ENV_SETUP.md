@@ -32,9 +32,9 @@ openssl rand -base64 32
 
 Or use this online generator: https://www.lastpass.com/features/password-generator
 
-**Example JWT_SECRET** (use your own, don't copy this):
+**Your JWT_SECRET**:
 ```
-JWT_SECRET=aB3xK9mP2qR7vN4wL8tY5uI1oE6hG0jF3dS9aZ2xC5vB8nM1qW4eR7tY0uI3oP6
+JWT_SECRET=88cff1d65c68bab07aea0daa8292b0b4
 ```
 
 #### 🗄️ Database (Required)
