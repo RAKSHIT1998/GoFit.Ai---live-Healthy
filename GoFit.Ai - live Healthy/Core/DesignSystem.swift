@@ -1,14 +1,25 @@
 import SwiftUI
 
-// MARK: - Design System
+// MARK: - Design System 2025
 struct AppDesign {
-    // Colors
+    // Colors - Vibrant 2025 Palette
     struct Colors {
-        static let primary = Color(red: 0.2, green: 0.7, blue: 0.6) // Teal Green
-        static let primaryLight = Color(red: 0.3, green: 0.8, blue: 0.7)
-        static let primaryDark = Color(red: 0.15, green: 0.6, blue: 0.5)
+        // Primary - Vibrant Green (like reference)
+        static let primary = Color(red: 0.2, green: 0.85, blue: 0.4) // Vibrant Green
+        static let primaryLight = Color(red: 0.35, green: 0.95, blue: 0.55)
+        static let primaryDark = Color(red: 0.15, green: 0.75, blue: 0.3)
         static let accent = Color(red: 1.0, green: 0.84, blue: 0.0) // Sunrise Yellow
         static let secondary = Color.gray
+        
+        // Background gradients
+        static let backgroundGradient = LinearGradient(
+            colors: [
+                Color(red: 0.95, green: 1.0, blue: 0.95),
+                Color(.systemBackground)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
         
         // Gradient
         static var primaryGradient: LinearGradient {
@@ -19,14 +30,19 @@ struct AppDesign {
             )
         }
         
-        // Category colors
-        static let calories = Color.orange
-        static let protein = Color.blue
-        static let carbs = Color.purple
-        static let fat = Color.pink
-        static let water = Color.blue
-        static let steps = Color.green
-        static let heart = Color.red
+        // Glassmorphism background
+        static let glassBackground = Color.white.opacity(0.7)
+        static let glassBackgroundDark = Color.black.opacity(0.1)
+        
+        // Category colors - More vibrant
+        static let calories = Color(red: 1.0, green: 0.5, blue: 0.0) // Bright Orange
+        static let protein = Color(red: 0.0, green: 0.5, blue: 1.0) // Bright Blue
+        static let carbs = Color(red: 1.0, green: 0.2, blue: 0.3) // Bright Red
+        static let fat = Color(red: 1.0, green: 0.65, blue: 0.0) // Orange
+        static let sugar = Color(red: 0.9, green: 0.1, blue: 0.5) // Pink
+        static let water = Color(red: 0.2, green: 0.7, blue: 1.0) // Sky Blue
+        static let steps = Color(red: 0.2, green: 0.85, blue: 0.4) // Green
+        static let heart = Color(red: 1.0, green: 0.2, blue: 0.3) // Red
     }
     
     // Typography
@@ -66,12 +82,14 @@ struct AppDesign {
         static let large = Shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
     }
     
-    // Animation
+    // Animation - Smooth 2025 Animations
     struct Animation {
-        static let spring = SwiftUI.Animation.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.3)
-        static let springFast = SwiftUI.Animation.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0.2)
-        static let springSlow = SwiftUI.Animation.spring(response: 0.7, dampingFraction: 0.8, blendDuration: 0.4)
+        static let spring = SwiftUI.Animation.spring(response: 0.4, dampingFraction: 0.75, blendDuration: 0.25)
+        static let springFast = SwiftUI.Animation.spring(response: 0.25, dampingFraction: 0.7, blendDuration: 0.15)
+        static let springSlow = SwiftUI.Animation.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.3)
         static let easeInOut = SwiftUI.Animation.easeInOut(duration: 0.3)
+        static let smooth = SwiftUI.Animation.spring(response: 0.35, dampingFraction: 0.8, blendDuration: 0.2)
+        static let bouncy = SwiftUI.Animation.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0.3)
     }
 }
 
@@ -82,16 +100,53 @@ struct Shadow {
     let y: CGFloat
 }
 
-// MARK: - Card Style
+// MARK: - Card Style with Glassmorphism
 struct CardStyle: ViewModifier {
     let backgroundColor: Color
     let cornerRadius: CGFloat
     let shadow: Shadow
+    let useGlass: Bool
     
     func body(content: Content) -> some View {
         content
-            .background(backgroundColor)
-            .cornerRadius(cornerRadius)
+            .background(
+                Group {
+                    if useGlass {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(backgroundColor.opacity(0.7))
+                            .background(
+                                RoundedRectangle(cornerRadius: cornerRadius)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.25),
+                                                Color.white.opacity(0.05)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: cornerRadius)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.6),
+                                                Color.white.opacity(0.1)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                            )
+                    } else {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(backgroundColor)
+                    }
+                }
+            )
             .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
     }
 }
@@ -100,13 +155,14 @@ extension View {
     func cardStyle(
         backgroundColor: Color = Color(.systemBackground),
         cornerRadius: CGFloat = AppDesign.Radius.large,
-        shadow: Shadow = AppDesign.Shadows.medium
+        shadow: Shadow = AppDesign.Shadows.medium,
+        useGlass: Bool = false
     ) -> some View {
-        modifier(CardStyle(backgroundColor: backgroundColor, cornerRadius: cornerRadius, shadow: shadow))
+        modifier(CardStyle(backgroundColor: backgroundColor, cornerRadius: cornerRadius, shadow: shadow, useGlass: useGlass))
     }
 }
 
-// MARK: - Animated Button Style
+// MARK: - Animated Button Style with Haptic
 struct AnimatedButtonStyle: ButtonStyle {
     let color: Color
     let isPrimary: Bool
@@ -118,9 +174,15 @@ struct AnimatedButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(AppDesign.Animation.springFast, value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { pressed in
+                if pressed {
+                    let impact = UIImpactFeedbackGenerator(style: .light)
+                    impact.impactOccurred()
+                }
+            }
     }
 }
 
