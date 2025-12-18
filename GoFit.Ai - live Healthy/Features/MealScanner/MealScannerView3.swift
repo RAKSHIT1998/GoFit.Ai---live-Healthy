@@ -215,7 +215,7 @@ struct MealScannerView3: View {
                     }
                 }
             }
-            .onChange(of: capturedImage) { newImage in
+            .onChange(of: capturedImage) { oldValue, newImage in
                 if newImage != nil {
                     // Automatically upload when photo is captured
                     Task {

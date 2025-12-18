@@ -80,7 +80,7 @@ struct CircularProgressView: View {
                 animatedProgress = progress
             }
         }
-        .onChange(of: progress) { newValue in
+        .onChange(of: progress) { oldValue, newValue in
             withAnimation(AppDesign.Animation.smooth) {
                 animatedProgress = newValue
             }

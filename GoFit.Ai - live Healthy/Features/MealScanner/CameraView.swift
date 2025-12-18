@@ -72,10 +72,12 @@ struct CameraView: UIViewRepresentable {
         context.coordinator.previewLayer?.frame = uiView.bounds
         
         // Check if capture was requested (trigger changed)
-        if captureTrigger != context.coordinator.lastCaptureTrigger {
-            context.coordinator.lastCaptureTrigger = captureTrigger
-            // Trigger capture asynchronously to avoid state modification during view update
+        // Store the new trigger value first, then trigger capture asynchronously
+        let newTrigger = captureTrigger
+        if newTrigger != context.coordinator.lastCaptureTrigger {
+            // Update coordinator state asynchronously to avoid modifying during view update
             DispatchQueue.main.async {
+                context.coordinator.lastCaptureTrigger = newTrigger
                 context.coordinator.capture()
             }
         }

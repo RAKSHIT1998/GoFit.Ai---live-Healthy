@@ -172,7 +172,7 @@ struct AnimatedButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
             .opacity(configuration.isPressed ? 0.85 : 1.0)
             .animation(AppDesign.Animation.springFast, value: configuration.isPressed)
-            .onChange(of: configuration.isPressed) { pressed in
+            .onChange(of: configuration.isPressed) { oldValue, pressed in
                 if pressed {
                     let impact = UIImpactFeedbackGenerator(style: .light)
                     impact.impactOccurred()

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MealScannerView2: View {
     @State private var capturedImage: UIImage? = nil
-    @State private var isTaking = false
+    @State private var captureTrigger: Int = 0
     @State private var showPreview = false
     @State private var isUploading = false
     @State private var uploadResult: ServerMealResponse? = nil
@@ -11,7 +11,7 @@ struct MealScannerView2: View {
     var body: some View {
         VStack {
             ZStack {
-                CameraView(capturedImage: $capturedImage, isTaking: $isTaking)
+                CameraView(capturedImage: $capturedImage, captureTrigger: captureTrigger)
                     .frame(height: 420)
                     .cornerRadius(12)
                     .overlay(
@@ -38,7 +38,7 @@ struct MealScannerView2: View {
 
             HStack(spacing: 20) {
                 Button(action: {
-                    isTaking = true
+                    captureTrigger += 1
                 }) {
                     Label("Capture", systemImage: "camera.circle")
                         .font(.title2)

@@ -205,8 +205,8 @@ struct ProfileView: View {
                     .labelsHidden()
             }
             // ✅ iOS 17 FIX
-            .onChange(of: healthSyncEnabled) {
-                if healthSyncEnabled {
+            .onChange(of: healthSyncEnabled) { oldValue, newValue in
+                if newValue {
                     Task {
                         try? await healthKit.requestAuthorization()
                     }
