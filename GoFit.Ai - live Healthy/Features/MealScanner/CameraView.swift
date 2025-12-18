@@ -10,6 +10,7 @@ struct CameraView: UIViewRepresentable {
         let session = AVCaptureSession()
         let output = AVCapturePhotoOutput()
         var previewLayer: AVCaptureVideoPreviewLayer?
+        var hasCaptured = false
 
         init(_ parent: CameraView) {
             self.parent = parent
@@ -66,9 +67,20 @@ struct CameraView: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.previewLayer?.frame = uiView.bounds
-        if isTaking {
-            isTaking = false
-            context.coordinator.capture()
+        
+        // Handle photo capture without modifying state during view update
+        if isTaking && !context.coordinator.hasCaptured {
+            context.coordinator.hasCaptured = true
+            DispatchQueue.main.async {
+                context.coordinator.capture()
+                // Reset flag after capture
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    context.coordinator.hasCaptured = false
+                    self.isTaking = false
+                }
+            }
+        } else if !isTaking {
+            context.coordinator.hasCaptured = false
         }
     }
 

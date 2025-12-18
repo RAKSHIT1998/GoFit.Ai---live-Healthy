@@ -216,35 +216,36 @@ struct MealScannerView3: View {
                     }
                 }
             }
-        .onChange(of: capturedImage) { newImage in
-            if newImage != nil {
-                // Automatically upload when photo is captured
-                Task {
-                    await uploadImage(newImage!)
-                }
-            }
-        }
-        .sheet(isPresented: $showPicker) {
-            PHPickerWrapper(image: $capturedImage)
-        }
-        .sheet(isPresented: $showManualLog) {
-            ManualMealLogView()
-                .environmentObject(authVM)
-        }
-        .sheet(isPresented: $showEditScreen) {
-            NavigationView {
-                EditParsedItemsView(items: $editableItems) { finalItems in
+            .onChange(of: capturedImage) { newImage in
+                if newImage != nil {
+                    // Automatically upload when photo is captured
                     Task {
-                        await saveFinalMeal(parsedItems: finalItems)
-                        showEditScreen = false
+                        await uploadImage(newImage!)
                     }
                 }
             }
-        }
-        .onAppear {
-            checkCameraPermission { granted in
-                if !granted {
-                    errorMsg = "Camera permission denied. Enable it in Settings."
+            .sheet(isPresented: $showPicker) {
+                PHPickerWrapper(image: $capturedImage)
+            }
+            .sheet(isPresented: $showManualLog) {
+                ManualMealLogView()
+                    .environmentObject(authVM)
+            }
+            .sheet(isPresented: $showEditScreen) {
+                NavigationView {
+                    EditParsedItemsView(items: $editableItems) { finalItems in
+                        Task {
+                            await saveFinalMeal(parsedItems: finalItems)
+                            showEditScreen = false
+                        }
+                    }
+                }
+            }
+            .onAppear {
+                checkCameraPermission { granted in
+                    if !granted {
+                        errorMsg = "Camera permission denied. Enable it in Settings."
+                    }
                 }
             }
         }
