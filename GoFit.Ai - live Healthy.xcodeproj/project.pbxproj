@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B27DDA182EEF07DF0047CE53 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27DDA162EEF07D70047CE53 /* HealthKit.framework */; };
-		B27DDA1A2EEF07E10047CE53 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; };
-		B2F86E452EED7C8F009F03C0 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */; };
+		B2F2D45A2EF43B72007FE313 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27DDA162EEF07D70047CE53 /* HealthKit.framework */; };
+		B2F2D45D2EF43B74007FE313 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; };
+		B2F2D45F2EF43B76007FE313 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +28,7 @@
 			remoteInfo = "GoFit.Ai - live Healthy";
 		};
 /* End PBXContainerItemProxy section */
+
 
 /* Begin PBXFileReference section */
 		B24022212EED789700CDE033 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
@@ -74,9 +75,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B27DDA1A2EEF07E10047CE53 /* StoreKit.framework in Frameworks */,
-				B27DDA182EEF07DF0047CE53 /* HealthKit.framework in Frameworks */,
-				B2F86E452EED7C8F009F03C0 /* WatchConnectivity.framework in Frameworks */,
+				B2F2D45D2EF43B74007FE313 /* StoreKit.framework in Frameworks */,
+				B2F2D45A2EF43B72007FE313 /* HealthKit.framework in Frameworks */,
+				B2F2D45F2EF43B76007FE313 /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

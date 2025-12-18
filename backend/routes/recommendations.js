@@ -74,16 +74,27 @@ async function generateRecommendation(user) {
     }))
   };
 
-  // Generate meal plan with OpenAI
-  const prompt = `Generate a personalized daily meal and workout plan for a user with the following profile:
-Goals: ${context.user.goals}
-Activity Level: ${context.user.activityLevel}
-Dietary Preferences: ${context.user.dietaryPreferences.join(', ') || 'None'}
-Allergies: ${context.user.allergies.join(', ') || 'None'}
-Target Calories: ${context.user.targetCalories}
-Fasting Preference: ${context.user.fastingPreference}
+  // Generate meal plan with OpenAI - Enhanced prompt for better recommendations
+  const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
-Recent meals: ${JSON.stringify(context.recentMeals.slice(0, 5))}
+USER PROFILE:
+- Goals: ${context.user.goals}
+- Activity Level: ${context.user.activityLevel}
+- Dietary Preferences: ${context.user.dietaryPreferences.join(', ') || 'None specified'}
+- Allergies/Restrictions: ${context.user.allergies.join(', ') || 'None'}
+- Target Daily Calories: ${context.user.targetCalories} kcal
+- Fasting Preference: ${context.user.fastingPreference}
+
+RECENT MEAL HISTORY (last 5 meals):
+${JSON.stringify(context.recentMeals.slice(0, 5), null, 2)}
+
+INSTRUCTIONS:
+1. Analyze the user's recent meals to understand their eating patterns and preferences
+2. Create a balanced meal plan that aligns with their goals (${context.user.goals})
+3. Ensure meals are diverse, nutritious, and match their dietary preferences
+4. Design workouts that complement their activity level and goals
+5. Consider their fasting preference when scheduling meals
+6. Provide detailed, practical instructions for both meals and exercises
 
 Return a JSON object with:
 - mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] } 
@@ -115,31 +126,56 @@ Return a JSON object with:
 - hydrationGoal: { targetLiters: number }
 - insights: [string array of personalized insights]
 
-Return ONLY valid JSON, no markdown. Make sure all meal items have complete recipes with ingredients and instructions, and all exercises have detailed instructions on how to perform them.`;
+IMPORTANT REQUIREMENTS:
+- All meal items MUST include complete recipes with specific ingredients and step-by-step cooking instructions
+- All exercises MUST include detailed, safe instructions on proper form and execution
+- Meal calories should sum approximately to the target (${context.user.targetCalories} kcal) with some flexibility
+- Workout plan should be appropriate for ${context.user.activityLevel} activity level
+- Include variety to prevent boredom and ensure nutritional completeness
+- Consider meal timing based on fasting preference: ${context.user.fastingPreference}
+
+Return ONLY valid JSON, no markdown, no code blocks, no explanations outside the JSON structure. The response must be parseable JSON.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4o", // Updated to latest model for better recommendations
     messages: [
       {
         role: "system",
-        content: "You are a nutrition and fitness expert. Provide personalized meal and workout recommendations."
+        content: `You are an expert nutritionist and certified personal trainer with years of experience. 
+        Your recommendations are evidence-based, personalized, and practical. 
+        Consider the user's goals, activity level, dietary preferences, and recent meal history.
+        Provide detailed, actionable meal plans with complete recipes and workout plans with step-by-step exercise instructions.
+        Ensure all recommendations are safe, achievable, and aligned with the user's profile.`
       },
       {
         role: "user",
         content: prompt
       }
     ],
-    temperature: 0.7,
-    max_tokens: 2000
+    temperature: 0.7, // Balanced creativity and consistency
+    max_tokens: 4000 // Increased for more detailed meal recipes and workout instructions
   });
 
   const content = response.choices[0].message.content;
   let recommendationData;
 
   try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    recommendationData = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+    // Try multiple parsing strategies for better reliability
+    let jsonString = content.trim();
+    
+    // Remove markdown code blocks if present
+    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Try to extract JSON object
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      recommendationData = JSON.parse(jsonMatch[0]);
+    } else {
+      recommendationData = JSON.parse(jsonString);
+    }
   } catch (error) {
+    console.error('Failed to parse OpenAI recommendation response:', error);
+    console.error('Response content:', content.substring(0, 500));
     // Fallback recommendation with full details
     recommendationData = {
       mealPlan: {
@@ -217,7 +253,7 @@ Return ONLY valid JSON, no markdown. Make sure all meal items have complete reci
     workoutPlan: recommendationData.workoutPlan,
     hydrationGoal: recommendationData.hydrationGoal,
     insights: recommendationData.insights || [],
-    aiVersion: "gpt-4"
+    aiVersion: "gpt-4o"
   });
 
   await recommendation.save();

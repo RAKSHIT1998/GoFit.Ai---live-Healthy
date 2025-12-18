@@ -103,8 +103,8 @@ Return ONLY valid JSON array, no markdown, no explanations, just the JSON.`
           ]
         }
       ],
-      max_tokens: 2000,
-      temperature: 0.3 // Lower temperature for more consistent results
+      max_tokens: 3000, // Increased for more detailed nutritional analysis
+      temperature: 0.3 // Lower temperature for more consistent, accurate results
     });
 
     const content = response.choices[0].message.content;
