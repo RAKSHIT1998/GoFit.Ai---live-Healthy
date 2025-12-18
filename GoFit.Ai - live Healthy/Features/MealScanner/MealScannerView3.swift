@@ -79,7 +79,7 @@ struct MealScannerView3: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
-                    .background(Color.white)
+                    .background(Design.Colors.background)
                 }
 
                 // Results Section

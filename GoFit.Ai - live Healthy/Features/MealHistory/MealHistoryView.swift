@@ -26,7 +26,7 @@ struct MealHistoryView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.white
+                Design.Colors.background
                     .ignoresSafeArea()
                 
                 if loading && meals.isEmpty {
@@ -188,9 +188,9 @@ struct MealHistoryCard: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(Color.white)
+        .background(Design.Colors.cardBackground)
         .cornerRadius(Design.Radius.large)
-        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
 }
 

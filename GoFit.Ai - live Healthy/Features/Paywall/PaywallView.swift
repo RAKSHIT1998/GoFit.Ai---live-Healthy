@@ -32,8 +32,8 @@ struct PaywallView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Clean white background
-                Color.white
+                // Adaptive background for dark mode
+                Design.Colors.background
                     .ignoresSafeArea()
 
                 ScrollView {

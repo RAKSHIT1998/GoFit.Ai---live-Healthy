@@ -27,7 +27,7 @@ struct HomeDashboardView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.white
+                Design.Colors.background
                     .ignoresSafeArea()
 
                 ScrollView {

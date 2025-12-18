@@ -7,8 +7,8 @@ struct OnboardingScreens: View {
     
     var body: some View {
         ZStack {
-            // Clean white background
-            Color.white
+            // Adaptive background for dark mode
+            Design.Colors.background
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {

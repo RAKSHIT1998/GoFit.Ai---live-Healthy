@@ -62,8 +62,8 @@ struct WorkoutSuggestionsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Clean white background
-                Color.white
+                // Adaptive background for dark mode
+                Design.Colors.background
                     .ignoresSafeArea()
                 
                 if isLoading {
@@ -153,7 +153,7 @@ struct WorkoutSuggestionsView: View {
             }
         }
         .padding(Design.Spacing.xs)
-        .background(Color(.systemGray6))
+        .background(Design.Colors.secondaryBackground)
         .cornerRadius(Design.Radius.medium)
     }
     
@@ -460,7 +460,9 @@ struct WorkoutSuggestionsView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .cardStyle()
+        .background(Design.Colors.cardBackground)
+        .cornerRadius(Design.Radius.large)
+        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Insights Card
@@ -486,7 +488,9 @@ struct WorkoutSuggestionsView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .cardStyle(backgroundColor: Design.Colors.accent.opacity(0.1))
+        .background(Design.Colors.accent.opacity(0.1))
+        .cornerRadius(Design.Radius.large)
+        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Helper Views

@@ -44,7 +44,7 @@ struct ProfileView: View {
                     .padding(.bottom, 32)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Design.Colors.background)
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
             .overlay(loadingOverlay)

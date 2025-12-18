@@ -13,8 +13,8 @@ struct FastingView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Clean white background
-                Color.white
+                // Adaptive background for dark mode
+                Design.Colors.background
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -147,9 +147,9 @@ struct FastingView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .background(Color.white)
+        .background(Design.Colors.cardBackground)
         .cornerRadius(Design.Radius.large)
-        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Preset Windows
@@ -207,9 +207,9 @@ struct FastingView: View {
             Spacer()
         }
         .padding(Design.Spacing.lg)
-        .background(Color.white)
+        .background(Design.Colors.cardBackground)
         .cornerRadius(Design.Radius.large)
-        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
     
     // MARK: - Action Button

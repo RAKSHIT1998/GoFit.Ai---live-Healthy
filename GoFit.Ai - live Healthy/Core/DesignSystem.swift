@@ -11,10 +11,10 @@ struct AppDesign {
         static let accent = Color(red: 1.0, green: 0.84, blue: 0.0) // Sunrise Yellow
         static let secondary = Color.gray
         
-        // Background - Clean White
-        static let background = Color.white
-        static let cardBackground = Color.white
-        static let secondaryBackground = Color(red: 0.98, green: 0.98, blue: 0.98)
+        // Background - Adaptive for Dark Mode
+        static let background = Color(.systemBackground)
+        static let cardBackground = Color(.secondarySystemBackground)
+        static let secondaryBackground = Color(.tertiarySystemBackground)
         
         // Gradient
         static var primaryGradient: LinearGradient {
@@ -79,11 +79,32 @@ struct AppDesign {
         static let xlarge: CGFloat = 24
     }
     
-    // Shadows
+    // Shadows - Adaptive for Dark Mode
     struct Shadows {
-        static let small = Shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-        static let medium = Shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-        static let large = Shadow(color: .black.opacity(0.2), radius: 12, x: 0, y: 6)
+        static var small: Shadow {
+            Shadow(
+                color: Color.primary.opacity(0.1),
+                radius: 4,
+                x: 0,
+                y: 2
+            )
+        }
+        static var medium: Shadow {
+            Shadow(
+                color: Color.primary.opacity(0.15),
+                radius: 8,
+                x: 0,
+                y: 4
+            )
+        }
+        static var large: Shadow {
+            Shadow(
+                color: Color.primary.opacity(0.2),
+                radius: 12,
+                x: 0,
+                y: 6
+            )
+        }
     }
     
     // Animation - Smooth 2025 Animations

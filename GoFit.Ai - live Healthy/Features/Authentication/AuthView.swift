@@ -14,8 +14,8 @@ struct AuthView: View {
     
     var body: some View {
         ZStack {
-            // Clean white background
-            Color.white
+            // Adaptive background for dark mode
+            Design.Colors.background
                 .ignoresSafeArea()
             
             ScrollView {
@@ -152,11 +152,11 @@ struct AuthView: View {
                             Text("Continue with Apple")
                                 .fontWeight(.semibold)
                         }
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                     }
                     .buttonStyle(ModernSecondaryButtonStyle(
-                        borderColor: .black.opacity(0.2),
-                        foregroundColor: .black
+                        borderColor: Color(.separator),
+                        foregroundColor: .primary
                     ))
                     .disabled(isLoading)
                     .opacity(isLoading ? 0.6 : 1.0)
@@ -358,11 +358,11 @@ struct CustomTextField: View {
                 .textInputAutocapitalization(.never)
         }
         .padding(Design.Spacing.md)
-        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .background(Color(.tertiarySystemBackground))
         .cornerRadius(Design.Radius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: Design.Radius.medium)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
     }
 }
@@ -400,11 +400,11 @@ struct CustomSecureField: View {
             }
         }
         .padding(Design.Spacing.md)
-        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .background(Color(.tertiarySystemBackground))
         .cornerRadius(Design.Radius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: Design.Radius.medium)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                .stroke(Color(.separator), lineWidth: 1)
         )
     }
 }
