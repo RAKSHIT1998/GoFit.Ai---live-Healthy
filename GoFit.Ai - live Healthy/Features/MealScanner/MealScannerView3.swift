@@ -4,8 +4,7 @@ struct MealScannerView3: View {
     @EnvironmentObject var authVM: AuthViewModel
 
     @State private var capturedImage: UIImage? = nil
-    @State private var isTaking = false
-    @State private var showPreview = false
+    @State private var captureTrigger: Int = 0
     @State private var showPicker = false
 
     @State private var isUploading = false
@@ -23,7 +22,7 @@ struct MealScannerView3: View {
             VStack(spacing: 0) {
                 // Camera View - Full Screen
                 ZStack {
-                    CameraView(capturedImage: $capturedImage, isTaking: $isTaking)
+                    CameraView(capturedImage: $capturedImage, captureTrigger: captureTrigger)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
                     
@@ -46,7 +45,7 @@ struct MealScannerView3: View {
                         
                         // Capture Button
                         Button(action: { 
-                            isTaking = true 
+                            captureTrigger += 1
                         }) {
                             ZStack {
                                 Circle()

@@ -3,14 +3,14 @@ import AVFoundation
 
 struct CameraView: UIViewRepresentable {
     @Binding var capturedImage: UIImage?
-    @Binding var isTaking: Bool
+    var captureTrigger: Int // Use Int to trigger captures without binding issues
 
     class Coordinator: NSObject {
         var parent: CameraView
         let session = AVCaptureSession()
         let output = AVCapturePhotoOutput()
         var previewLayer: AVCaptureVideoPreviewLayer?
-        var hasCaptured = false
+        var lastCaptureTrigger: Int = 0
 
         init(_ parent: CameraView) {
             self.parent = parent
@@ -39,6 +39,7 @@ struct CameraView: UIViewRepresentable {
         func stop() { if session.isRunning { session.stopRunning() } }
 
         func capture() {
+            guard session.isRunning else { return }
             let settings = AVCapturePhotoSettings()
             if #available(iOS 16.0, *) {
                 settings.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
@@ -59,6 +60,7 @@ struct CameraView: UIViewRepresentable {
         if let pl = context.coordinator.previewLayer {
             view.layer.addSublayer(pl)
         }
+        context.coordinator.lastCaptureTrigger = captureTrigger
         DispatchQueue.global(qos: .userInitiated).async {
             context.coordinator.start()
         }
@@ -66,21 +68,16 @@ struct CameraView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        // Only update the preview layer frame - no state modifications here
         context.coordinator.previewLayer?.frame = uiView.bounds
         
-        // Handle photo capture without modifying state during view update
-        if isTaking && !context.coordinator.hasCaptured {
-            context.coordinator.hasCaptured = true
+        // Check if capture was requested (trigger changed)
+        if captureTrigger != context.coordinator.lastCaptureTrigger {
+            context.coordinator.lastCaptureTrigger = captureTrigger
+            // Trigger capture asynchronously to avoid state modification during view update
             DispatchQueue.main.async {
                 context.coordinator.capture()
-                // Reset flag after capture
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    context.coordinator.hasCaptured = false
-                    self.isTaking = false
-                }
             }
-        } else if !isTaking {
-            context.coordinator.hasCaptured = false
         }
     }
 
@@ -91,6 +88,11 @@ struct CameraView: UIViewRepresentable {
 
 extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error = error {
+            print("Photo capture error: \(error.localizedDescription)")
+            return
+        }
+        
         if let data = photo.fileDataRepresentation(), let uiImage = UIImage(data: data) {
             DispatchQueue.main.async { [weak self] in
                 self?.parent.capturedImage = uiImage
@@ -98,3 +100,5 @@ extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
         }
     }
 }
+
+// Extension to expose capture method
