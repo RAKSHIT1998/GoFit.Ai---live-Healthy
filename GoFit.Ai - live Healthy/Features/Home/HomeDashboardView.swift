@@ -27,7 +27,7 @@ struct HomeDashboardView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Design.Colors.backgroundGradient
+                Color.white
                     .ignoresSafeArea()
 
                 ScrollView {
@@ -95,254 +95,260 @@ struct HomeDashboardView: View {
         }
     }
 
-    // MARK: - Welcome Header (2025 Style)
+    // MARK: - Welcome Header (Clean White Design)
     private var welcomeHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Welcome back,")
                     .font(Design.Typography.subheadline)
                     .foregroundColor(.secondary)
-                    .opacity(animateCards ? 1 : 0)
-                    .offset(x: animateCards ? 0 : -20)
-                    .animation(Design.Animation.spring.delay(0.1), value: animateCards)
 
                 Text(auth.name.isEmpty ? "User" : auth.name)
                     .font(Design.Typography.title)
                     .fontWeight(.bold)
-                    .foregroundColor(Design.Colors.primary)
-                    .opacity(animateCards ? 1 : 0)
-                    .offset(x: animateCards ? 0 : -20)
-                    .animation(Design.Animation.spring.delay(0.2), value: animateCards)
+                    .foregroundColor(.primary)
             }
 
             Spacer()
-
-            LogoView(size: .small, showText: false, color: Design.Colors.primary)
-                .scaleEffect(animateCards ? 1 : 0.7)
-                .opacity(animateCards ? 1 : 0)
-                .rotationEffect(.degrees(animateCards ? 0 : -10))
-                .animation(Design.Animation.bouncy.delay(0.3), value: animateCards)
         }
         .padding(.vertical, Design.Spacing.sm)
     }
 
-    // MARK: - Main Stats with Circular Progress (2025 Style)
+    // MARK: - Main Stats (Clean White Design)
     private var mainStatsCard: some View {
         VStack(spacing: Design.Spacing.lg) {
-            // Calories Circular Progress (Large, Prominent)
-            HStack(spacing: Design.Spacing.xl) {
-                CircularProgressView(
-                    progress: calculateCalorieProgress(),
-                    size: 140,
-                    color: Design.Colors.primary,
-                    showPercentage: false,
-                    label: "kcal left",
-                    value: todayCalories
-                )
-                .scaleEffect(animateCards ? 1 : 0.8)
-                .animation(Design.Animation.spring.delay(0.1), value: animateCards)
-                
-                VStack(alignment: .leading, spacing: Design.Spacing.md) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Consumed")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
-                        Text(todayCalories)
-                            .font(Design.Typography.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(Design.Colors.calories)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Burned")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(Int(healthKit.todayActiveCalories))")
-                            .font(Design.Typography.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(Design.Colors.steps)
-                    }
+            // Calories Display
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Calories")
+                        .font(Design.Typography.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(todayCalories)
+                        .font(Design.Typography.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
                 }
                 
                 Spacer()
+                
+                VStack(alignment: .trailing, spacing: 8) {
+                    Text("Burned")
+                        .font(Design.Typography.subheadline)
+                        .foregroundColor(.secondary)
+                    Text("\(Int(healthKit.todayActiveCalories))")
+                        .font(Design.Typography.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(Design.Colors.steps)
+                }
             }
             
             Divider()
-                .opacity(0.3)
             
-            // Macro Circles (2025 Style)
-            HStack(spacing: Design.Spacing.lg) {
-                if let proteinValue = Double(todayProtein.replacingOccurrences(of: "—", with: "0")),
-                   let proteinGoal = getProteinGoal() {
-                    MacroCircleView(
-                        progress: min(proteinValue / proteinGoal, 1.0),
-                        color: Design.Colors.protein,
-                        label: "Protein",
-                        value: todayProtein,
-                        total: "\(Int(proteinGoal))g"
-                    )
-                    .scaleEffect(animateCards ? 1 : 0.8)
-                    .animation(Design.Animation.spring.delay(0.2), value: animateCards)
+            // Macros
+            HStack(spacing: Design.Spacing.md) {
+                VStack(spacing: 4) {
+                    Text(todayProtein)
+                        .font(Design.Typography.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(Design.Colors.protein)
+                    Text("Protein")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
                 }
+                .frame(maxWidth: .infinity)
                 
-                if let carbsValue = Double(todayCarbs.replacingOccurrences(of: "—", with: "0")),
-                   let carbsGoal = getCarbsGoal() {
-                    MacroCircleView(
-                        progress: min(carbsValue / carbsGoal, 1.0),
-                        color: Design.Colors.carbs,
-                        label: "Carbs",
-                        value: todayCarbs,
-                        total: "\(Int(carbsGoal))g"
-                    )
-                    .scaleEffect(animateCards ? 1 : 0.8)
-                    .animation(Design.Animation.spring.delay(0.3), value: animateCards)
-                }
+                Divider()
+                    .frame(height: 40)
                 
-                if let fatValue = Double(todayFat.replacingOccurrences(of: "—", with: "0")),
-                   let fatGoal = getFatGoal() {
-                    MacroCircleView(
-                        progress: min(fatValue / fatGoal, 1.0),
-                        color: Design.Colors.fat,
-                        label: "Fat",
-                        value: todayFat,
-                        total: "\(Int(fatGoal))g"
-                    )
-                    .scaleEffect(animateCards ? 1 : 0.8)
-                    .animation(Design.Animation.spring.delay(0.4), value: animateCards)
+                VStack(spacing: 4) {
+                    Text(todayCarbs)
+                        .font(Design.Typography.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(Design.Colors.carbs)
+                    Text("Carbs")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
                 }
+                .frame(maxWidth: .infinity)
+                
+                Divider()
+                    .frame(height: 40)
+                
+                VStack(spacing: 4) {
+                    Text(todayFat)
+                        .font(Design.Typography.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(Design.Colors.fat)
+                    Text("Fat")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
             }
         }
         .padding(Design.Spacing.lg)
-        .cardStyle(useGlass: true)
-        .opacity(animateCards ? 1 : 0)
-        .offset(y: animateCards ? 0 : 30)
-        .animation(Design.Animation.spring, value: animateCards)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
     }
     
-    private func calculateCalorieProgress() -> Double {
-        guard let consumed = Double(todayCalories.replacingOccurrences(of: "—", with: "0")),
-              consumed > 0 else { return 0 }
-        let goal = 2000.0 // Default goal, can be made dynamic
-        let remaining = max(0, goal - consumed)
-        return remaining / goal
-    }
-    
-    private func getProteinGoal() -> Double? {
-        // Calculate based on user weight or default
-        return 150.0 // Default, can be made dynamic
-    }
-    
-    private func getCarbsGoal() -> Double? {
-        return 250.0 // Default
-    }
-    
-    private func getFatGoal() -> Double? {
-        return 65.0 // Default
-    }
 
-    // MARK: - Quick Actions
+    // MARK: - Quick Actions (Clean White Design)
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: Design.Spacing.md) {
             Text("Quick Actions")
                 .font(Design.Typography.headline)
+                .foregroundColor(.primary)
 
             HStack(spacing: Design.Spacing.md) {
-                QuickActionButton(
-                    icon: "camera.fill",
-                    label: "Scan Meal",
-                    color: Design.Colors.primary,
-                    gradient: Design.Colors.primaryGradient
-                ) {
-                    HapticManager.impact(style: .medium)
+                // Scan Meal Button - Opens Camera
+                Button {
                     showingScanner = true
+                } label: {
+                    VStack(spacing: 12) {
+                        Image(systemName: "camera.fill")
+                            .font(.title)
+                            .foregroundColor(.white)
+                            .frame(width: 60, height: 60)
+                            .background(Design.Colors.primary)
+                            .clipShape(Circle())
+                        
+                        Text("Scan Meal")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Design.Spacing.md)
+                    .background(Color.white)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                 }
-                .scaleEffect(animateCards ? 1 : 0.9)
-                .animation(Design.Animation.spring.delay(0.1), value: animateCards)
 
-                QuickActionButton(
-                    icon: "drop.fill",
-                    label: "Liquid",
-                    color: Design.Colors.water,
-                    gradient: LinearGradient(
-                        colors: [Design.Colors.water, Design.Colors.water.opacity(0.7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                ) {
-                    HapticManager.impact(style: .light)
+                Button {
                     showingLiquidLog = true
+                } label: {
+                    VStack(spacing: 12) {
+                        Image(systemName: "drop.fill")
+                            .font(.title)
+                            .foregroundColor(.white)
+                            .frame(width: 60, height: 60)
+                            .background(Design.Colors.water)
+                            .clipShape(Circle())
+                        
+                        Text("Liquid")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Design.Spacing.md)
+                    .background(Color.white)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                 }
-                .scaleEffect(animateCards ? 1 : 0.9)
-                .animation(Design.Animation.spring.delay(0.2), value: animateCards)
 
-                QuickActionButton(
-                    icon: "figure.walk",
-                    label: "Workout",
-                    color: Design.Colors.steps,
-                    gradient: LinearGradient(
-                        colors: [Design.Colors.steps, Design.Colors.steps.opacity(0.7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                ) {
-                    HapticManager.impact(style: .light)
+                Button {
                     showingWorkout = true
+                } label: {
+                    VStack(spacing: 12) {
+                        Image(systemName: "figure.walk")
+                            .font(.title)
+                            .foregroundColor(.white)
+                            .frame(width: 60, height: 60)
+                            .background(Design.Colors.steps)
+                            .clipShape(Circle())
+                        
+                        Text("Workout")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Design.Spacing.md)
+                    .background(Color.white)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                 }
-                .scaleEffect(animateCards ? 1 : 0.9)
-                .animation(Design.Animation.spring.delay(0.3), value: animateCards)
             }
         }
     }
 
-    // MARK: - Health Metrics (2025 Style)
+    // MARK: - Health Metrics (Clean White Design)
     private var healthMetricsSection: some View {
         VStack(alignment: .leading, spacing: Design.Spacing.md) {
             Text("Today's Activity")
                 .font(Design.Typography.headline)
-                .opacity(animateCards ? 1 : 0)
-                .offset(x: animateCards ? 0 : -20)
-                .animation(Design.Animation.spring.delay(0.4), value: animateCards)
+                .foregroundColor(.primary)
 
             HStack(spacing: Design.Spacing.md) {
-                HealthMetricCard(
-                    icon: "figure.walk",
-                    value: "\(healthKit.todaySteps)",
-                    label: "Steps",
-                    color: Design.Colors.steps,
-                    unit: ""
-                )
-                .scaleEffect(animateCards ? 1 : 0.8)
-                .opacity(animateCards ? 1 : 0)
-                .animation(Design.Animation.spring.delay(0.5), value: animateCards)
+                VStack(spacing: 8) {
+                    Image(systemName: "figure.walk")
+                        .font(.title2)
+                        .foregroundColor(Design.Colors.steps)
+                        .frame(width: 50, height: 50)
+                        .background(Design.Colors.steps.opacity(0.1))
+                        .clipShape(Circle())
+                    
+                    Text("\(healthKit.todaySteps)")
+                        .font(Design.Typography.headline)
+                        .fontWeight(.bold)
+                    
+                    Text("Steps")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(Design.Spacing.md)
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
 
-                HealthMetricCard(
-                    icon: "flame.fill",
-                    value: "\(Int(healthKit.todayActiveCalories))",
-                    label: "Calories",
-                    color: Design.Colors.calories,
-                    unit: "kcal"
-                )
-                .scaleEffect(animateCards ? 1 : 0.8)
-                .opacity(animateCards ? 1 : 0)
-                .animation(Design.Animation.spring.delay(0.6), value: animateCards)
+                VStack(spacing: 8) {
+                    Image(systemName: "flame.fill")
+                        .font(.title2)
+                        .foregroundColor(Design.Colors.calories)
+                        .frame(width: 50, height: 50)
+                        .background(Design.Colors.calories.opacity(0.1))
+                        .clipShape(Circle())
+                    
+                    Text("\(Int(healthKit.todayActiveCalories))")
+                        .font(Design.Typography.headline)
+                        .fontWeight(.bold)
+                    
+                    Text("Calories")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(Design.Spacing.md)
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
 
-                HealthMetricCard(
-                    icon: "heart.fill",
-                    value: healthKit.restingHeartRate > 0
-                        ? "\(Int(healthKit.restingHeartRate))"
-                        : "—",
-                    label: "Heart Rate",
-                    color: Design.Colors.heart,
-                    unit: "bpm"
-                )
-                .scaleEffect(animateCards ? 1 : 0.8)
-                .opacity(animateCards ? 1 : 0)
-                .animation(Design.Animation.spring.delay(0.7), value: animateCards)
+                VStack(spacing: 8) {
+                    Image(systemName: "heart.fill")
+                        .font(.title2)
+                        .foregroundColor(Design.Colors.heart)
+                        .frame(width: 50, height: 50)
+                        .background(Design.Colors.heart.opacity(0.1))
+                        .clipShape(Circle())
+                    
+                    Text(healthKit.restingHeartRate > 0 ? "\(Int(healthKit.restingHeartRate))" : "—")
+                        .font(Design.Typography.headline)
+                        .fontWeight(.bold)
+                    
+                    Text("Heart Rate")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(Design.Spacing.md)
+                .background(Color.white)
+                .cornerRadius(16)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
             }
         }
     }
 
-    // MARK: - Water Intake (2025 Style)
+    // MARK: - Water Intake (Clean White Design)
     private var waterIntakeCard: some View {
         VStack(alignment: .leading, spacing: Design.Spacing.md) {
             HStack {
@@ -369,29 +375,17 @@ struct HomeDashboardView: View {
             
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    // Background
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.gray.opacity(0.15))
-                        .frame(height: 20)
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: 16)
                     
-                    // Animated progress bar
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Design.Colors.water,
-                                    Design.Colors.water.opacity(0.8),
-                                    Design.Colors.water.opacity(0.6)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geo.size.width * progress, height: 20)
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Design.Colors.water)
+                        .frame(width: geo.size.width * progress, height: 16)
                         .animation(Design.Animation.smooth, value: progress)
                 }
             }
-            .frame(height: 20)
+            .frame(height: 16)
 
             HStack {
                 Text("Goal: \(String(format: "%.1f", AppConstants.defaultWaterGoal))L")
@@ -407,38 +401,23 @@ struct HomeDashboardView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .cardStyle(useGlass: true)
-        .scaleEffect(animateCards ? 1 : 0.95)
-        .opacity(animateCards ? 1 : 0)
-        .animation(Design.Animation.spring.delay(0.5), value: animateCards)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
     }
 
-    // MARK: - AI Recommendations (2025 Style)
+    // MARK: - AI Recommendations (Clean White Design)
     private var aiRecommendationsCard: some View {
         Button {
-            HapticManager.impact(style: .medium)
             showingWorkout = true
         } label: {
             HStack(spacing: Design.Spacing.md) {
-                ZStack {
-                    // Animated glow
-                    Circle()
-                        .fill(Design.Colors.primaryGradient)
-                        .frame(width: 56, height: 56)
-                        .blur(radius: 8)
-                        .opacity(0.5)
-                    
-                    // Main icon circle
-                    Circle()
-                        .fill(Design.Colors.primaryGradient)
-                        .frame(width: 56, height: 56)
-                        .shadow(color: Design.Colors.primary.opacity(0.4), radius: 10, x: 0, y: 5)
-                    
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.white)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                }
+                Image(systemName: "sparkles")
+                    .foregroundColor(.white)
+                    .font(.title3)
+                    .frame(width: 50, height: 50)
+                    .background(Design.Colors.primary)
+                    .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("AI Recommendations")
@@ -457,10 +436,9 @@ struct HomeDashboardView: View {
                     .font(.caption)
             }
             .padding(Design.Spacing.lg)
-            .cardStyle(useGlass: true)
-            .scaleEffect(animateCards ? 1 : 0.95)
-            .opacity(animateCards ? 1 : 0)
-            .animation(Design.Animation.spring.delay(0.6), value: animateCards)
+            .background(Color.white)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
         }
     }
 

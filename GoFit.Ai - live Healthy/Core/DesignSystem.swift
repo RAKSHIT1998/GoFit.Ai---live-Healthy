@@ -11,15 +11,10 @@ struct AppDesign {
         static let accent = Color(red: 1.0, green: 0.84, blue: 0.0) // Sunrise Yellow
         static let secondary = Color.gray
         
-        // Background gradients
-        static let backgroundGradient = LinearGradient(
-            colors: [
-                Color(red: 0.95, green: 1.0, blue: 0.95),
-                Color(.systemBackground)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        // Background - Clean White
+        static let background = Color.white
+        static let cardBackground = Color.white
+        static let secondaryBackground = Color(red: 0.98, green: 0.98, blue: 0.98)
         
         // Gradient
         static var primaryGradient: LinearGradient {
