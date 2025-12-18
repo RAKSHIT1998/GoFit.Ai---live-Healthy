@@ -136,8 +136,8 @@ struct HomeDashboardView: View {
                     size: 140,
                     color: Design.Colors.primary,
                     showPercentage: false,
-                    value: todayCalories,
-                    label: "kcal left"
+                    label: "kcal left",
+                    value: todayCalories
                 )
                 .scaleEffect(animateCards ? 1 : 0.8)
                 .animation(Design.Animation.spring.delay(0.1), value: animateCards)
@@ -461,14 +461,6 @@ struct HomeDashboardView: View {
             .scaleEffect(animateCards ? 1 : 0.95)
             .opacity(animateCards ? 1 : 0)
             .animation(Design.Animation.spring.delay(0.6), value: animateCards)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .foregroundColor(Design.Colors.primary)
-            }
-            .padding(Design.Spacing.lg)
-            .cardStyle(backgroundColor: Design.Colors.primary.opacity(0.1))
         }
     }
 
