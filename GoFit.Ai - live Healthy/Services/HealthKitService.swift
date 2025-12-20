@@ -79,25 +79,42 @@ class HealthKitService: ObservableObject {
             throw HealthKitError.invalidType
         }
         
+        // Check authorization status before reading
+        let authStatus = healthStore.authorizationStatus(for: stepType)
+        guard authStatus == .sharingAuthorized else {
+            if authStatus == .notDetermined {
+                throw HealthKitError.authorizationNotDetermined
+            }
+            // If denied, silently fail (user has explicitly denied)
+            return
+        }
+        
         let calendar = Calendar.current
         let now = Date()
         let startOfDay = calendar.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-            guard let self = self, let result = result, let sum = result.sumQuantity() else {
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
                 if let error = error {
                     print("Error reading steps: \(error)")
+                    continuation.resume(throwing: error)
+                    return
                 }
-                return
+                
+                guard let self = self, let result = result, let sum = result.sumQuantity() else {
+                    continuation.resume(returning: ())
+                    return
+                }
+                
+                Task { @MainActor in
+                    self.todaySteps = Int(sum.doubleValue(for: HKUnit.count()))
+                }
+                continuation.resume(returning: ())
             }
             
-            Task { @MainActor in
-                self.todaySteps = Int(sum.doubleValue(for: HKUnit.count()))
-            }
+            healthStore.execute(query)
         }
-        
-        healthStore.execute(query)
     }
     
     // Read today's active calories
@@ -110,7 +127,7 @@ class HealthKitService: ObservableObject {
         let authStatus = healthStore.authorizationStatus(for: energyType)
         guard authStatus == .sharingAuthorized else {
             if authStatus == .notDetermined {
-                throw HealthKitError.authorizationDenied
+                throw HealthKitError.authorizationNotDetermined
             }
             // If denied, silently fail (user has explicitly denied)
             return
@@ -150,32 +167,69 @@ class HealthKitService: ObservableObject {
             throw HealthKitError.invalidType
         }
         
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-        let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
-            guard let self = self, let sample = samples?.first as? HKQuantitySample else {
-                return
+        // Check authorization status before reading
+        let authStatus = healthStore.authorizationStatus(for: heartRateType)
+        guard authStatus == .sharingAuthorized else {
+            if authStatus == .notDetermined {
+                throw HealthKitError.authorizationNotDetermined
             }
-            
-            Task { @MainActor in
-                self.averageHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-            }
+            // If denied, silently fail (user has explicitly denied)
+            return
         }
         
-        healthStore.execute(query)
-        
-        // Read resting heart rate
-        if let restingType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) {
-            let restingQuery = HKSampleQuery(sampleType: restingType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
-                guard let self = self, let sample = samples?.first as? HKQuantitySample else {
+        return try await withCheckedThrowingContinuation { continuation in
+            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+            let group = DispatchGroup()
+            var queryError: Error?
+            
+            // Read average heart rate
+            group.enter()
+            let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
+                defer { group.leave() }
+                
+                if let error = error {
+                    queryError = error
                     return
                 }
                 
-                Task { @MainActor in
-                    self.restingHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                if let self = self, let sample = samples?.first as? HKQuantitySample {
+                    Task { @MainActor in
+                        self.averageHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                    }
                 }
             }
             
-            healthStore.execute(restingQuery)
+            healthStore.execute(query)
+            
+            // Read resting heart rate
+            if let restingType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) {
+                group.enter()
+                let restingQuery = HKSampleQuery(sampleType: restingType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
+                    defer { group.leave() }
+                    
+                    if let error = error {
+                        queryError = error
+                        return
+                    }
+                    
+                    if let self = self, let sample = samples?.first as? HKQuantitySample {
+                        Task { @MainActor in
+                            self.restingHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                        }
+                    }
+                }
+                
+                healthStore.execute(restingQuery)
+            }
+            
+            // Wait for both queries to complete
+            group.notify(queue: .main) {
+                if let error = queryError {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: ())
+                }
+            }
         }
     }
     
@@ -238,6 +292,7 @@ enum HealthKitError: LocalizedError {
     case notAvailable
     case invalidType
     case authorizationDenied
+    case authorizationNotDetermined
     
     var errorDescription: String? {
         switch self {
@@ -247,6 +302,8 @@ enum HealthKitError: LocalizedError {
             return "Invalid HealthKit type"
         case .authorizationDenied:
             return "HealthKit authorization denied"
+        case .authorizationNotDetermined:
+            return "HealthKit authorization not determined. Please request authorization first."
         }
     }
 }
