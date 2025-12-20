@@ -37,6 +37,12 @@ router.post('/verify', authMiddleware, async (req, res) => {
     // - revocationDate: revocation date if refunded
     // - environment: "Production" or "Sandbox"
 
+    // Get user first to check trial status
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
     const expiresDateStr = transaction.expiresDate;
     const expiresDate = expiresDateStr ? new Date(expiresDateStr) : null;
     const isActive = expiresDate && expiresDate > new Date();
@@ -44,24 +50,40 @@ router.post('/verify', authMiddleware, async (req, res) => {
     // Check if transaction is revoked
     const isRevoked = transaction.revocationDate !== null && transaction.revocationDate !== undefined;
     
-    // Determine if trial (StoreKit 2 doesn't explicitly mark trials, but we can infer from product)
-    // For now, we'll check if it's within the first 3 days as a trial indicator
+    // Determine if trial - check if user had a trial status before purchase
     const purchaseDate = transaction.purchaseDate ? new Date(transaction.purchaseDate) : new Date();
+    const wasInTrial = user.subscription?.status === 'trial';
+    
+    // If user was in trial and just purchased, calculate new end date
+    // Otherwise, check if it's within first 3 days (StoreKit trial period)
     const daysSincePurchase = (new Date() - purchaseDate) / (1000 * 60 * 60 * 24);
-    const isTrial = daysSincePurchase <= 3 && isActive;
-
-    // Update user subscription
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const isTrial = wasInTrial || (daysSincePurchase <= 3 && isActive);
+    
+    // Calculate subscription end date based on plan
+    let subscriptionEndDate = expiresDate;
+    if (expiresDate) {
+      // StoreKit provides the expiration date, use it
+      subscriptionEndDate = expiresDate;
+    } else {
+      // Fallback: calculate based on plan
+      subscriptionEndDate = new Date(purchaseDate);
+      if (productId.includes('yearly')) {
+        subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
+      } else {
+        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+      }
     }
 
+    // If user was in trial and now purchasing, transition to active
+    // If still in trial period from StoreKit, keep as trial, otherwise mark as active
+    const newStatus = isRevoked ? 'cancelled' : (isActive ? (isTrial ? 'trial' : 'active') : 'expired');
+    
     user.subscription = {
-      status: isRevoked ? 'cancelled' : (isActive ? (isTrial ? 'trial' : 'active') : 'expired'),
+      status: newStatus,
       plan: productId.includes('yearly') ? 'yearly' : 'monthly',
       startDate: purchaseDate,
-      endDate: expiresDate,
-      trialEndDate: isTrial ? expiresDate : null,
+      endDate: subscriptionEndDate,
+      trialEndDate: isTrial && wasInTrial ? user.subscription.trialEndDate : (isTrial ? subscriptionEndDate : null),
       appleTransactionId: transaction.transactionID?.toString() || transactionId?.toString(),
       appleOriginalTransactionId: transaction.originalTransactionID?.toString()
     };
@@ -95,15 +117,27 @@ router.get('/status', authMiddleware, async (req, res) => {
       });
     }
     
-    // Check if subscription is still valid
-    if (user.subscription.endDate && user.subscription.endDate < new Date()) {
+    const now = new Date();
+    
+    // Check if trial has expired
+    if (user.subscription.status === 'trial' && user.subscription.trialEndDate && user.subscription.trialEndDate < now) {
+      user.subscription.status = 'expired';
+      await user.save();
+    }
+    
+    // Check if subscription has expired
+    if (user.subscription.endDate && user.subscription.endDate < now && user.subscription.status !== 'cancelled') {
       user.subscription.status = 'expired';
       await user.save();
     }
 
     res.json({
       hasActiveSubscription: ['trial', 'active'].includes(user.subscription.status),
-      subscription: user.subscription
+      subscription: user.subscription,
+      isInTrial: user.subscription.status === 'trial',
+      trialDaysRemaining: user.subscription.trialEndDate 
+        ? Math.max(0, Math.ceil((user.subscription.trialEndDate - now) / (1000 * 60 * 60 * 24)))
+        : 0
     });
   } catch (error) {
     console.error('Get subscription status error:', error);

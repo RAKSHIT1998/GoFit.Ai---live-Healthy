@@ -219,9 +219,9 @@ struct HomeDashboardView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Design.Spacing.md)
-                    .background(Color.white)
+                    .background(Design.Colors.cardBackground)
                     .cornerRadius(16)
-                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                 }
 
                 Button {
@@ -241,9 +241,9 @@ struct HomeDashboardView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Design.Spacing.md)
-                    .background(Color.white)
+                    .background(Design.Colors.cardBackground)
                     .cornerRadius(16)
-                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                 }
 
                 Button {
@@ -263,9 +263,9 @@ struct HomeDashboardView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Design.Spacing.md)
-                    .background(Color.white)
+                    .background(Design.Colors.cardBackground)
                     .cornerRadius(16)
-                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                 }
             }
         }
@@ -297,9 +297,9 @@ struct HomeDashboardView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(Design.Spacing.md)
-                .background(Color.white)
+                .background(Design.Colors.cardBackground)
                 .cornerRadius(16)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
 
                 VStack(spacing: 8) {
                     Image(systemName: "flame.fill")
@@ -319,9 +319,9 @@ struct HomeDashboardView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(Design.Spacing.md)
-                .background(Color.white)
+                .background(Design.Colors.cardBackground)
                 .cornerRadius(16)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
 
                 VStack(spacing: 8) {
                     Image(systemName: "heart.fill")
@@ -341,9 +341,9 @@ struct HomeDashboardView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(Design.Spacing.md)
-                .background(Color.white)
+                .background(Design.Colors.cardBackground)
                 .cornerRadius(16)
-                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
             }
         }
     }

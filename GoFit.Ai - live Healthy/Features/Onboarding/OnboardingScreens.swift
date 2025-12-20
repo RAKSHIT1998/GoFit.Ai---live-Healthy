@@ -34,7 +34,7 @@ struct OnboardingScreens: View {
                 
                 // Progress indicator
                 ProgressView(value: Double(viewModel.currentStep + 1), total: Double(viewModel.totalSteps))
-                    .progressViewStyle(LinearProgressViewStyle(tint: .white))
+                    .progressViewStyle(LinearProgressViewStyle(tint: Design.Colors.primary))
                     .padding(.horizontal)
                     .padding(.top, 8)
                 
@@ -95,10 +95,10 @@ struct OnboardingScreens: View {
                                 Image(systemName: "chevron.right")
                             }
                         }
-                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .foregroundColor(Design.Colors.primary)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(Color.white)
+                        .background(Design.Colors.cardBackground)
                         .cornerRadius(12)
                         .fontWeight(.semibold)
                     }
@@ -289,11 +289,11 @@ struct GoalCard: View {
                 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .foregroundColor(Design.Colors.primary)
                 }
             }
             .padding()
-            .background(isSelected ? Color.white : Color.white.opacity(0.2))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
             .cornerRadius(16)
         }
     }
@@ -350,22 +350,22 @@ struct ActivityCard: View {
                 HStack {
                     Text(level.displayName)
                         .font(.headline)
-                        .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6) : .white)
+                        .foregroundColor(isSelected ? Design.Colors.primary : .white)
 
             Spacer()
 
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                            .foregroundColor(Design.Colors.primary)
                     }
                 }
                 
                 Text(level.description)
                     .font(.caption)
-                    .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6).opacity(0.8) : .white.opacity(0.7))
+                    .foregroundColor(isSelected ? Design.Colors.primary.opacity(0.8) : .white.opacity(0.7))
             }
             .padding()
-            .background(isSelected ? Color.white : Color.white.opacity(0.2))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
             .cornerRadius(12)
         }
     }
@@ -433,11 +433,11 @@ struct DietaryPreferenceCard: View {
                 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .foregroundColor(Design.Colors.primary)
                 }
         }
         .padding()
-            .background(isSelected ? Color.white : Color.white.opacity(0.2))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
             .cornerRadius(12)
         }
     }
@@ -508,11 +508,11 @@ struct AllergyCard: View {
                 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .foregroundColor(Design.Colors.primary)
                 }
             }
             .padding()
-            .background(isSelected ? Color.white : Color.white.opacity(0.2))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
             .cornerRadius(12)
         }
     }
@@ -575,18 +575,18 @@ struct FastingPreferenceCard: View {
                 HStack {
                     Text(preference.displayName)
                         .font(.headline)
-                        .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6) : .white)
+                        .foregroundColor(isSelected ? Design.Colors.primary : .white)
                     
                     Spacer()
                     
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                            .foregroundColor(Design.Colors.primary)
                     }
                 }
             }
             .padding()
-            .background(isSelected ? Color.white : Color.white.opacity(0.2))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
             .cornerRadius(12)
         }
     }
@@ -608,7 +608,7 @@ struct PermissionsView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "lock.shield.fill")
                         .font(.system(size: 60))
-                        .foregroundColor(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .foregroundColor(Design.Colors.primary)
                     
                     Text("Enable Permissions")
                         .font(.system(size: 32, weight: .bold))
@@ -653,7 +653,7 @@ struct PermissionsView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
         .padding()
-                        .background(Color(red: 0.2, green: 0.7, blue: 0.6))
+                        .background(Design.Colors.primary)
                         .cornerRadius(12)
                 }
                 .padding(.horizontal, 24)
@@ -687,7 +687,7 @@ struct PermissionCard: View {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.title2)
-                    .foregroundColor(isGranted ? .green : Color(red: 0.2, green: 0.7, blue: 0.6))
+                    .foregroundColor(isGranted ? .green : Design.Colors.primary)
                     .frame(width: 40)
                 
                 VStack(alignment: .leading, spacing: 4) {

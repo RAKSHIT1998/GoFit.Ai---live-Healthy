@@ -185,5 +185,105 @@ router.get('/weight', authMiddleware, async (req, res) => {
   }
 });
 
+// Get water history
+router.get('/water', authMiddleware, async (req, res) => {
+  try {
+    const { limit = 100, startDate, endDate } = req.query;
+
+    const query = { userId: req.user._id };
+    
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
+    }
+
+    const logs = await WaterLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit));
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Get water history error:', error);
+    res.status(500).json({ message: 'Failed to get water history', error: error.message });
+  }
+});
+
+// Get health statistics
+router.get('/stats', authMiddleware, async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const daysBack = parseInt(days);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysBack);
+    startDate.setHours(0, 0, 0, 0);
+
+    const user = await User.findById(req.user._id);
+    
+    // Get health data
+    const healthData = user.healthData?.dailySteps || [];
+    const filteredData = healthData.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate >= startDate;
+    });
+
+    // Calculate averages
+    const totalSteps = filteredData.reduce((sum, entry) => sum + (entry.steps || 0), 0);
+    const totalCalories = filteredData.reduce((sum, entry) => sum + (entry.activeCalories || 0), 0);
+    const avgSteps = filteredData.length > 0 ? totalSteps / filteredData.length : 0;
+    const avgCalories = filteredData.length > 0 ? totalCalories / filteredData.length : 0;
+
+    // Get water logs
+    const waterLogs = await WaterLog.find({
+      userId: req.user._id,
+      timestamp: { $gte: startDate }
+    });
+    const totalWater = waterLogs.reduce((sum, log) => sum + log.amount, 0);
+    const avgWater = waterLogs.length > 0 ? totalWater / daysBack : 0;
+
+    // Get weight logs
+    const weightLogs = await WeightLog.find({
+      userId: req.user._id,
+      timestamp: { $gte: startDate }
+    }).sort({ timestamp: -1 });
+
+    const firstWeight = weightLogs.length > 0 ? weightLogs[weightLogs.length - 1].weightKg : null;
+    const lastWeight = weightLogs.length > 0 ? weightLogs[0].weightKg : null;
+    const weightChange = firstWeight && lastWeight ? lastWeight - firstWeight : null;
+
+    res.json({
+      period: {
+        days: daysBack,
+        startDate: startDate,
+        endDate: new Date()
+      },
+      steps: {
+        total: totalSteps,
+        average: Math.round(avgSteps),
+        daysWithData: filteredData.length
+      },
+      calories: {
+        total: totalCalories,
+        average: Math.round(avgCalories),
+        daysWithData: filteredData.length
+      },
+      water: {
+        total: totalWater,
+        average: Math.round(avgWater * 10) / 10,
+        daysWithData: waterLogs.length
+      },
+      weight: {
+        current: lastWeight,
+        start: firstWeight,
+        change: weightChange,
+        records: weightLogs.length
+      }
+    });
+  } catch (error) {
+    console.error('Get health stats error:', error);
+    res.status(500).json({ message: 'Failed to get health statistics', error: error.message });
+  }
+});
+
 export default router;
 

@@ -36,7 +36,7 @@ struct MealScannerView3: View {
                                     .font(.title2)
                                     .foregroundColor(.white)
                                     .padding(12)
-                                    .background(Color.black.opacity(0.5))
+                                    .background(Color.primary.opacity(0.5))
                                     .clipShape(Circle())
                             }
                             .padding()
@@ -49,16 +49,16 @@ struct MealScannerView3: View {
                         }) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white)
+                                    .fill(Color(.systemBackground))
                                     .frame(width: 70, height: 70)
                                 
                                 Circle()
-                                    .stroke(Color.white, lineWidth: 4)
+                                    .stroke(Color(.systemBackground), lineWidth: 4)
                                     .frame(width: 80, height: 80)
                                 
                                 Image(systemName: "camera.fill")
                                     .font(.title2)
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                             }
                         }
                         .padding(.bottom, 40)
@@ -163,9 +163,9 @@ struct MealScannerView3: View {
                                         }
                                     }
                                     .padding()
-                                    .background(Color.white)
+                                    .background(Design.Colors.cardBackground)
                                     .cornerRadius(12)
-                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                    .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                                 }
                                 .padding(.horizontal)
                                 
@@ -196,14 +196,15 @@ struct MealScannerView3: View {
                         }
                         .padding(.vertical)
                     }
-                    .background(Color.white)
+                    .background(Design.Colors.background)
                 }
                 
                 if let err = errorMsg {
                     Text(err)
                         .foregroundColor(.red)
                         .padding()
-                        .background(Color.white)
+                        .background(Design.Colors.cardBackground)
+                        .cornerRadius(12)
                 }
             }
             .navigationTitle("Scan Food")
@@ -252,7 +253,22 @@ struct MealScannerView3: View {
 
     // Upload image to backend which uses OpenAI vision etc and returns parsed items
     func uploadImage(_ image: UIImage) async {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return }
+        guard let data = image.jpegData(compressionQuality: 0.8) else { 
+            errorMsg = "Failed to process image"
+            return 
+        }
+        
+        // Check if user is logged in and has a valid token
+        guard authVM.isLoggedIn else {
+            errorMsg = "Please log in to scan meals"
+            return
+        }
+        
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            errorMsg = "Authentication required. Please log in again."
+            return
+        }
+        
         isUploading = true
         errorMsg = nil
         uploadResult = nil
@@ -262,7 +278,29 @@ struct MealScannerView3: View {
             let resp = try await NetworkManager.shared.uploadMealImage(data: data, filename: "meal.jpg", userId: authVM.userId)
             uploadResult = resp
         } catch {
-            errorMsg = "Upload error: \(error.localizedDescription)"
+            // Better error handling
+            if let nsError = error as NSError? {
+                let errorCode = nsError.code
+                let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                
+                // Check for authentication errors
+                if errorCode == 401 {
+                    errorMsg = "Authentication failed. Please log in again."
+                    // Optionally log out the user
+                    await MainActor.run {
+                        authVM.logout()
+                    }
+                } else if errorMessage.contains("token") || errorMessage.contains("Token") || errorMessage.contains("Invalid token") {
+                    errorMsg = "Session expired. Please log in again."
+                    await MainActor.run {
+                        authVM.logout()
+                    }
+                } else {
+                    errorMsg = "Upload error: \(errorMessage)"
+                }
+            } else {
+                errorMsg = "Upload error: \(error.localizedDescription)"
+            }
         }
     }
 

@@ -25,9 +25,13 @@ struct AppDesign {
             )
         }
         
-        // Glassmorphism background
-        static let glassBackground = Color.white.opacity(0.7)
-        static let glassBackgroundDark = Color.black.opacity(0.1)
+        // Glassmorphism background - Adaptive for dark mode
+        static var glassBackground: Color {
+            Color(.systemBackground).opacity(0.7)
+        }
+        static var glassBackgroundDark: Color {
+            Color(.systemBackground).opacity(0.1)
+        }
         
         // Category colors - More vibrant
         static let calories = Color(red: 1.0, green: 0.5, blue: 0.0) // Bright Orange
@@ -241,18 +245,19 @@ extension View {
     }
 }
 
-// MARK: - Shimmer Effect
+// MARK: - Shimmer Effect (Adaptive for Dark Mode)
 struct ShimmerModifier: ViewModifier {
     @State private var phase: CGFloat = 0
+    @Environment(\.colorScheme) var colorScheme
     
     func body(content: Content) -> some View {
         content
             .overlay(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0),
-                        Color.white.opacity(0.3),
-                        Color.white.opacity(0)
+                        Color.clear,
+                        Color.primary.opacity(colorScheme == .dark ? 0.2 : 0.3),
+                        Color.clear
                     ],
                     startPoint: .leading,
                     endPoint: .trailing

@@ -24,7 +24,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create user
+    // Create user with 3-day free trial
+    const now = new Date();
+    const trialEndDate = new Date(now);
+    trialEndDate.setDate(trialEndDate.getDate() + 3); // 3-day free trial
+    
     const user = new User({
       name,
       email: email.toLowerCase(),
@@ -35,8 +39,11 @@ router.post('/register', async (req, res) => {
       allergies: allergies || [],
       fastingPreference: fastingPreference || 'none',
       subscription: {
-        status: 'free'
-        // plan field is intentionally omitted for free users
+        status: 'trial', // Start with trial status
+        startDate: now,
+        trialEndDate: trialEndDate,
+        endDate: trialEndDate // Trial ends after 3 days
+        // plan field is intentionally omitted during trial
       }
     });
 
@@ -246,7 +253,11 @@ router.post('/apple', async (req, res) => {
       }
     }
 
-    // Create new user with Apple ID
+    // Create new user with Apple ID and 3-day free trial
+    const now = new Date();
+    const trialEndDate = new Date(now);
+    trialEndDate.setDate(trialEndDate.getDate() + 3); // 3-day free trial
+    
     user = new User({
       name: name || 'Apple User',
       email: email ? email.toLowerCase() : `${userIdentifier}@apple.privaterelay.app`,
@@ -258,7 +269,10 @@ router.post('/apple', async (req, res) => {
       allergies: [],
       fastingPreference: 'none',
       subscription: {
-        status: 'free'
+        status: 'trial', // Start with trial status
+        startDate: now,
+        trialEndDate: trialEndDate,
+        endDate: trialEndDate // Trial ends after 3 days
       }
     });
 

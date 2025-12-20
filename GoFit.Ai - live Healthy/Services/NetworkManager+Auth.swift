@@ -39,9 +39,11 @@ final class NetworkManager {
         let boundary = "Boundary-\(UUID().uuidString)"
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-        if let token = AuthService.shared.readToken()?.accessToken {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        // Ensure token is present - throw error if not
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            throw NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "No authentication token found. Please log in again."])
         }
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         var body = Data()
         // optional userId

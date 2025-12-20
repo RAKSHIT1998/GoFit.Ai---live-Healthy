@@ -118,7 +118,7 @@ struct PaywallView: View {
 
     // MARK: - CTA
     private var ctaButton: some View {
-        VStack {
+        VStack(spacing: 12) {
             Button {
                 purchase()
             } label: {
@@ -126,8 +126,15 @@ struct PaywallView: View {
                     if loading {
                         ProgressView().tint(.white)
                     } else {
-                        Text("Start Free Trial")
-                            .font(Design.Typography.headline)
+                        VStack(spacing: 4) {
+                            Text("Start 3-Day Free Trial")
+                                .font(Design.Typography.headline)
+                            if let product = purchases.getProduct(id: selectedPlan.id) {
+                                Text("Then \(product.displayPrice)/\(selectedPlan.periodText)")
+                                    .font(Design.Typography.caption2)
+                                    .opacity(0.9)
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -136,12 +143,13 @@ struct PaywallView: View {
                 .foregroundColor(.white)
                 .cornerRadius(16)
             }
-            .disabled(loading)
+            .disabled(loading || purchases.isLoading)
 
             if let error {
                 Text(error)
                     .foregroundColor(.red)
                     .font(.caption)
+                    .multilineTextAlignment(.center)
             }
         }
         .padding(.horizontal)
@@ -149,18 +157,42 @@ struct PaywallView: View {
 
     // MARK: - Terms
     private var terms: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             if let product = purchases.getProduct(id: selectedPlan.id) {
-                Text("3-day free trial, then \(product.displayPrice)/\(selectedPlan.periodText)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "gift.fill")
+                            .font(.caption2)
+                            .foregroundColor(Design.Colors.primary)
+                        Text("3-day free trial")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(Design.Colors.primary)
+                    }
+                    
+                    Text("Then \(product.displayPrice)/\(selectedPlan.periodText)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Cancel anytime in Settings")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
 
             Button("Restore Purchases") {
-                Task { try? await purchases.restorePurchases() }
+                Task { 
+                    do {
+                        try await purchases.restorePurchases()
+                    } catch {
+                        self.error = error.localizedDescription
+                    }
+                }
             }
             .font(.caption)
+            .foregroundColor(.secondary)
         }
+        .padding(.top, Design.Spacing.sm)
     }
 
     private func purchase() {
