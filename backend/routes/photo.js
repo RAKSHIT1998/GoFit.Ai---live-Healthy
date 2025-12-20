@@ -47,21 +47,39 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
 
     const userId = req.user._id.toString();
     const file = req.file;
-    const filename = `meals/${userId}/${Date.now()}-${file.originalname}`;
+    
+    // Check if S3 is configured
+    const s3Configured = process.env.S3_BUCKET_NAME && 
+                         process.env.AWS_ACCESS_KEY_ID && 
+                         process.env.AWS_SECRET_ACCESS_KEY;
+    
+    let imageUrl = null;
+    let imageKey = null;
+    
+    // Upload to S3 only if configured (optional)
+    if (s3Configured) {
+      try {
+        const filename = `meals/${userId}/${Date.now()}-${file.originalname}`;
+        const uploadParams = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: filename,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ACL: 'private'
+        };
 
-    // Upload to S3
-    const uploadParams = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: filename,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ACL: 'private'
-    };
+        await s3.putObject(uploadParams).promise();
+        imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${filename}`;
+        imageKey = filename;
+      } catch (s3Error) {
+        console.error('⚠️ S3 upload failed, continuing without storage:', s3Error.message);
+        // Continue without S3 storage - we can still analyze the photo
+      }
+    } else {
+      console.log('ℹ️ S3 not configured, skipping image storage. Photo will be analyzed but not saved.');
+    }
 
-    await s3.putObject(uploadParams).promise();
-    const imageUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
-
-    // Analyze with OpenAI Vision API
+    // Analyze with OpenAI Vision API (works without S3)
     const base64Image = file.buffer.toString('base64');
     
     const response = await openai.chat.completions.create({
@@ -144,18 +162,33 @@ Return ONLY valid JSON array, no markdown, no explanations, just the JSON.`
 
     res.json({
       items,
-      imageUrl,
-      imageKey: filename,
+      imageUrl: imageUrl || null, // null if S3 not configured
+      imageKey: imageKey || null, // null if S3 not configured
       totalCalories: totals.calories,
       totalProtein: totals.protein,
       totalCarbs: totals.carbs,
       totalFat: totals.fat,
       totalSugar: totals.sugar,
-      aiVersion: "gpt-4o"
+      aiVersion: "gpt-4o",
+      s3Configured: s3Configured || false
     });
   } catch (error) {
     console.error('Photo analysis error:', error);
-    res.status(500).json({ message: 'Failed to analyze photo', error: error.message });
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to analyze photo';
+    if (error.message?.includes('bucket')) {
+      errorMessage = 'S3 storage not configured. Photo analysis requires S3 bucket setup.';
+    } else if (error.message?.includes('OpenAI') || error.message?.includes('API')) {
+      errorMessage = 'AI analysis service unavailable. Please check OpenAI API configuration.';
+    } else {
+      errorMessage = error.message || 'Failed to analyze photo';
+    }
+    
+    res.status(500).json({ 
+      message: errorMessage, 
+      error: error.message 
+    });
   }
 });
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 struct HomeDashboardView: View {
 
@@ -44,6 +45,8 @@ struct HomeDashboardView: View {
                 }
                 .refreshable {
                     await loadSummary()
+                    await loadWaterIntake()
+                    await loadHealthData()
                     await syncHealthData()
                 }
             }
@@ -80,7 +83,14 @@ struct HomeDashboardView: View {
                 WorkoutSuggestionsView().environmentObject(auth)
             }
             .sheet(isPresented: $showingLiquidLog) {
-                LiquidLogView().environmentObject(auth)
+                LiquidLogView()
+                    .environmentObject(auth)
+                    .onDisappear {
+                        // Reload water intake when sheet dismisses
+                        Task {
+                            await loadWaterIntake()
+                        }
+                    }
             }
             .onAppear {
                 withAnimation(Design.Animation.spring) {
@@ -89,7 +99,9 @@ struct HomeDashboardView: View {
 
                 Task {
                     await loadSummary()
-                    await syncHealthData()
+                    await loadWaterIntake()
+                    await loadHealthData() // Load from backend first
+                    await syncHealthData() // Then sync with HealthKit
                 }
             }
         }
@@ -444,6 +456,17 @@ struct HomeDashboardView: View {
 
     // MARK: - Data
     private func loadSummary() async {
+        // Check if user is logged in and has valid token
+        guard auth.isLoggedIn else {
+            print("⚠️ Cannot load summary: User not logged in")
+            return
+        }
+        
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            print("⚠️ Cannot load summary: No valid token")
+            return
+        }
+        
         isLoading = true
         defer { isLoading = false }
 
@@ -474,6 +497,13 @@ struct HomeDashboardView: View {
             todayFat = "\(Int(fat))g"
         } catch {
             print("Summary error:", error)
+            // If token is invalid, log out user
+            if let nsError = error as NSError?,
+               nsError.code == 401 || (nsError.userInfo[NSLocalizedDescriptionKey] as? String)?.contains("token") == true {
+                await MainActor.run {
+                    auth.logout()
+                }
+            }
         }
 
         do {
@@ -504,32 +534,129 @@ struct HomeDashboardView: View {
             fastingStatus = "Not fasting"
         }
     }
+    
+    // Load water intake from backend
+    private func loadWaterIntake() async {
+        guard auth.isLoggedIn else {
+            return
+        }
+        
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            return
+        }
+        
+        do {
+            struct HealthSummary: Codable {
+                let today: TodayData
+            }
+            
+            struct TodayData: Codable {
+                let water: Double?
+            }
+            
+            let summary: HealthSummary = try await NetworkManager.shared.request(
+                "health/summary",
+                method: "GET",
+                body: nil
+            )
+            
+            await MainActor.run {
+                waterIntake = summary.today.water ?? 0
+            }
+        } catch {
+            print("⚠️ Failed to load water intake: \(error.localizedDescription)")
+        }
+    }
+    
+    // Load health data from backend (steps, calories)
+    private func loadHealthData() async {
+        guard auth.isLoggedIn else {
+            return
+        }
+        
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            return
+        }
+        
+        do {
+            struct HealthSummary: Codable {
+                let today: TodayData
+            }
+            
+            struct TodayData: Codable {
+                let steps: Int?
+                let activeCalories: Double?
+            }
+            
+            let summary: HealthSummary = try await NetworkManager.shared.request(
+                "health/summary",
+                method: "GET",
+                body: nil
+            )
+            
+            await MainActor.run {
+                // Update HealthKit service with backend data
+                if let steps = summary.today.steps {
+                    healthKit.todaySteps = steps
+                }
+                if let calories = summary.today.activeCalories {
+                    healthKit.todayActiveCalories = calories
+                }
+            }
+        } catch {
+            print("⚠️ Failed to load health data: \(error.localizedDescription)")
+        }
+    }
 
     private func syncHealthData() async {
-        guard healthKit.isAuthorized else { return }
+        // Check if HealthKit is available
+        guard HKHealthStore.isHealthDataAvailable() else {
+            return
+        }
+        
+        // Request authorization if not yet determined
+        if !healthKit.isAuthorized {
+            do {
+                try await healthKit.requestAuthorization()
+            } catch {
+                print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
+                return
+            }
+        }
+        
+        // Only read data if authorized
+        guard healthKit.isAuthorized else {
+            print("⚠️ HealthKit not authorized, skipping sync")
+            return
+        }
 
-        try? await healthKit.readTodaySteps()
-        try? await healthKit.readTodayActiveCalories()
-        try? await healthKit.readHeartRate()
-        try? await healthKit.syncToBackend()
+        do {
+            try await healthKit.readTodaySteps()
+            try await healthKit.readTodayActiveCalories()
+            try await healthKit.readHeartRate()
+            try await healthKit.syncToBackend()
+        } catch {
+            print("⚠️ HealthKit sync error: \(error.localizedDescription)")
+        }
     }
 
     private func addWater() {
-        withAnimation {
-            let newValue = waterIntake + 0.25
-            waterIntake = newValue.isFinite && !newValue.isNaN ? newValue : waterIntake
-        }
-
         Task {
             struct WaterReq: Codable { let amount: Double }
             let body = try? JSONEncoder().encode(WaterReq(amount: 0.25))
 
-            let _: EmptyResponse =
-                try await NetworkManager.shared.request(
+            do {
+                let _: EmptyResponse = try await NetworkManager.shared.request(
                     "health/water",
                     method: "POST",
                     body: body
                 )
+                
+                // Reload water intake after adding
+                await loadWaterIntake()
+            } catch {
+                print("⚠️ Failed to add water: \(error.localizedDescription)")
+            }
         }
     }
 }

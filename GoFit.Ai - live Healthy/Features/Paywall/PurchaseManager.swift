@@ -64,9 +64,14 @@ class PurchaseManager: ObservableObject {
         do {
             products = try await Product.products(for: [monthlyID, yearlyID])
             print("✅ Loaded \(products.count) products")
+            
+            if products.isEmpty {
+                print("⚠️ No products found. Make sure products are configured in App Store Connect or StoreKit configuration file.")
+                errorMessage = "Subscription products not available. Please check your App Store Connect configuration."
+            }
         } catch {
             print("❌ Product load failed:", error)
-            errorMessage = "Failed to load subscriptions."
+            errorMessage = "Failed to load subscriptions: \(error.localizedDescription)"
         }
     }
 

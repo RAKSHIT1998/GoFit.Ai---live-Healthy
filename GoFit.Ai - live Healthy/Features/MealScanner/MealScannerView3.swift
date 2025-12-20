@@ -49,16 +49,16 @@ struct MealScannerView3: View {
                         }) {
                             ZStack {
                                 Circle()
-                                    .fill(Color(.systemBackground))
+                                    .fill(Color.white)
                                     .frame(width: 70, height: 70)
                                 
                                 Circle()
-                                    .stroke(Color(.systemBackground), lineWidth: 4)
+                                    .stroke(Color.white, lineWidth: 4)
                                     .frame(width: 80, height: 80)
                                 
                                 Image(systemName: "camera.fill")
                                     .font(.title2)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(.black)
                             }
                         }
                         .padding(.bottom, 40)

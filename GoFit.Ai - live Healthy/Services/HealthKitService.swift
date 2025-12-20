@@ -106,25 +106,42 @@ class HealthKitService: ObservableObject {
             throw HealthKitError.invalidType
         }
         
+        // Check authorization status before reading
+        let authStatus = healthStore.authorizationStatus(for: energyType)
+        guard authStatus == .sharingAuthorized else {
+            if authStatus == .notDetermined {
+                throw HealthKitError.authorizationDenied
+            }
+            // If denied, silently fail (user has explicitly denied)
+            return
+        }
+        
         let calendar = Calendar.current
         let now = Date()
         let startOfDay = calendar.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-            guard let self = self, let result = result, let sum = result.sumQuantity() else {
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
                 if let error = error {
                     print("Error reading active calories: \(error)")
+                    continuation.resume(throwing: error)
+                    return
                 }
-                return
+                
+                guard let self = self, let result = result, let sum = result.sumQuantity() else {
+                    continuation.resume(returning: ())
+                    return
+                }
+                
+                Task { @MainActor in
+                    self.todayActiveCalories = sum.doubleValue(for: HKUnit.kilocalorie())
+                }
+                continuation.resume(returning: ())
             }
             
-            Task { @MainActor in
-                self.todayActiveCalories = sum.doubleValue(for: HKUnit.kilocalorie())
-            }
+            healthStore.execute(query)
         }
-        
-        healthStore.execute(query)
     }
     
     // Read heart rate

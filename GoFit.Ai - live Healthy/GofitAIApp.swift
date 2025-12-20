@@ -24,6 +24,7 @@ struct GoFitAiApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .preferredColorScheme(.light) // Force light mode - remove dark mode
         }
         .modelContainer(sharedModelContainer)
     }

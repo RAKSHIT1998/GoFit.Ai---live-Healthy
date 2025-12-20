@@ -4,12 +4,12 @@ import SwiftUI
 struct ModernCard<Content: View>: View {
     let content: Content
     var padding: CGFloat = Design.Spacing.lg
-    var backgroundColor: Color = Color(.secondarySystemBackground)
+    var backgroundColor: Color = Color(white: 0.98) // Light mode only
     var cornerRadius: CGFloat = Design.Radius.large
     
     init(
         padding: CGFloat = Design.Spacing.lg,
-        backgroundColor: Color = Color(.secondarySystemBackground),
+        backgroundColor: Color = Color(white: 0.98), // Light mode only
         cornerRadius: CGFloat = Design.Radius.large,
         @ViewBuilder content: () -> Content
     ) {
@@ -62,7 +62,7 @@ struct ModernSecondaryButtonStyle: ButtonStyle {
             .foregroundColor(foregroundColor)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(Color(.secondarySystemBackground))
+            .background(Color(white: 0.98)) // Light mode only
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(borderColor, lineWidth: 2)
