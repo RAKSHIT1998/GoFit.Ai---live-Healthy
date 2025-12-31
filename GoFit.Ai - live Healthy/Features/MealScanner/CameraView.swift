@@ -35,14 +35,6 @@ struct CameraView: UIViewRepresentable {
                 session.addOutput(output)
             }
             
-            // Configure for fastest capture
-            if let photoOutput = output as? AVCapturePhotoOutput {
-                // Enable fast capture mode if available
-                if photoOutput.isHighResolutionCaptureEnabled {
-                    // Keep high resolution available but don't force it for speed
-                }
-            }
-            
             session.commitConfiguration()
             // Start session immediately for faster camera opening
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -69,8 +61,14 @@ struct CameraView: UIViewRepresentable {
             } else {
                 settings = AVCapturePhotoSettings()
             }
-            // Disable high resolution for faster capture
-            settings.isHighResolutionPhotoEnabled = false
+            // Use standard resolution for faster capture (iOS 16+)
+            if #available(iOS 16.0, *) {
+                // Set max dimensions to standard resolution for speed
+                settings.maxPhotoDimensions = CMVideoDimensions(width: 1920, height: 1080)
+            } else {
+                // Fallback for iOS < 16
+                settings.isHighResolutionPhotoEnabled = false
+            }
             // Capture immediately without delay
             output.capturePhoto(with: settings, delegate: self)
         }
