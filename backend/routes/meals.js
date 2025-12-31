@@ -1,6 +1,7 @@
 import express from 'express';
 import Meal from '../models/Meal.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import mlService from '../services/mlService.js';
 
 const router = express.Router();
 
@@ -29,6 +30,11 @@ router.post('/save', authMiddleware, async (req, res) => {
     });
 
     await meal.save();
+
+    // Learn from this meal for ML (async, don't wait)
+    mlService.learnFromMeal(meal, req.user._id).catch(err => {
+      console.error('ML learning error (non-critical):', err);
+    });
 
     res.status(201).json(meal);
   } catch (error) {

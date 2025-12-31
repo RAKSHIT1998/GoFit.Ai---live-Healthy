@@ -4,6 +4,7 @@ import Meal from '../models/Meal.js';
 import User from '../models/User.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import mlService from '../services/mlService.js';
 
 const router = express.Router();
 
@@ -47,7 +48,63 @@ router.post('/regenerate', authMiddleware, async (req, res) => {
   }
 });
 
+// Get ML insights for user
+router.get('/ml-insights', authMiddleware, async (req, res) => {
+  try {
+    const insights = await mlService.getMLInsights(req.user._id);
+    if (!insights) {
+      return res.status(404).json({ message: 'No ML insights available yet' });
+    }
+    res.json(insights);
+  } catch (error) {
+    console.error('Get ML insights error:', error);
+    res.status(500).json({ message: 'Failed to get ML insights', error: error.message });
+  }
+});
+
+// Track recommendation feedback
+router.post('/feedback', authMiddleware, async (req, res) => {
+  try {
+    const { recommendationId, type, action, rating } = req.body;
+    
+    if (!recommendationId || !type || !action) {
+      return res.status(400).json({ message: 'recommendationId, type, and action are required' });
+    }
+    
+    await mlService.trackRecommendationFeedback(
+      req.user._id,
+      recommendationId,
+      type,
+      action,
+      rating
+    );
+    
+    // Check if recommendations need adaptation
+    const adaptations = await mlService.adaptRecommendations(req.user._id);
+    
+    res.json({ 
+      success: true,
+      adaptations: adaptations || null
+    });
+  } catch (error) {
+    console.error('Track feedback error:', error);
+    res.status(500).json({ message: 'Failed to track feedback', error: error.message });
+  }
+});
+
 async function generateRecommendation(user) {
+  // Get ML insights for personalized recommendations
+  const mlInsights = await mlService.getMLInsights(user._id);
+  
+  // Classify user type if not already done
+  if (!mlInsights || !mlInsights.userType) {
+    await mlService.classifyUserType(user._id);
+    const updatedInsights = await mlService.getMLInsights(user._id);
+    if (updatedInsights) {
+      Object.assign(mlInsights || {}, updatedInsights);
+    }
+  }
+  
   // Get user's recent meals and health data
   const recentMeals = await Meal.find({
     userId: user._id
@@ -58,7 +115,7 @@ async function generateRecommendation(user) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Build context for AI
+  // Build enhanced context for AI with ML insights
   const context = {
     user: {
       goals: user.goals,
@@ -66,7 +123,18 @@ async function generateRecommendation(user) {
       dietaryPreferences: user.dietaryPreferences,
       allergies: user.allergies,
       fastingPreference: user.fastingPreference,
-      targetCalories: user.metrics?.targetCalories || 2000
+      targetCalories: user.metrics?.targetCalories || 2000,
+      // Add ML insights
+      userType: mlInsights?.userType || 'beginner',
+      favoriteFoods: mlInsights?.preferences?.favoriteFoods || [],
+      preferredMealTimes: mlInsights?.preferences?.preferredMealTimes || [],
+      averageMealCalories: mlInsights?.preferences?.averageMealCalories || 0,
+      preferredMacroRatio: mlInsights?.preferences?.preferredMacroRatio || {
+        protein: 30,
+        carbs: 40,
+        fat: 30
+      },
+      mlRecommendations: mlInsights?.recommendations || {}
     },
     recentMeals: recentMeals.map(m => ({
       items: m.items.map(i => i.name),
@@ -76,11 +144,17 @@ async function generateRecommendation(user) {
   };
 
   // Check if Gemini API key is configured
-  if (!genAI || !GEMINI_API_KEY) {
-    throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable.');
+  if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+    console.error('❌ GEMINI_API_KEY is not set or empty for recommendations');
+    throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable. Get your free API key at https://aistudio.google.com/app/apikey');
+  }
+  
+  if (!genAI) {
+    console.error('❌ Failed to initialize GoogleGenerativeAI for recommendations');
+    throw new Error('AI recommendation service initialization failed. Please check GEMINI_API_KEY configuration.');
   }
 
-  // Generate meal plan with Google Gemini - Enhanced prompt for better recommendations
+  // Generate meal plan with Google Gemini - Enhanced prompt with ML insights
   const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
 USER PROFILE:
@@ -91,16 +165,30 @@ USER PROFILE:
 - Target Daily Calories: ${context.user.targetCalories} kcal
 - Fasting Preference: ${context.user.fastingPreference}
 
+MACHINE LEARNING INSIGHTS (learned from user behavior):
+- User Type: ${context.user.userType}
+- Favorite Foods: ${context.user.favoriteFoods.join(', ') || 'None yet - user is new'}
+- Preferred Meal Times: ${JSON.stringify(context.user.preferredMealTimes)}
+- Average Meal Calories: ${context.user.averageMealCalories.toFixed(0)} kcal
+- Preferred Macro Ratio: Protein ${context.user.preferredMacroRatio.protein}%, Carbs ${context.user.preferredMacroRatio.carbs}%, Fat ${context.user.preferredMacroRatio.fat}%
+- ML Recommendations: ${JSON.stringify(context.user.mlRecommendations)}
+
 RECENT MEAL HISTORY (last 5 meals):
 ${JSON.stringify(context.recentMeals.slice(0, 5), null, 2)}
 
 INSTRUCTIONS:
-1. Analyze the user's recent meals to understand their eating patterns and preferences
-2. Create a balanced meal plan that aligns with their goals (${context.user.goals})
-3. Ensure meals are diverse, nutritious, and match their dietary preferences
-4. Design workouts that complement their activity level and goals
-5. Consider their fasting preference when scheduling meals
-6. Provide detailed, practical instructions for both meals and exercises
+1. **PRIORITIZE ML INSIGHTS**: Use the machine learning insights to personalize recommendations:
+   - If user has favorite foods, incorporate them into meal suggestions
+   - Respect preferred meal times from their behavior patterns
+   - Match their preferred macro ratio when possible
+   - Consider their user type (${context.user.userType}) for appropriate recommendations
+2. Analyze the user's recent meals to understand their eating patterns and preferences
+3. Create a balanced meal plan that aligns with their goals (${context.user.goals}) AND learned preferences
+4. Ensure meals are diverse, nutritious, and match their dietary preferences
+5. Design workouts that complement their activity level and goals
+6. Consider their fasting preference when scheduling meals
+7. **GRADUAL ADAPTATION**: If this is a returning user, gradually adapt recommendations based on their behavior patterns
+8. Provide detailed, practical instructions for both meals and exercises
 
 Return a JSON object with:
 - mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] } 
@@ -249,7 +337,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     };
   }
 
-  // Save recommendation
+  // Save recommendation with ML metadata
   const recommendation = new Recommendation({
     userId: user._id,
     date: today,
@@ -258,22 +346,53 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     workoutPlan: recommendationData.workoutPlan,
     hydrationGoal: recommendationData.hydrationGoal,
     insights: recommendationData.insights || [],
-      aiVersion: "gemini-pro"
+    aiVersion: "gemini-pro",
+    // Add ML metadata
+    mlMetadata: {
+      userType: context.user.userType,
+      usedFavoriteFoods: context.user.favoriteFoods.slice(0, 3),
+      adaptedForUserType: true
+    }
   });
 
   await recommendation.save();
+  
+  console.log('✅ Recommendation saved with ML insights');
 
   return recommendation;
   } catch (geminiError) {
     console.error('❌ Google Gemini API error:', geminiError);
+    console.error('❌ Error details:', {
+      message: geminiError.message,
+      status: geminiError.status,
+      statusCode: geminiError.statusCode,
+      code: geminiError.code
+    });
     
-    // If Gemini fails, return fallback recommendation
-    if (geminiError.message?.includes('API key') || geminiError.message?.includes('not configured')) {
-      throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable.');
+    // Check for specific error types
+    if (geminiError.message?.includes('API key') || 
+        geminiError.message?.includes('not configured') ||
+        geminiError.status === 401 ||
+        geminiError.statusCode === 401) {
+      throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable. Get your free API key at https://aistudio.google.com/app/apikey');
+    }
+    
+    if (geminiError.message?.includes('timeout') || geminiError.message === 'Request timeout') {
+      throw new Error('AI recommendation request timed out. Please try again.');
+    }
+    
+    if (geminiError.message?.includes('not found') || 
+        geminiError.status === 404 ||
+        geminiError.statusCode === 404) {
+      throw new Error('Gemini model not available. Please check the model name or API access.');
+    }
+    
+    if (geminiError.status === 429 || geminiError.statusCode === 429) {
+      throw new Error('AI recommendation service is currently busy. Please try again in a moment.');
     }
     
     // For other errors, throw to be handled by the route handler
-    throw geminiError;
+    throw new Error(`AI recommendation error: ${geminiError.message || 'Unknown error'}. Please check backend logs for details.`);
   }
 }
 

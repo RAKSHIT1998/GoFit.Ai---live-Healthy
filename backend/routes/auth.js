@@ -10,17 +10,26 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, goals, activityLevel, dietaryPreferences, allergies, fastingPreference } = req.body;
 
+    console.log('🔵 Registration request received:', { 
+      name: name?.substring(0, 10) + '...', 
+      email: email?.substring(0, 10) + '...',
+      hasPassword: !!password 
+    });
+
     if (!name || !email || !password) {
+      console.log('❌ Registration failed: Missing required fields');
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
     if (password.length < 8) {
+      console.log('❌ Registration failed: Password too short');
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
     // Check if user exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
+      console.log('❌ Registration failed: User already exists');
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -48,6 +57,12 @@ router.post('/register', async (req, res) => {
     });
 
     await user.save();
+    console.log('✅ User created successfully in database:', {
+      id: user._id.toString(),
+      email: user.email,
+      subscriptionStatus: user.subscription.status,
+      trialEndDate: user.subscription.trialEndDate
+    });
 
     // Generate token
     const token = generateToken(user._id);
@@ -62,7 +77,7 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('❌ Registration error:', error);
     
     // Extract more detailed error message
     let errorMessage = 'Registration failed';
@@ -70,6 +85,11 @@ router.post('/register', async (req, res) => {
       // Mongoose validation error
       const firstError = Object.values(error.errors)[0];
       errorMessage = firstError?.message || error.message || 'Validation failed';
+      console.error('Validation errors:', error.errors);
+    } else if (error.code === 11000) {
+      // Duplicate key error (email already exists)
+      errorMessage = 'User with this email already exists';
+      console.error('Duplicate key error:', error.keyPattern);
     } else if (error.message) {
       errorMessage = error.message;
     }
@@ -86,6 +106,8 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log('🔵 Login request received for:', email?.substring(0, 10) + '...');
+
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
@@ -93,14 +115,18 @@ router.post('/login', async (req, res) => {
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
+      console.log('❌ Login failed: User not found');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log('❌ Login failed: Invalid password');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    console.log('✅ Login successful for user:', user._id.toString());
 
     // Generate token
     const token = generateToken(user._id);
@@ -115,7 +141,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 });
@@ -123,6 +149,7 @@ router.post('/login', async (req, res) => {
 // Get current user
 router.get('/me', authMiddleware, async (req, res) => {
   try {
+    console.log('🔵 /me request for user:', req.user._id.toString());
     res.json({
       id: req.user._id.toString(),
       name: req.user.name,
@@ -137,7 +164,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       metrics: req.user.metrics
     });
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('❌ Get user error:', error);
     res.status(500).json({ message: 'Failed to get user', error: error.message });
   }
 });
@@ -324,4 +351,3 @@ function generateToken(userId) {
 }
 
 export default router;
-

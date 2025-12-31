@@ -13,6 +13,15 @@ import recommendationRoutes from './routes/recommendations.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import adminRoutes from './routes/admin.js';
 import healthRoutes from './routes/health.js';
+import progressRoutes from './routes/progress.js';
+import workoutRoutes from './routes/workouts.js';
+import mealPlanRoutes from './routes/mealPlans.js';
+import recipeRoutes from './routes/recipes.js';
+import challengeRoutes from './routes/challenges.js';
+import measurementRoutes from './routes/measurements.js';
+import barcodeRoutes from './routes/barcode.js';
+import educationRoutes from './routes/education.js';
+import analyticsRoutes from './routes/analytics.js';
 
 dotenv.config();
 
@@ -56,7 +65,16 @@ app.get('/', (req, res) => {
       fasting: '/api/fasting',
       recommendations: '/api/recommendations',
       subscriptions: '/api/subscriptions',
-      healthData: '/api/health'
+      healthData: '/api/health',
+      progress: '/api/progress',
+      workouts: '/api/workouts',
+      mealPlans: '/api/meal-plans',
+      recipes: '/api/recipes',
+      challenges: '/api/challenges',
+      measurements: '/api/measurements',
+      barcode: '/api/barcode',
+      education: '/api/education',
+      analytics: '/api/analytics'
     }
   });
 });
@@ -75,6 +93,15 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api/workouts', workoutRoutes);
+app.use('/api/meal-plans', mealPlanRoutes);
+app.use('/api/recipes', recipeRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/measurements', measurementRoutes);
+app.use('/api/barcode', barcodeRoutes);
+app.use('/api/education', educationRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -132,6 +159,15 @@ async function startServer() {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✅ Required environment variables loaded`);
+      
+      // Log Gemini API key status (without exposing the key)
+      if (process.env.GEMINI_API_KEY) {
+        const keyPreview = process.env.GEMINI_API_KEY.substring(0, 10) + '...';
+        console.log(`✅ GEMINI_API_KEY is configured (${keyPreview})`);
+      } else {
+        console.log(`⚠️  GEMINI_API_KEY is NOT configured - Food recognition will not work`);
+        console.log(`   Get your free API key at: https://aistudio.google.com/app/apikey`);
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);

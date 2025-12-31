@@ -127,29 +127,38 @@ final class AuthViewModel: ObservableObject {
             throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Password must be at least 8 characters long"])
         }
         
+        print("🔵 Starting signup for: \(email)")
+        
         // Perform signup
         let token = try await AuthService.shared.signup(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             email: email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: password
         )
+        
+        print("✅ Signup successful, token received")
+        
         self.token = token
         self.isLoggedIn = true
         
-        // Fetch user profile to get complete user data
+        // Fetch user profile to get complete user data (including userId from database)
         do {
+            print("🔵 Fetching user profile from backend...")
             let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             self.userId = me.id
             self.email = me.email
             self.name = me.name
             // Update local state with fetched data
             saveLocalState()
+            print("✅ User profile fetched successfully. User ID: \(me.id)")
         } catch {
             // If /me fails, use the data from signup form
             print("⚠️ Failed to fetch user profile after signup: \(error.localizedDescription)")
+            // Still save what we have - user was created successfully
             self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
             self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
             saveLocalState()
+            // Don't throw - signup was successful, profile fetch is secondary
         }
     }
 
@@ -228,6 +237,13 @@ final class AuthViewModel: ObservableObject {
     func refreshUserProfile() async {
         guard !EnvironmentConfig.skipAuthentication, isLoggedIn else { return }
         
+        // Check if token exists before attempting refresh
+        guard let token = AuthService.shared.readToken(), !token.accessToken.isEmpty else {
+            print("⚠️ No token found, cannot refresh profile")
+            // Don't log out - token might be valid but just not loaded yet
+            return
+        }
+        
         do {
             let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             await MainActor.run {
@@ -235,11 +251,22 @@ final class AuthViewModel: ObservableObject {
                 self.email = me.email
                 self.name = me.name
                 saveLocalState()
+                print("✅ User profile refreshed successfully")
             }
         } catch {
-            print("⚠️ Failed to refresh user profile: \(error.localizedDescription)")
-            // If refresh fails, user might need to login again
-            // But don't log them out automatically - let them try to use the app
+            // Check if it's a 401 (unauthorized) error
+            if let nsError = error as NSError?,
+               nsError.code == 401 {
+                print("❌ Token expired or invalid (401). Logging out user.")
+                await MainActor.run {
+                    // Only log out on actual 401 errors, not network issues
+                    self.logout()
+                }
+            } else {
+                // For other errors (network, timeout, etc.), don't log out
+                print("⚠️ Failed to refresh user profile (non-auth error): \(error.localizedDescription)")
+                // User can still use the app - might be a temporary network issue
+            }
         }
     }
     

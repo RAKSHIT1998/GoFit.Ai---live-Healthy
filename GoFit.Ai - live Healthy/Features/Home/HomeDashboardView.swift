@@ -562,12 +562,16 @@ struct HomeDashboardView: View {
             }
         } catch {
             print("Summary error:", error)
-            // If token is invalid, log out user
+            // Only log out on actual 401 (unauthorized) errors, not network errors
             if let nsError = error as NSError?,
-               nsError.code == 401 || (nsError.userInfo[NSLocalizedDescriptionKey] as? String)?.contains("token") == true {
+               nsError.code == 401 {
+                print("❌ Unauthorized (401) - token expired or invalid. Logging out.")
                 await MainActor.run {
                     auth.logout()
                 }
+            } else {
+                // For network errors, timeouts, etc., just log but don't log out
+                print("⚠️ Summary load failed (non-auth error): \(error.localizedDescription)")
             }
         }
 

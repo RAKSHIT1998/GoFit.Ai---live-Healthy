@@ -84,6 +84,11 @@ const recommendationSchema = new mongoose.Schema({
   },
   insights: [String],
   aiVersion: String,
+  mlMetadata: {
+    userType: String,
+    usedFavoriteFoods: [String],
+    adaptedForUserType: Boolean
+  },
   createdAt: {
     type: Date,
     default: Date.now

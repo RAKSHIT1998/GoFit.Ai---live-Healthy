@@ -80,10 +80,19 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     }
 
     // Check if Google Gemini API key is configured
-    if (!genAI || !GEMINI_API_KEY) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+      console.error('❌ GEMINI_API_KEY is not set or empty');
       return res.status(500).json({ 
         message: 'Food recognition service is not configured. Please set GEMINI_API_KEY environment variable. Get your free API key at https://aistudio.google.com/app/apikey',
         error: 'Gemini API key missing'
+      });
+    }
+    
+    if (!genAI) {
+      console.error('❌ Failed to initialize GoogleGenerativeAI');
+      return res.status(500).json({ 
+        message: 'Food recognition service initialization failed. Please check GEMINI_API_KEY configuration.',
+        error: 'Gemini initialization failed'
       });
     }
 
@@ -97,9 +106,29 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     
     try {
       console.log('🤖 Starting Google Gemini analysis for user:', userId);
+      console.log('📝 GEMINI_API_KEY status:', GEMINI_API_KEY ? `Set (${GEMINI_API_KEY.substring(0, 10)}...)` : 'NOT SET');
       
       // Use Gemini Pro for image analysis (supports multimodal including images)
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      // Note: If gemini-pro doesn't work, try gemini-1.5-pro or gemini-1.5-flash
+      let model;
+      try {
+        model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        console.log('✅ Using model: gemini-pro');
+      } catch (modelError) {
+        console.error('❌ Failed to initialize gemini-pro, trying alternatives:', modelError.message);
+        // Try alternative models if gemini-pro fails
+        try {
+          model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+          console.log('✅ Using model: gemini-1.5-pro');
+        } catch (e1) {
+          try {
+            model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+            console.log('✅ Using model: gemini-1.5-flash');
+          } catch (e2) {
+            throw new Error(`Failed to initialize any Gemini model. gemini-pro error: ${modelError.message}`);
+          }
+        }
+      }
       
       const prompt = `You are a nutrition expert analyzing food and drink images. Identify ALL items visible and provide accurate nutritional information.
 
@@ -205,6 +234,12 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
     });
     } catch (geminiError) {
       console.error('❌ Google Gemini API error:', geminiError);
+      console.error('❌ Error details:', {
+        message: geminiError.message,
+        status: geminiError.status,
+        statusCode: geminiError.statusCode,
+        code: geminiError.code
+      });
       
       // Check if it's a timeout
       if (geminiError.message?.includes('timeout') || geminiError.message === 'Request timeout') {
@@ -215,10 +250,27 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
       }
       
       // Check for API key issues
-      if (geminiError.message?.includes('API key') || geminiError.status === 401 || geminiError.statusCode === 401) {
+      if (geminiError.message?.includes('API key') || 
+          geminiError.message?.includes('API_KEY') ||
+          geminiError.status === 401 || 
+          geminiError.statusCode === 401 ||
+          geminiError.code === 401) {
         return res.status(500).json({ 
-          message: 'Food recognition service authentication failed. Please check GEMINI_API_KEY configuration.',
-          error: 'Gemini API key issue'
+          message: 'Food recognition service authentication failed. Please verify GEMINI_API_KEY is correctly set in Render environment variables.',
+          error: 'Gemini API key issue',
+          hint: 'Check Render dashboard → Environment → GEMINI_API_KEY'
+        });
+      }
+      
+      // Check for model not found errors
+      if (geminiError.message?.includes('not found') || 
+          geminiError.message?.includes('404') ||
+          geminiError.status === 404 ||
+          geminiError.statusCode === 404) {
+        return res.status(500).json({ 
+          message: 'Gemini model not available. Please check the model name or API access.',
+          error: 'Model not found',
+          hint: 'The model might not be available for your API key. Check Google AI Studio for available models.'
         });
       }
       
@@ -230,7 +282,12 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
         });
       }
       
-      throw geminiError; // Re-throw to outer catch
+      // Generic Gemini error - return instead of throwing
+      return res.status(500).json({ 
+        message: `Food recognition error: ${geminiError.message || 'Unknown error'}. Please check backend logs for details.`,
+        error: geminiError.message || 'Unknown Gemini API error',
+        hint: 'Check Render logs for detailed error information'
+      });
     }
   } catch (error) {
     console.error('Photo analysis error:', error);
