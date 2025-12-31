@@ -307,7 +307,7 @@ struct MealScannerView3: View {
                 } else if errorMessage.contains("no food items") || errorMessage.contains("no items") {
                     errorMsg = "Could not identify food items. Please try a clearer photo."
                 } else if errorMessage.contains("Gemini") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("not configured") || errorMessage.contains("Food recognition service") || errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") {
-                    errorMsg = errorMessage.contains("Food recognition") ? errorMessage : "Food recognition service is not configured. Please contact support."
+                    errorMsg = (errorMessage.contains("Food recognition") || errorMessage.contains("recognition service")) ? errorMessage : "Food recognition service is not configured. Please contact support."
                 } else if errorMessage.contains("authentication failed") || errorMessage.contains("API key") {
                     errorMsg = "Service configuration error. Please contact support."
                 } else if errorMessage.contains("Rate limit") || errorMessage.contains("currently busy") {
