@@ -94,14 +94,15 @@ router.post('/feedback', authMiddleware, async (req, res) => {
 
 async function generateRecommendation(user) {
   // Get ML insights for personalized recommendations
-  const mlInsights = await mlService.getMLInsights(user._id);
+  let mlInsights = await mlService.getMLInsights(user._id);
   
   // Classify user type if not already done
   if (!mlInsights || !mlInsights.userType) {
     await mlService.classifyUserType(user._id);
     const updatedInsights = await mlService.getMLInsights(user._id);
     if (updatedInsights) {
-      Object.assign(mlInsights || {}, updatedInsights);
+      // Reassign mlInsights to use the updated insights
+      mlInsights = updatedInsights;
     }
   }
   
