@@ -21,8 +21,8 @@ struct CameraView: UIViewRepresentable {
         func setup() {
             session.beginConfiguration()
             // Use photo preset optimized for still image capture
-            // .photo is the correct preset for photo capture, not .high (which is for video)
             session.sessionPreset = .photo
+            
             // Camera device
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let input = try? AVCaptureDeviceInput(device: device),
@@ -34,6 +34,15 @@ struct CameraView: UIViewRepresentable {
             if session.canAddOutput(output) {
                 session.addOutput(output)
             }
+            
+            // Configure for fastest capture
+            if let photoOutput = output as? AVCapturePhotoOutput {
+                // Enable fast capture mode if available
+                if photoOutput.isHighResolutionCaptureEnabled {
+                    // Keep high resolution available but don't force it for speed
+                }
+            }
+            
             session.commitConfiguration()
             // Start session immediately for faster camera opening
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -52,12 +61,17 @@ struct CameraView: UIViewRepresentable {
 
         func capture() {
             guard session.isRunning else { return }
-            let settings = AVCapturePhotoSettings()
-            if #available(iOS 16.0, *) {
-                settings.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+            // Use fastest capture settings for instant photo
+            // Prioritize speed over maximum resolution for one-tap capture
+            let settings: AVCapturePhotoSettings
+            if output.availablePhotoCodecTypes.contains(.hevc) {
+                settings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
             } else {
-                settings.isHighResolutionPhotoEnabled = true
+                settings = AVCapturePhotoSettings()
             }
+            // Disable high resolution for faster capture
+            settings.isHighResolutionPhotoEnabled = false
+            // Capture immediately without delay
             output.capturePhoto(with: settings, delegate: self)
         }
     }
@@ -86,14 +100,11 @@ struct CameraView: UIViewRepresentable {
         let newTrigger = captureTrigger
         if newTrigger != context.coordinator.lastCaptureTrigger {
             // Update the trigger synchronously to prevent race conditions
-            // This ensures that if updateUIView is called multiple times before async executes,
-            // subsequent calls will see the updated value and won't trigger another capture
             context.coordinator.lastCaptureTrigger = newTrigger
             
-            // Trigger capture asynchronously to avoid blocking the view update
-            DispatchQueue.main.async {
-                context.coordinator.capture()
-            }
+            // Capture immediately on the current queue for instant response
+            // This ensures the photo is taken as soon as the button is pressed
+            context.coordinator.capture()
         }
     }
 

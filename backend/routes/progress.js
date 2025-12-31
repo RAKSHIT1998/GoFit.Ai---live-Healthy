@@ -22,8 +22,10 @@ router.post('/photo', authMiddleware, upload.single('photo'), async (req, res) =
     
     try {
       const s3Result = await uploadToS3(req.file, `progress/${req.user._id}/`);
-      imageUrl = s3Result.url;
-      imageKey = s3Result.key;
+      if (s3Result) {
+        imageUrl = s3Result.url;
+        imageKey = s3Result.key;
+      }
     } catch (s3Error) {
       console.error('S3 upload error:', s3Error);
       // Continue without S3 if not configured

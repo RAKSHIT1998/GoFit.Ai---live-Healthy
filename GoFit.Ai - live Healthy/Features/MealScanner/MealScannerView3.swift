@@ -45,6 +45,10 @@ struct MealScannerView3: View {
                         
                         // Capture Button
                         Button(action: { 
+                            // Provide immediate haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                            // Trigger capture immediately
                             captureTrigger += 1
                         }) {
                             ZStack {
