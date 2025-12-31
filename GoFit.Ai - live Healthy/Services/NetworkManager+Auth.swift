@@ -98,7 +98,7 @@ final class NetworkManager {
         let decoded: PhotoAnalysisResponse
         do {
             decoded = try JSONDecoder().decode(PhotoAnalysisResponse.self, from: d)
-        } catch let decodeError {
+        } catch {
             // Only catch actual decoding errors, not validation errors
             if let errorStr = String(data: d, encoding: .utf8) {
                 print("⚠️ Decode error. Response: \(errorStr)")
