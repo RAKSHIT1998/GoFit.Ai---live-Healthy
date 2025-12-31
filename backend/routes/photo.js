@@ -101,26 +101,36 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       // Use Gemini 1.5 Flash for faster, cost-effective analysis
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
-      const prompt = `Analyze this food or drink image carefully and identify ALL items visible (food, beverages, drinks). For each item, provide detailed nutritional information.
+      const prompt = `You are a nutrition expert analyzing food and drink images. Identify ALL items visible and provide accurate nutritional information.
+
+CRITICAL NAMING RULES:
+- Use proper, recognizable dish names when identifying complete dishes (e.g., "Chicken Biryani", "Caesar Salad", "Margherita Pizza", "Pad Thai", "Burger with Fries")
+- For individual ingredients in a mixed dish, use descriptive names (e.g., "Grilled Chicken Breast", "Steamed Rice", "Mixed Vegetables")
+- For beverages, use brand names when visible (e.g., "Coca Cola", "Pepsi", "Starbucks Coffee") or generic names (e.g., "Orange Juice", "Red Wine", "Green Tea")
+- Use common, well-known food names that users would recognize
+- If you see a complete dish, name it as the dish (e.g., "Spaghetti Carbonara" not "pasta, eggs, bacon")
+- Capitalize food names properly (e.g., "Chicken Tikka Masala" not "chicken tikka masala")
 
 Return a JSON array where each item has:
-- name: string (specific item name, e.g., "Grilled Chicken Breast", "Coca Cola", "Orange Juice" - be specific)
+- name: string (proper dish/food name - use recognizable names like "Chicken Curry", "Caesar Salad", "Orange Juice", "Coca Cola")
 - calories: number (estimated calories for the portion shown)
 - protein: number (grams of protein)
 - carbs: number (grams of carbohydrates)
 - fat: number (grams of fat)
 - sugar: number (grams of sugar - IMPORTANT: include this field, especially for drinks)
-- portionSize: string (estimated portion, e.g., "200g", "1 cup", "250ml", "1 can")
+- portionSize: string (estimated portion, e.g., "200g", "1 cup", "250ml", "1 can", "1 serving")
 - confidence: number (0-1, how confident you are in the identification)
 
 IMPORTANT:
 - If this is a drink/beverage, include calories and sugar content
-- Be specific and accurate
-- If you see multiple items (e.g., rice, chicken, vegetables, or multiple drinks), list each separately
+- For complete dishes, use the dish name rather than listing ingredients separately
+- If multiple separate items are visible, list each with its proper name
 - Estimate portion sizes based on common serving sizes and what's visible in the image
 - Include sugar content for all items (even if 0 for items like plain chicken or water)
+- Use proper capitalization and spelling for all food names
 
-Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just the raw JSON array.`;
+Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just the raw JSON array. Example format:
+[{"name": "Chicken Biryani", "calories": 450, "protein": 25, "carbs": 55, "fat": 12, "sugar": 2, "portionSize": "1 serving", "confidence": 0.9}]`;
 
       const geminiPromise = model.generateContent([
         prompt,

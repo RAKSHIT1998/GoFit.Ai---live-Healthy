@@ -2,14 +2,15 @@ import express from 'express';
 import Recommendation from '../models/Recommendation.js';
 import Meal from '../models/Meal.js';
 import User from '../models/User.js';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize Google Gemini AI
+// Get your free API key at: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // Get daily recommendations
 router.get('/daily', authMiddleware, async (req, res) => {
@@ -74,7 +75,12 @@ async function generateRecommendation(user) {
     }))
   };
 
-  // Generate meal plan with OpenAI - Enhanced prompt for better recommendations
+  // Check if Gemini API key is configured
+  if (!genAI || !GEMINI_API_KEY) {
+    throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable.');
+  }
+
+  // Generate meal plan with Google Gemini - Enhanced prompt for better recommendations
   const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
 USER PROFILE:
@@ -134,48 +140,47 @@ IMPORTANT REQUIREMENTS:
 - Include variety to prevent boredom and ensure nutritional completeness
 - Consider meal timing based on fasting preference: ${context.user.fastingPreference}
 
-Return ONLY valid JSON, no markdown, no code blocks, no explanations outside the JSON structure. The response must be parseable JSON.`;
+Return ONLY valid JSON, no markdown, no code blocks, no explanations outside the JSON structure. The response must be parseable JSON.
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o", // Updated to latest model for better recommendations
-    messages: [
-      {
-        role: "system",
-        content: `You are an expert nutritionist and certified personal trainer with years of experience. 
-        Your recommendations are evidence-based, personalized, and practical. 
-        Consider the user's goals, activity level, dietary preferences, and recent meal history.
-        Provide detailed, actionable meal plans with complete recipes and workout plans with step-by-step exercise instructions.
-        Ensure all recommendations are safe, achievable, and aligned with the user's profile.`
-      },
-      {
-        role: "user",
-        content: prompt
-      }
-    ],
-    temperature: 0.7, // Balanced creativity and consistency
-    max_tokens: 4000 // Increased for more detailed meal recipes and workout instructions
-  });
-
-  const content = response.choices[0].message.content;
-  let recommendationData;
+You are an expert nutritionist and certified personal trainer with years of experience. 
+Your recommendations are evidence-based, personalized, and practical. 
+Consider the user's goals, activity level, dietary preferences, and recent meal history.
+Provide detailed, actionable meal plans with complete recipes and workout plans with step-by-step exercise instructions.
+Ensure all recommendations are safe, achievable, and aligned with the user's profile.`;
 
   try {
-    // Try multiple parsing strategies for better reliability
-    let jsonString = content.trim();
+    // Use Gemini 1.5 Pro for better recommendations (more capable than Flash for complex tasks)
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-pro',
+      generationConfig: {
+        temperature: 0.7, // Balanced creativity and consistency
+        maxOutputTokens: 4000 // Increased for more detailed meal recipes and workout instructions
+      }
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const content = response.text();
     
-    // Remove markdown code blocks if present
-    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    
-    // Try to extract JSON object
-    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      recommendationData = JSON.parse(jsonMatch[0]);
-    } else {
-      recommendationData = JSON.parse(jsonString);
-    }
-  } catch (error) {
-    console.error('Failed to parse OpenAI recommendation response:', error);
-    console.error('Response content:', content.substring(0, 500));
+    let recommendationData;
+
+    try {
+      // Try multiple parsing strategies for better reliability
+      let jsonString = content.trim();
+      
+      // Remove markdown code blocks if present
+      jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      
+      // Try to extract JSON object
+      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        recommendationData = JSON.parse(jsonMatch[0]);
+      } else {
+        recommendationData = JSON.parse(jsonString);
+      }
+    } catch (parseError) {
+      console.error('Failed to parse Gemini recommendation response:', parseError);
+      console.error('Response content:', content ? content.substring(0, 500) : 'No content');
     // Fallback recommendation with full details
     recommendationData = {
       mealPlan: {
@@ -241,24 +246,35 @@ Return ONLY valid JSON, no markdown, no code blocks, no explanations outside the
       },
       hydrationGoal: { targetLiters: 2.5 },
       insights: ["Stay hydrated throughout the day", "Aim for 8-10 glasses of water daily"]
-    };
+      };
+    }
+
+    // Save recommendation
+    const recommendation = new Recommendation({
+      userId: user._id,
+      date: today,
+      type: 'meal',
+      mealPlan: recommendationData.mealPlan,
+      workoutPlan: recommendationData.workoutPlan,
+      hydrationGoal: recommendationData.hydrationGoal,
+      insights: recommendationData.insights || [],
+      aiVersion: "gemini-1.5-pro"
+    });
+
+    await recommendation.save();
+
+    return recommendation;
+  } catch (geminiError) {
+    console.error('❌ Google Gemini API error:', geminiError);
+    
+    // If Gemini fails, return fallback recommendation
+    if (geminiError.message?.includes('API key') || geminiError.message?.includes('not configured')) {
+      throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable.');
+    }
+    
+    // For other errors, throw to be handled by the route handler
+    throw geminiError;
   }
-
-  // Save recommendation
-  const recommendation = new Recommendation({
-    userId: user._id,
-    date: today,
-    type: 'meal',
-    mealPlan: recommendationData.mealPlan,
-    workoutPlan: recommendationData.workoutPlan,
-    hydrationGoal: recommendationData.hydrationGoal,
-    insights: recommendationData.insights || [],
-    aiVersion: "gpt-4o"
-  });
-
-  await recommendation.save();
-
-  return recommendation;
 }
 
 export default router;
