@@ -554,10 +554,10 @@ struct HomeDashboardView: View {
             let sugar = (summary.sugar ?? 0).isFinite && !(summary.sugar ?? 0).isNaN ? (summary.sugar ?? 0) : 0
 
             await MainActor.run {
-                todayCalories = "\(Int(calories))"
-                todayProtein = "\(Int(protein))g"
-                todayCarbs = "\(Int(carbs))g"
-                todayFat = "\(Int(fat))g"
+            todayCalories = "\(Int(calories))"
+            todayProtein = "\(Int(protein))g"
+            todayCarbs = "\(Int(carbs))g"
+            todayFat = "\(Int(fat))g"
                 todaySugar = sugar
             }
         } catch {

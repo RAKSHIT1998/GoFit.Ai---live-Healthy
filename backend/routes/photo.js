@@ -98,8 +98,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     try {
       console.log('🤖 Starting Google Gemini analysis for user:', userId);
       
-      // Use Gemini 1.5 Flash for faster, cost-effective analysis
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      // Use Gemini Pro for image analysis (supports multimodal including images)
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
       
       const prompt = `You are a nutrition expert analyzing food and drink images. Identify ALL items visible and provide accurate nutritional information.
 
@@ -150,59 +150,59 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
       console.log('✅ Google Gemini analysis completed');
       
       // Parse JSON from response
-      let items = [];
-      
-      try {
+    let items = [];
+    
+    try {
         // Try to extract JSON array from response
-        const jsonMatch = content.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          items = JSON.parse(jsonMatch[0]);
-        } else {
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        items = JSON.parse(jsonMatch[0]);
+      } else {
           // Try parsing the entire content
-          items = JSON.parse(content);
-        }
-      } catch (parseError) {
+        items = JSON.parse(content);
+      }
+    } catch (parseError) {
         console.error('Failed to parse Gemini response:', parseError);
         console.error('Gemini Response content:', content);
-        // Fallback: create a basic item
-        items = [{
+      // Fallback: create a basic item
+      items = [{
           name: "Food/Drink item",
-          calories: 200,
-          protein: 10,
-          carbs: 30,
-          fat: 5,
-          sugar: 5,
-          portionSize: "1 serving",
-          confidence: 0.5
-        }];
-      }
+        calories: 200,
+        protein: 10,
+        carbs: 30,
+        fat: 5,
+        sugar: 5,
+        portionSize: "1 serving",
+        confidence: 0.5
+      }];
+    }
 
       // Validate items array
       if (!Array.isArray(items) || items.length === 0) {
         throw new Error('Gemini analysis returned invalid or empty results');
       }
 
-      // Calculate totals
-      const totals = items.reduce((acc, item) => ({
-        calories: acc.calories + (item.calories || 0),
-        protein: acc.protein + (item.protein || 0),
-        carbs: acc.carbs + (item.carbs || 0),
-        fat: acc.fat + (item.fat || 0),
-        sugar: acc.sugar + (item.sugar || 0)
-      }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
+    // Calculate totals
+    const totals = items.reduce((acc, item) => ({
+      calories: acc.calories + (item.calories || 0),
+      protein: acc.protein + (item.protein || 0),
+      carbs: acc.carbs + (item.carbs || 0),
+      fat: acc.fat + (item.fat || 0),
+      sugar: acc.sugar + (item.sugar || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
 
-      res.json({
-        items,
-        imageUrl: imageUrl || null, // null if S3 not configured
-        imageKey: imageKey || null, // null if S3 not configured
-        totalCalories: totals.calories,
-        totalProtein: totals.protein,
-        totalCarbs: totals.carbs,
-        totalFat: totals.fat,
-        totalSugar: totals.sugar,
-        aiVersion: "gemini-1.5-flash",
-        s3Configured: s3Configured || false
-      });
+    res.json({
+      items,
+      imageUrl: imageUrl || null, // null if S3 not configured
+      imageKey: imageKey || null, // null if S3 not configured
+      totalCalories: totals.calories,
+      totalProtein: totals.protein,
+      totalCarbs: totals.carbs,
+      totalFat: totals.fat,
+      totalSugar: totals.sugar,
+        aiVersion: "gemini-pro",
+      s3Configured: s3Configured || false
+    });
     } catch (geminiError) {
       console.error('❌ Google Gemini API error:', geminiError);
       

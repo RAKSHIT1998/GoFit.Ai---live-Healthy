@@ -74,7 +74,7 @@ struct CameraView: UIViewRepresentable {
         }
         context.coordinator.lastCaptureTrigger = captureTrigger
         // Camera should already be starting in setup(), but ensure it starts
-        context.coordinator.start()
+            context.coordinator.start()
         return view
     }
 

@@ -143,15 +143,15 @@ IMPORTANT REQUIREMENTS:
 Return ONLY valid JSON, no markdown, no code blocks, no explanations outside the JSON structure. The response must be parseable JSON.
 
 You are an expert nutritionist and certified personal trainer with years of experience. 
-Your recommendations are evidence-based, personalized, and practical. 
-Consider the user's goals, activity level, dietary preferences, and recent meal history.
-Provide detailed, actionable meal plans with complete recipes and workout plans with step-by-step exercise instructions.
+        Your recommendations are evidence-based, personalized, and practical. 
+        Consider the user's goals, activity level, dietary preferences, and recent meal history.
+        Provide detailed, actionable meal plans with complete recipes and workout plans with step-by-step exercise instructions.
 Ensure all recommendations are safe, achievable, and aligned with the user's profile.`;
 
   try {
-    // Use Gemini 1.5 Pro for better recommendations (more capable than Flash for complex tasks)
+    // Use Gemini Pro for recommendations (stable and widely available)
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-pro',
+      model: 'gemini-pro',
       generationConfig: {
         temperature: 0.7, // Balanced creativity and consistency
         maxOutputTokens: 4000 // Increased for more detailed meal recipes and workout instructions
@@ -162,22 +162,22 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     const response = await result.response;
     const content = response.text();
     
-    let recommendationData;
+  let recommendationData;
 
-    try {
-      // Try multiple parsing strategies for better reliability
-      let jsonString = content.trim();
-      
-      // Remove markdown code blocks if present
-      jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      
-      // Try to extract JSON object
-      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        recommendationData = JSON.parse(jsonMatch[0]);
-      } else {
-        recommendationData = JSON.parse(jsonString);
-      }
+  try {
+    // Try multiple parsing strategies for better reliability
+    let jsonString = content.trim();
+    
+    // Remove markdown code blocks if present
+    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Try to extract JSON object
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      recommendationData = JSON.parse(jsonMatch[0]);
+    } else {
+      recommendationData = JSON.parse(jsonString);
+    }
     } catch (parseError) {
       console.error('Failed to parse Gemini recommendation response:', parseError);
       console.error('Response content:', content ? content.substring(0, 500) : 'No content');
@@ -246,24 +246,24 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       },
       hydrationGoal: { targetLiters: 2.5 },
       insights: ["Stay hydrated throughout the day", "Aim for 8-10 glasses of water daily"]
-      };
-    }
+    };
+  }
 
-    // Save recommendation
-    const recommendation = new Recommendation({
-      userId: user._id,
-      date: today,
-      type: 'meal',
-      mealPlan: recommendationData.mealPlan,
-      workoutPlan: recommendationData.workoutPlan,
-      hydrationGoal: recommendationData.hydrationGoal,
-      insights: recommendationData.insights || [],
-      aiVersion: "gemini-1.5-pro"
-    });
+  // Save recommendation
+  const recommendation = new Recommendation({
+    userId: user._id,
+    date: today,
+    type: 'meal',
+    mealPlan: recommendationData.mealPlan,
+    workoutPlan: recommendationData.workoutPlan,
+    hydrationGoal: recommendationData.hydrationGoal,
+    insights: recommendationData.insights || [],
+      aiVersion: "gemini-pro"
+  });
 
-    await recommendation.save();
+  await recommendation.save();
 
-    return recommendation;
+  return recommendation;
   } catch (geminiError) {
     console.error('❌ Google Gemini API error:', geminiError);
     
