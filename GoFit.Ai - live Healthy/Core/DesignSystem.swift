@@ -11,10 +11,16 @@ struct AppDesign {
         static let accent = Color(red: 1.0, green: 0.84, blue: 0.0) // Sunrise Yellow
         static let secondary = Color.gray
         
-        // Background - Force Light Mode
-        static let background = Color.white
-        static let cardBackground = Color(white: 0.98)
-        static let secondaryBackground = Color(white: 0.95)
+        // Background - Adaptive for Dark Mode
+        static var background: Color {
+            Color(uiColor: UIColor.systemBackground)
+        }
+        static var cardBackground: Color {
+            Color(uiColor: UIColor.secondarySystemBackground)
+        }
+        static var secondaryBackground: Color {
+            Color(uiColor: UIColor.tertiarySystemBackground)
+        }
         
         // Gradient
         static var primaryGradient: LinearGradient {
@@ -25,9 +31,11 @@ struct AppDesign {
             )
         }
         
-        // Glassmorphism background - Light mode only
-        static var glassBackground: Color {
-            Color.white.opacity(0.7)
+        // Glassmorphism background - Adaptive for Dark Mode
+        static func glassBackground(colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark 
+                ? Color.white.opacity(0.1)
+                : Color.white.opacity(0.7)
         }
         static var glassBackgroundDark: Color {
             Color.white.opacity(0.1)

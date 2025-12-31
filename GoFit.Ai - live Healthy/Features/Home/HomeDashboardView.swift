@@ -18,6 +18,7 @@ struct HomeDashboardView: View {
     @State private var todayProtein = "—"
     @State private var todayCarbs = "—"
     @State private var todayFat = "—"
+    @State private var todaySugar: Double = 0
 
     @State private var fastingStatus = "Not fasting"
     @State private var waterIntake: Double = 0
@@ -38,6 +39,7 @@ struct HomeDashboardView: View {
                         quickActionsSection
                         healthMetricsSection
                         waterIntakeCard
+                        sugarMeterCard
                         aiRecommendationsCard
                     }
                     .padding(.horizontal, Design.Spacing.md)
@@ -199,9 +201,9 @@ struct HomeDashboardView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .background(Color.white)
+        .background(Design.Colors.cardBackground)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
     
 
@@ -413,9 +415,67 @@ struct HomeDashboardView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .background(Color.white)
+        .background(Design.Colors.cardBackground)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
+    }
+
+    // MARK: - Sugar Meter Card
+    private var sugarMeterCard: some View {
+        VStack(alignment: .leading, spacing: Design.Spacing.md) {
+            HStack {
+                Label("Sugar Intake", systemImage: "chart.bar.fill")
+                    .foregroundColor(Design.Colors.sugar)
+                    .font(Design.Typography.headline)
+
+                Spacer()
+
+                Text("\(String(format: "%.1f", todaySugar))g")
+                    .font(Design.Typography.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(Design.Colors.sugar)
+            }
+
+            let progress: Double = {
+                guard AppConstants.defaultSugarGoal > 0,
+                      todaySugar.isFinite,
+                      !todaySugar.isNaN else {
+                    return 0.0
+                }
+                return min(todaySugar / AppConstants.defaultSugarGoal, 1.0)
+            }()
+            
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: 16)
+                    
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Design.Colors.sugar)
+                        .frame(width: geo.size.width * progress, height: 16)
+                        .animation(Design.Animation.smooth, value: progress)
+                }
+            }
+            .frame(height: 16)
+
+            HStack {
+                Text("Goal: \(String(format: "%.0f", AppConstants.defaultSugarGoal))g")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Text("\(Int(progress * 100))%")
+                    .font(Design.Typography.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Design.Colors.sugar)
+            }
+        }
+        .padding(Design.Spacing.lg)
+        .background(Design.Colors.cardBackground)
+        .cornerRadius(16)
+        .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
     }
 
     // MARK: - AI Recommendations (Clean White Design)
@@ -448,9 +508,9 @@ struct HomeDashboardView: View {
                     .font(.caption)
             }
             .padding(Design.Spacing.lg)
-            .background(Color.white)
+            .background(Design.Colors.cardBackground)
             .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 2)
+            .shadow(color: Color.primary.opacity(0.06), radius: 10, x: 0, y: 2)
         }
     }
 
@@ -476,6 +536,7 @@ struct HomeDashboardView: View {
                 let protein: Double
                 let carbs: Double
                 let fat: Double
+                let sugar: Double?
             }
 
             let summary: Summary =
@@ -490,11 +551,15 @@ struct HomeDashboardView: View {
             let protein = summary.protein.isFinite && !summary.protein.isNaN ? summary.protein : 0
             let carbs = summary.carbs.isFinite && !summary.carbs.isNaN ? summary.carbs : 0
             let fat = summary.fat.isFinite && !summary.fat.isNaN ? summary.fat : 0
+            let sugar = (summary.sugar ?? 0).isFinite && !(summary.sugar ?? 0).isNaN ? (summary.sugar ?? 0) : 0
 
-            todayCalories = "\(Int(calories))"
-            todayProtein = "\(Int(protein))g"
-            todayCarbs = "\(Int(carbs))g"
-            todayFat = "\(Int(fat))g"
+            await MainActor.run {
+                todayCalories = "\(Int(calories))"
+                todayProtein = "\(Int(protein))g"
+                todayCarbs = "\(Int(carbs))g"
+                todayFat = "\(Int(fat))g"
+                todaySugar = sugar
+            }
         } catch {
             print("Summary error:", error)
             // If token is invalid, log out user
