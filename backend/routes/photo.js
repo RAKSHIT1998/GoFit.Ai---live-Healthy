@@ -1,7 +1,6 @@
 import express from 'express';
 import multer from 'multer';
 import AWS from 'aws-sdk';
-import axios from 'axios';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { Queue } from 'bullmq';
