@@ -20,7 +20,8 @@ struct CameraView: UIViewRepresentable {
 
         func setup() {
             session.beginConfiguration()
-            session.sessionPreset = .photo
+            // Use lower quality preset for faster startup
+            session.sessionPreset = .high
             // Camera device
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let input = try? AVCaptureDeviceInput(device: device),
@@ -33,9 +34,19 @@ struct CameraView: UIViewRepresentable {
                 session.addOutput(output)
             }
             session.commitConfiguration()
+            // Start session immediately for faster camera opening
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.session.startRunning()
+            }
         }
 
-        func start() { if !session.isRunning { session.startRunning() } }
+        func start() { 
+            if !session.isRunning { 
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    self?.session.startRunning()
+                }
+            }
+        }
         func stop() { if session.isRunning { session.stopRunning() } }
 
         func capture() {
@@ -61,9 +72,8 @@ struct CameraView: UIViewRepresentable {
             view.layer.addSublayer(pl)
         }
         context.coordinator.lastCaptureTrigger = captureTrigger
-        DispatchQueue.global(qos: .userInitiated).async {
-            context.coordinator.start()
-        }
+        // Camera should already be starting in setup(), but ensure it starts
+        context.coordinator.start()
         return view
     }
 

@@ -24,6 +24,10 @@ const waterLogSchema = new mongoose.Schema({
     type: Number, // Optional calories for the beverage
     default: 0
   },
+  sugar: {
+    type: Number, // Sugar content in grams
+    default: 0
+  },
   timestamp: {
     type: Date,
     default: Date.now,

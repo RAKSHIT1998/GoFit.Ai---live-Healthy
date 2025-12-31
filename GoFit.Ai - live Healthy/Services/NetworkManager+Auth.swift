@@ -94,25 +94,29 @@ final class NetworkManager {
         }
         
         // Photo analyze returns PhotoAnalysisResponse, not ServerMealResponse
+        // First, decode the response
+        let decoded: PhotoAnalysisResponse
         do {
-            let decoded = try JSONDecoder().decode(PhotoAnalysisResponse.self, from: d)
-            // Validate that we got items
-            guard !decoded.items.isEmpty else {
-                throw NSError(domain: "UploadError", code: 500, userInfo: [NSLocalizedDescriptionKey: "AI analysis returned no food items. Please try again with a clearer photo."])
-            }
-            // Convert to ServerMealResponse format for compatibility
-            return ServerMealResponse(
-                mealId: nil,
-                parsedItems: decoded.items,
-                recommendations: nil
-            )
+            decoded = try JSONDecoder().decode(PhotoAnalysisResponse.self, from: d)
         } catch let decodeError {
-            // Better error message for decode failures
+            // Only catch actual decoding errors, not validation errors
             if let errorStr = String(data: d, encoding: .utf8) {
                 print("⚠️ Decode error. Response: \(errorStr)")
             }
             throw NSError(domain: "UploadError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response. Please try again."])
         }
+        
+        // Validate that we got items (this happens after successful decoding)
+        guard !decoded.items.isEmpty else {
+            throw NSError(domain: "UploadError", code: 500, userInfo: [NSLocalizedDescriptionKey: "AI analysis returned no food items. Please try again with a clearer photo."])
+        }
+        
+        // Convert to ServerMealResponse format for compatibility
+        return ServerMealResponse(
+            mealId: nil,
+            parsedItems: decoded.items,
+            recommendations: nil
+        )
     }
 }
 

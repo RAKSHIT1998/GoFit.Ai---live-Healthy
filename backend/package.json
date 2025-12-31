@@ -20,7 +20,7 @@
     "bcryptjs": "^2.4.3",
     "multer": "^1.4.5-lts.1",
     "aws-sdk": "^2.1470.0",
-    "openai": "^4.20.0",
+    "@google/generative-ai": "^0.2.1",
     "bullmq": "^4.15.0",
     "ioredis": "^5.3.2",
     "dotenv": "^16.3.1",

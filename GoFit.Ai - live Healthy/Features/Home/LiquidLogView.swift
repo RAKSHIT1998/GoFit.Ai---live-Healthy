@@ -8,6 +8,7 @@ struct LiquidLogView: View {
     @State private var beverageName: String = ""
     @State private var amount: Double = 0.25 // Default 250ml
     @State private var calories: Double = 0
+    @State private var sugar: Double = 0
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showSuccess = false
@@ -73,9 +74,24 @@ struct LiquidLogView: View {
                 }
                 
                 if beverageType != "water" {
-                    Section("Calories (Optional)") {
-                        TextField("Calories", value: $calories, format: .number)
-                            .keyboardType(.decimalPad)
+                    Section("Nutrition (Auto-calculated)") {
+                        HStack {
+                            Text("Calories:")
+                            Spacer()
+                            Text("\(Int(calculateCalories()))")
+                                .foregroundColor(Design.Colors.calories)
+                                .fontWeight(.semibold)
+                        }
+                        HStack {
+                            Text("Sugar:")
+                            Spacer()
+                            Text("\(String(format: "%.1f", calculateSugar()))g")
+                                .foregroundColor(Design.Colors.sugar)
+                                .fontWeight(.semibold)
+                        }
+                        Text("Values are automatically calculated based on beverage type and amount")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
                 
@@ -132,7 +148,8 @@ struct LiquidLogView: View {
                 "amount": amount,
                 "beverageType": beverageType,
                 "beverageName": beverageName,
-                "calories": calories
+                "calories": calculateCalories(),
+                "sugar": calculateSugar()
             ]
             
             req.httpBody = try JSONSerialization.data(withJSONObject: payload)
@@ -147,6 +164,44 @@ struct LiquidLogView: View {
         } catch {
             errorMessage = "Failed to log liquid: \(error.localizedDescription)"
         }
+    }
+    
+    // Calculate calories based on beverage type and amount
+    private func calculateCalories() -> Double {
+        if beverageType == "water" { return 0 }
+        
+        let caloriesPerLiter: [String: Double] = [
+            "soda": 420,
+            "soft_drink": 420,
+            "juice": 450,
+            "coffee": 2,
+            "tea": 2,
+            "beer": 430,
+            "wine": 830,
+            "liquor": 2310,
+            "other": 0
+        ]
+        
+        return Double(Int((caloriesPerLiter[beverageType] ?? 0) * amount))
+    }
+    
+    // Calculate sugar based on beverage type and amount
+    private func calculateSugar() -> Double {
+        if beverageType == "water" { return 0 }
+        
+        let sugarPerLiter: [String: Double] = [
+            "soda": 108,
+            "soft_drink": 108,
+            "juice": 100,
+            "coffee": 0,
+            "tea": 0,
+            "beer": 0,
+            "wine": 2,
+            "liquor": 0,
+            "other": 0
+        ]
+        
+        return round((sugarPerLiter[beverageType] ?? 0) * amount * 10) / 10
     }
 }
 

@@ -111,21 +111,64 @@ router.get('/summary', authMiddleware, async (req, res) => {
   }
 });
 
+// Beverage nutrition database (calories and sugar per liter)
+const BEVERAGE_NUTRITION = {
+  water: { calories: 0, sugar: 0 },
+  soda: { calories: 420, sugar: 108 }, // ~420 cal/L, ~108g sugar/L (typical cola)
+  soft_drink: { calories: 420, sugar: 108 },
+  juice: { calories: 450, sugar: 100 }, // ~450 cal/L, ~100g sugar/L (orange juice)
+  coffee: { calories: 2, sugar: 0 }, // Black coffee
+  tea: { calories: 2, sugar: 0 }, // Unsweetened tea
+  beer: { calories: 430, sugar: 0 }, // ~430 cal/L (light beer)
+  wine: { calories: 830, sugar: 2 }, // ~830 cal/L, ~2g sugar/L (red wine)
+  liquor: { calories: 2310, sugar: 0 }, // ~2310 cal/L (80 proof spirits)
+  other: { calories: 0, sugar: 0 }
+};
+
+// Calculate nutrition based on beverage type and amount
+function calculateBeverageNutrition(beverageType, amount) {
+  const nutrition = BEVERAGE_NUTRITION[beverageType] || BEVERAGE_NUTRITION.other;
+  return {
+    calories: Math.round(nutrition.calories * amount),
+    sugar: Math.round(nutrition.sugar * amount * 10) / 10 // Round to 1 decimal
+  };
+}
+
 // Log water/liquid
 router.post('/water', authMiddleware, async (req, res) => {
   try {
-    const { amount, beverageType, beverageName, calories, timestamp } = req.body;
+    const { amount, beverageType, beverageName, calories, sugar, timestamp } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Valid amount is required' });
     }
 
+    const type = beverageType || 'water';
+    
+    // Auto-calculate calories and sugar if not provided
+    let finalCalories = calories;
+    let finalSugar = sugar;
+    
+    if (type !== 'water' && (!calories || calories === 0)) {
+      const calculated = calculateBeverageNutrition(type, amount);
+      finalCalories = calculated.calories;
+      finalSugar = calculated.sugar;
+    } else if (type !== 'water' && (!sugar || sugar === 0)) {
+      // If calories provided but sugar not, calculate sugar
+      const calculated = calculateBeverageNutrition(type, amount);
+      finalSugar = calculated.sugar;
+    } else if (type === 'water') {
+      finalCalories = 0;
+      finalSugar = 0;
+    }
+
     const log = new WaterLog({
       userId: req.user._id,
       amount,
-      beverageType: beverageType || 'water',
+      beverageType: type,
       beverageName: beverageName || '',
-      calories: calories || 0,
+      calories: finalCalories || 0,
+      sugar: finalSugar || 0,
       timestamp: timestamp ? new Date(timestamp) : new Date(),
       source: 'manual'
     });
