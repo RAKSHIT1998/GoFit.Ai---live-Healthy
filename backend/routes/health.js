@@ -146,20 +146,41 @@ router.post('/water', authMiddleware, async (req, res) => {
     const type = beverageType || 'water';
     
     // Auto-calculate calories and sugar if not provided
+    // Only auto-calculate when NEITHER value is explicitly provided
     let finalCalories = calories;
     let finalSugar = sugar;
     
-    if (type !== 'water' && (!calories || calories === 0)) {
-      const calculated = calculateBeverageNutrition(type, amount);
-      finalCalories = calculated.calories;
-      finalSugar = calculated.sugar;
-    } else if (type !== 'water' && (!sugar || sugar === 0)) {
-      // If calories provided but sugar not, calculate sugar
-      const calculated = calculateBeverageNutrition(type, amount);
-      finalSugar = calculated.sugar;
-    } else if (type === 'water') {
+    if (type === 'water') {
       finalCalories = 0;
       finalSugar = 0;
+    } else {
+      // Check if calories is missing/undefined (not just zero)
+      const caloriesMissing = calories === undefined || calories === null;
+      // Check if sugar is missing/undefined (not just zero)
+      const sugarMissing = sugar === undefined || sugar === null;
+      
+      // Only auto-calculate both if BOTH are missing
+      if (caloriesMissing && sugarMissing) {
+        const calculated = calculateBeverageNutrition(type, amount);
+        finalCalories = calculated.calories;
+        finalSugar = calculated.sugar;
+      } else if (caloriesMissing && !sugarMissing) {
+        // Only calories is missing, calculate just calories
+        const calculated = calculateBeverageNutrition(type, amount);
+        finalCalories = calculated.calories;
+        // Keep the explicitly provided sugar value
+        finalSugar = sugar;
+      } else if (!caloriesMissing && sugarMissing) {
+        // Only sugar is missing, calculate just sugar
+        const calculated = calculateBeverageNutrition(type, amount);
+        // Keep the explicitly provided calories value (even if it's 0)
+        finalCalories = calories;
+        finalSugar = calculated.sugar;
+      } else {
+        // Both values are explicitly provided (even if calories is 0), use them as-is
+        finalCalories = calories;
+        finalSugar = sugar;
+      }
     }
 
     const log = new WaterLog({

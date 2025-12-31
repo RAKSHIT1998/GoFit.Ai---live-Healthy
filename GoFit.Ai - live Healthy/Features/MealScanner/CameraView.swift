@@ -20,8 +20,9 @@ struct CameraView: UIViewRepresentable {
 
         func setup() {
             session.beginConfiguration()
-            // Use lower quality preset for faster startup
-            session.sessionPreset = .high
+            // Use photo preset optimized for still image capture
+            // .photo is the correct preset for photo capture, not .high (which is for video)
+            session.sessionPreset = .photo
             // Camera device
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let input = try? AVCaptureDeviceInput(device: device),
