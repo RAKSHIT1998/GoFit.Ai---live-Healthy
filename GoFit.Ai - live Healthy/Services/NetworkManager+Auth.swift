@@ -36,6 +36,10 @@ final class NetworkManager {
         let url = baseURL.appendingPathComponent("photo/analyze")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
+        
+        // Set longer timeout for AI analysis (90 seconds)
+        req.timeoutInterval = 90.0
+        
         let boundary = "Boundary-\(UUID().uuidString)"
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
@@ -62,7 +66,13 @@ final class NetworkManager {
 
         req.httpBody = body
 
-        let (d, r) = try await URLSession.shared.data(for: req)
+        // Use URLSession with custom configuration for longer timeout
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 90.0
+        config.timeoutIntervalForResource = 90.0
+        let session = URLSession(configuration: config)
+        
+        let (d, r) = try await session.data(for: req)
         guard let httpResponse = r as? HTTPURLResponse else {
             let statusCode = (r as? HTTPURLResponse)?.statusCode ?? -1
             if let err = String(data: d, encoding: .utf8) {
@@ -73,19 +83,36 @@ final class NetworkManager {
         
         guard (200...299).contains(httpResponse.statusCode) else {
             let statusCode = httpResponse.statusCode
-            if let err = String(data: d, encoding: .utf8) {
+            // Try to parse error message from response
+            if let errorData = try? JSONDecoder().decode([String: String].self, from: d),
+               let errorMessage = errorData["message"] {
+                throw NSError(domain: "UploadError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            } else if let err = String(data: d, encoding: .utf8) {
                 throw NSError(domain: "UploadError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: err])
             }
-            throw URLError(.badServerResponse)
+            throw NSError(domain: "UploadError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "Server error: \(statusCode)"])
         }
+        
         // Photo analyze returns PhotoAnalysisResponse, not ServerMealResponse
-        let decoded = try JSONDecoder().decode(PhotoAnalysisResponse.self, from: d)
-        // Convert to ServerMealResponse format for compatibility
-        return ServerMealResponse(
-            mealId: nil,
-            parsedItems: decoded.items,
-            recommendations: nil
-        )
+        do {
+            let decoded = try JSONDecoder().decode(PhotoAnalysisResponse.self, from: d)
+            // Validate that we got items
+            guard !decoded.items.isEmpty else {
+                throw NSError(domain: "UploadError", code: 500, userInfo: [NSLocalizedDescriptionKey: "AI analysis returned no food items. Please try again with a clearer photo."])
+            }
+            // Convert to ServerMealResponse format for compatibility
+            return ServerMealResponse(
+                mealId: nil,
+                parsedItems: decoded.items,
+                recommendations: nil
+            )
+        } catch let decodeError {
+            // Better error message for decode failures
+            if let errorStr = String(data: d, encoding: .utf8) {
+                print("⚠️ Decode error. Response: \(errorStr)")
+            }
+            throw NSError(domain: "UploadError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to parse AI response. Please try again."])
+        }
     }
 }
 

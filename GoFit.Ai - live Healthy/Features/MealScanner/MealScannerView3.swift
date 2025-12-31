@@ -70,12 +70,17 @@ struct MealScannerView3: View {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.5)
+                            .tint(Design.Colors.primary)
                         Text("Analyzing with AI...")
                             .font(Design.Typography.headline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.primary)
                         Text("Detecting food items and nutrition")
                             .font(Design.Typography.caption)
                             .foregroundColor(.secondary)
+                        Text("This may take up to 60 seconds")
+                            .font(Design.Typography.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -283,8 +288,12 @@ struct MealScannerView3: View {
                 let errorCode = nsError.code
                 let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
                 
+                // Check for timeout errors
+                if errorCode == NSURLErrorTimedOut || errorMessage.contains("timeout") || errorMessage.contains("timed out") {
+                    errorMsg = "Analysis timed out. Please try again with a clearer photo."
+                }
                 // Check for authentication errors
-                if errorCode == 401 {
+                else if errorCode == 401 {
                     errorMsg = "Authentication failed. Please log in again."
                     // Optionally log out the user
                     await MainActor.run {
@@ -295,11 +304,20 @@ struct MealScannerView3: View {
                     await MainActor.run {
                         authVM.logout()
                     }
+                } else if errorMessage.contains("no food items") || errorMessage.contains("no items") {
+                    errorMsg = "Could not identify food items. Please try a clearer photo."
+                } else if errorMessage.contains("OpenAI") || errorMessage.contains("AI") {
+                    errorMsg = "AI service unavailable. Please try again later."
                 } else {
                     errorMsg = "Upload error: \(errorMessage)"
                 }
             } else {
-                errorMsg = "Upload error: \(error.localizedDescription)"
+                let errorDesc = error.localizedDescription
+                if errorDesc.contains("timeout") {
+                    errorMsg = "Analysis timed out. Please try again."
+                } else {
+                    errorMsg = "Upload error: \(errorDesc)"
+                }
             }
         }
     }
