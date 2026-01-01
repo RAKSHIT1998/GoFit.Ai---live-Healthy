@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import CoreMedia
 
 struct CameraView: UIViewRepresentable {
     @Binding var capturedImage: UIImage?
@@ -9,6 +10,7 @@ struct CameraView: UIViewRepresentable {
         var parent: CameraView
         let session = AVCaptureSession()
         let output = AVCapturePhotoOutput()
+        var device: AVCaptureDevice?
         var previewLayer: AVCaptureVideoPreviewLayer?
         var lastCaptureTrigger: Int = 0
 
@@ -24,12 +26,13 @@ struct CameraView: UIViewRepresentable {
             session.sessionPreset = .photo
             
             // Camera device
-            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                  let input = try? AVCaptureDeviceInput(device: device),
+            guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                  let input = try? AVCaptureDeviceInput(device: captureDevice),
                   session.canAddInput(input) else {
                 session.commitConfiguration()
                 return
             }
+            self.device = captureDevice
             session.addInput(input)
             if session.canAddOutput(output) {
                 session.addOutput(output)
@@ -63,30 +66,49 @@ struct CameraView: UIViewRepresentable {
             }
             // Use standard resolution for faster capture (iOS 16+)
             if #available(iOS 16.0, *) {
-                // Get supported dimensions from the photo output to avoid crashes
+                // Get supported dimensions from the device's active format to avoid crashes
                 // Only use dimensions that are actually supported by the device
-                let targetWidth: Int32 = 1920
-                let targetHeight: Int32 = 1080
-                
-                // Find the largest supported dimension <= 1920x1080 for best quality at target speed
-                let suitableDimensions = output.supportedMaxPhotoDimensions.filter { dimension in
-                    dimension.width <= targetWidth && dimension.height <= targetHeight
+                if let activeFormat = device?.activeFormat {
+                    let targetWidth: Int32 = 1920
+                    let targetHeight: Int32 = 1080
+                    let supportedDimensions = activeFormat.supportedMaxPhotoDimensions
+                    
+                    // Filter dimensions that fit within target size
+                    var suitableDimensions: [CMVideoDimensions] = []
+                    for dimension in supportedDimensions {
+                        if dimension.width <= targetWidth && dimension.height <= targetHeight {
+                            suitableDimensions.append(dimension)
+                        }
+                    }
+                    
+                    // Find the largest suitable dimension
+                    if !suitableDimensions.isEmpty {
+                        var bestDimension = suitableDimensions[0]
+                        var bestPixels = Int(bestDimension.width) * Int(bestDimension.height)
+                        
+                        for dimension in suitableDimensions {
+                            let pixels = Int(dimension.width) * Int(dimension.height)
+                            if pixels > bestPixels {
+                                bestPixels = pixels
+                                bestDimension = dimension
+                            }
+                        }
+                        settings.maxPhotoDimensions = bestDimension
+                    } else if !supportedDimensions.isEmpty {
+                        // Fallback to smallest supported dimension
+                        var smallestDimension = supportedDimensions[0]
+                        var smallestPixels = Int(smallestDimension.width) * Int(smallestDimension.height)
+                        
+                        for dimension in supportedDimensions {
+                            let pixels = Int(dimension.width) * Int(dimension.height)
+                            if pixels < smallestPixels {
+                                smallestPixels = pixels
+                                smallestDimension = dimension
+                            }
+                        }
+                        settings.maxPhotoDimensions = smallestDimension
+                    }
                 }
-                
-                if let bestDimension = suitableDimensions.max(by: { dim1, dim2 in
-                    // Sort by total pixels (width * height) to get the largest suitable dimension
-                    (dim1.width * dim1.height) < (dim2.width * dim2.height)
-                }) {
-                    // Use the largest supported dimension that's <= 1920x1080 for faster capture
-                    settings.maxPhotoDimensions = bestDimension
-                } else if !output.supportedMaxPhotoDimensions.isEmpty,
-                          let smallestDimension = output.supportedMaxPhotoDimensions.min(by: { dim1, dim2 in
-                              (dim1.width * dim1.height) < (dim2.width * dim2.height)
-                          }) {
-                    // Fallback to smallest supported dimension if no suitable one found
-                    settings.maxPhotoDimensions = smallestDimension
-                }
-                // If no supported dimensions available, don't set maxPhotoDimensions (use default)
             } else {
                 // Fallback for iOS < 16
                 settings.isHighResolutionPhotoEnabled = false
