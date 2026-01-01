@@ -186,15 +186,6 @@ struct WeightHeightStep: View {
             viewModel.heightCm = totalInches * 2.54
         }
     }
-    
-    private func updateHeightFromImperial() {
-        let parts = heightText.split(separator: "'")
-        if parts.count == 2 {
-            let feet = Double(parts[0]) ?? 0
-            let inches = Double(parts[1].dropLast()) ?? 0
-            viewModel.heightCm = (feet * 30.48) + (inches * 2.54)
-        }
-    }
 }
 
 // MARK: - Workout Preferences Step
