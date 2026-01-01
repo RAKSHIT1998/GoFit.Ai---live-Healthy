@@ -46,8 +46,8 @@ struct RootView: View {
                 }
             }
         }
-        .onChange(of: auth.isLoggedIn) { isLoggedIn in
-            if isLoggedIn {
+        .onChange(of: auth.isLoggedIn) { oldValue, newValue in
+            if newValue {
                 // When user logs in, sync HealthKit and check subscription
                 Task {
                     // Check subscription status

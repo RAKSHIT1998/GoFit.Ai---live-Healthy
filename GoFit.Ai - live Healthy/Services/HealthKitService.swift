@@ -27,10 +27,11 @@ class HealthKitService: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.checkAuthorizationStatus()
-            // Sync when app comes to foreground if authorized
-            if let self = self, self.isAuthorized {
-                Task {
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.checkAuthorizationStatus()
+                // Sync when app comes to foreground if authorized
+                if self.isAuthorized {
                     try? await self.syncToBackend()
                 }
             }
