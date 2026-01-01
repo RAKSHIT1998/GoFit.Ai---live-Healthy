@@ -1,5 +1,6 @@
 import Foundation
 import HealthKit
+import UIKit
 
 @MainActor
 class HealthKitService: ObservableObject {
@@ -15,6 +16,20 @@ class HealthKitService: ObservableObject {
     
     private init() {
         checkAuthorizationStatus()
+        
+        // Refresh authorization status when app comes to foreground
+        // This handles cases where user grants permissions in Settings
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.checkAuthorizationStatus()
+        }
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // Request authorization
@@ -82,17 +97,33 @@ class HealthKitService: ObservableObject {
         let stepStatus = healthStore.authorizationStatus(for: stepType)
         let caloriesStatus = healthStore.authorizationStatus(for: caloriesType)
         
-        // Consider authorized if at least one primary type is authorized
-        // This handles cases where user might authorize some types but not others
+        // For read types, .sharingAuthorized means read access is granted
+        // Also check if status is not .notDetermined and not .sharingDenied
+        // This handles cases where user grants permissions in Settings
         let isStepAuthorized = stepStatus == .sharingAuthorized
         let isCaloriesAuthorized = caloriesStatus == .sharingAuthorized
         
-        let newAuthorizedStatus = isStepAuthorized || isCaloriesAuthorized
+        // Also check other types to be more comprehensive
+        var hasAnyAuthorization = isStepAuthorized || isCaloriesAuthorized
+        
+        // Check heart rate as well (another common type)
+        if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+            let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
+            if heartRateStatus == .sharingAuthorized {
+                hasAnyAuthorization = true
+            }
+        }
+        
+        let newAuthorizedStatus = hasAnyAuthorization
         
         // Log detailed status for debugging
-        print("📊 HealthKit Authorization Status:")
+        print("📊 HealthKit Authorization Status Check:")
         print("   Steps: \(stepStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(stepStatus.rawValue))")")
         print("   Active Calories: \(caloriesStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(caloriesStatus.rawValue))")")
+        if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+            let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
+            print("   Heart Rate: \(heartRateStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(heartRateStatus.rawValue))")")
+        }
         print("   Overall: \(newAuthorizedStatus ? "✅ Authorized" : "❌ Not authorized")")
         
         // Direct assignment is safe since class is @MainActor-annotated

@@ -259,7 +259,23 @@ struct ProfileView: View {
                     Task {
                         do {
                             print("🔵 Requesting HealthKit authorization from ProfileView...")
+                            
+                            // First, refresh status in case user granted permissions in Settings
+                            healthKit.checkAuthorizationStatus()
+                            
+                            // If already authorized, skip request
+                            if healthKit.isAuthorized {
+                                print("✅ HealthKit already authorized")
+                                await MainActor.run {
+                                    healthSyncEnabled = true
+                                }
+                                try? await healthKit.syncToBackend()
+                                return
+                            }
+                            
+                            // Request authorization if not already granted
                             try await healthKit.requestAuthorization()
+                            
                             // Re-check authorization status after requesting
                             healthKit.checkAuthorizationStatus()
                             
@@ -272,8 +288,9 @@ struct ProfileView: View {
                             if healthKit.isAuthorized {
                                 try? await healthKit.syncToBackend()
                             } else {
+                                // Give user option to check Settings
                                 await MainActor.run {
-                                    errorMessage = "HealthKit authorization was not granted. Please enable it in Settings > Privacy & Security > Health."
+                                    errorMessage = "HealthKit authorization was not granted. Please enable it in Settings > Privacy & Security > Health, then return to the app."
                                     showingError = true
                                 }
                             }
@@ -293,6 +310,13 @@ struct ProfileView: View {
             }
             .onAppear {
                 // Check current authorization status when view appears
+                // This refreshes status if user granted permissions in Settings
+                healthKit.checkAuthorizationStatus()
+                healthSyncEnabled = healthKit.isAuthorized
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                // Refresh authorization status when app comes to foreground
+                // This handles cases where user grants permissions in Settings then returns to app
                 healthKit.checkAuthorizationStatus()
                 healthSyncEnabled = healthKit.isAuthorized
             }
