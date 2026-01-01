@@ -722,3 +722,122 @@ struct MotivationCard: View {
     }
 }
 
+// MARK: - Lifestyle Habits Step (Drinking & Smoking)
+struct LifestyleHabitsStep: View {
+    @ObservedObject var viewModel: OnboardingViewModel
+    
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Image(systemName: "heart.text.square.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.white)
+                    .symbolEffect(.pulse, value: viewModel.drinkingFrequency)
+                
+                Text("Lifestyle Habits")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                
+                Text("Help us understand your lifestyle for better recommendations")
+                    .font(.body)
+                    .foregroundColor(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Drinking Frequency Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Alcohol Consumption")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(OnboardingViewModel.DrinkingFrequency.allCases, id: \.self) { frequency in
+                                LifestyleHabitCard(
+                                    icon: frequency.icon,
+                                    title: frequency.displayName,
+                                    isSelected: viewModel.drinkingFrequency == frequency
+                                ) {
+                                    withAnimation(.spring()) {
+                                        viewModel.drinkingFrequency = frequency
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                    
+                    // Smoking Status Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Smoking Status")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(OnboardingViewModel.SmokingStatus.allCases, id: \.self) { status in
+                                LifestyleHabitCard(
+                                    icon: status.icon,
+                                    title: status.displayName,
+                                    isSelected: viewModel.smokingStatus == status
+                                ) {
+                                    withAnimation(.spring()) {
+                                        viewModel.smokingStatus = status
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.top, 40)
+    }
+}
+
+struct LifestyleHabitCard: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .frame(width: 40)
+                
+                Text(title)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(Design.Colors.primary)
+                }
+            }
+            .padding()
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Design.Colors.primary : Color.clear, lineWidth: 2)
+            )
+        }
+    }
+}
+

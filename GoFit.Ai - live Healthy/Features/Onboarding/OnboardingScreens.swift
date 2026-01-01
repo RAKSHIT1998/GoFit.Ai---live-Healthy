@@ -38,7 +38,7 @@ struct OnboardingScreens: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 
-                // Content - 10 Engaging Interactive Screens
+                // Content - 11 Engaging Interactive Screens
                 TabView(selection: $viewModel.currentStep) {
                     WelcomeStep()
                         .tag(0)
@@ -69,6 +69,9 @@ struct OnboardingScreens: View {
                     
                     LifestyleAndMotivationStep(viewModel: viewModel)
                         .tag(9)
+                    
+                    LifestyleHabitsStep(viewModel: viewModel)
+                        .tag(10)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(), value: viewModel.currentStep)
@@ -150,7 +153,9 @@ struct OnboardingScreens: View {
             mealTimingPreference: viewModel.mealTimingPreference.rawValue,
             cookingSkill: viewModel.cookingSkill.rawValue,
             budgetPreference: viewModel.budgetPreference.rawValue,
-            motivationLevel: viewModel.motivationLevel.rawValue
+            motivationLevel: viewModel.motivationLevel.rawValue,
+            drinkingFrequency: viewModel.drinkingFrequency.rawValue,
+            smokingStatus: viewModel.smokingStatus.rawValue
         )
         
         // If skip authentication is enabled, skip permissions too

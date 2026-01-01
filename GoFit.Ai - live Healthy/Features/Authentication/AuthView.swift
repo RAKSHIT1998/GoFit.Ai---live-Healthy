@@ -207,6 +207,16 @@ struct AuthView: View {
             PaywallView()
                 .environmentObject(auth)
         }
+        .onAppear {
+            // If coming from onboarding (has onboarding data), default to signup mode
+            if auth.onboardingData != nil && !auth.isLoggedIn {
+                isLoginMode = false
+                // Pre-fill name from onboarding
+                if !auth.name.isEmpty {
+                    name = auth.name
+                }
+            }
+        }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
             if newValue && !isLoginMode {
                 // Show paywall after signup

@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 class OnboardingViewModel: ObservableObject {
     @Published var currentStep: Int = 0
-    @Published var totalSteps: Int = 10 // 10 engaging screens
+    @Published var totalSteps: Int = 11 // 11 engaging screens (added lifestyle habits)
     
     // User data collected during onboarding
     @Published var name: String = ""
@@ -30,6 +30,10 @@ class OnboardingViewModel: ObservableObject {
     @Published var cookingSkill: CookingSkill = .intermediate
     @Published var budgetPreference: BudgetPreference = .moderate
     @Published var motivationLevel: MotivationLevel = .moderate
+    
+    // Lifestyle habits
+    @Published var drinkingFrequency: DrinkingFrequency = .never
+    @Published var smokingStatus: SmokingStatus = .never
     
     enum GoalType: String, CaseIterable, Codable {
         case lose = "lose"
@@ -350,6 +354,59 @@ class OnboardingViewModel: ObservableObject {
         }
     }
     
+    enum DrinkingFrequency: String, CaseIterable, Codable {
+        case never = "never"
+        case rarely = "rarely"
+        case occasionally = "occasionally"
+        case regularly = "regularly"
+        case frequently = "frequently"
+        
+        var displayName: String {
+            switch self {
+            case .never: return "Never"
+            case .rarely: return "Rarely (1-2 times/month)"
+            case .occasionally: return "Occasionally (1-2 times/week)"
+            case .regularly: return "Regularly (3-4 times/week)"
+            case .frequently: return "Frequently (daily or almost daily)"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .never: return "xmark.circle.fill"
+            case .rarely: return "drop.fill"
+            case .occasionally: return "drop.triangle.fill"
+            case .regularly: return "drop.circle.fill"
+            case .frequently: return "drop.fill"
+            }
+        }
+    }
+    
+    enum SmokingStatus: String, CaseIterable, Codable {
+        case never = "never"
+        case former = "former"
+        case occasional = "occasional"
+        case regular = "regular"
+        
+        var displayName: String {
+            switch self {
+            case .never: return "Never smoked"
+            case .former: return "Former smoker (quit)"
+            case .occasional: return "Occasional smoker"
+            case .regular: return "Regular smoker"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .never: return "xmark.circle.fill"
+            case .former: return "checkmark.circle.fill"
+            case .occasional: return "flame.fill"
+            case .regular: return "flame.fill"
+            }
+        }
+    }
+    
     func nextStep() {
         if currentStep < totalSteps - 1 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
@@ -378,6 +435,7 @@ class OnboardingViewModel: ObservableObject {
         case 7: return true // Workout preferences (optional)
         case 8: return true // Favorite cuisines & food preferences (optional)
         case 9: return true // Lifestyle & motivation (optional)
+        case 10: return true // Lifestyle habits - drinking & smoking (optional)
         default: return true
         }
     }

@@ -384,4 +384,6 @@ struct OnboardingData: Codable {
     let cookingSkill: String
     let budgetPreference: String
     let motivationLevel: String
+    let drinkingFrequency: String
+    let smokingStatus: String
 }
