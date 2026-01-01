@@ -66,11 +66,13 @@ class HealthKitService: ObservableObject {
             return
         }
         
-        // Check authorization status - handle gracefully if entitlement is missing
+        // Check authorization status - only return true if actually authorized
         // authorizationStatus doesn't throw, but we check for proper setup
         let status = healthStore.authorizationStatus(for: stepType)
-        // Accept both sharingAuthorized and notDetermined (user hasn't been asked yet)
-        isAuthorized = status == .sharingAuthorized || status == .notDetermined
+        // Only return true if user has actually authorized sharing
+        // .notDetermined means user hasn't been asked yet, so not authorized
+        // .sharingDenied means user explicitly denied, so not authorized
+        isAuthorized = status == .sharingAuthorized
     }
     
     // Read today's steps

@@ -691,13 +691,20 @@ struct HomeDashboardView: View {
     private func syncHealthData() async {
         // Check if HealthKit is available
         guard HKHealthStore.isHealthDataAvailable() else {
+            print("⚠️ HealthKit is not available on this device")
             return
         }
         
-        // Request authorization if not yet determined
+        // Check current authorization status
+        healthKit.checkAuthorizationStatus()
+        
+        // Request authorization if not authorized
         if !healthKit.isAuthorized {
             do {
+                print("🔵 Requesting HealthKit authorization...")
                 try await healthKit.requestAuthorization()
+                // Re-check status after requesting
+                healthKit.checkAuthorizationStatus()
             } catch {
                 print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
                 return
@@ -706,7 +713,7 @@ struct HomeDashboardView: View {
         
         // Only read data if authorized
         guard healthKit.isAuthorized else {
-            print("⚠️ HealthKit not authorized, skipping sync")
+            print("⚠️ HealthKit not authorized, skipping sync. Please enable HealthKit access in Settings > Privacy & Security > Health.")
             return
         }
 

@@ -226,9 +226,25 @@ struct ProfileView: View {
                 if newValue {
                     Task {
                         do {
+                            print("🔵 Requesting HealthKit authorization from ProfileView...")
                             try await healthKit.requestAuthorization()
-                            // Sync data after authorization
-                            try? await healthKit.syncToBackend()
+                            // Re-check authorization status after requesting
+                            healthKit.checkAuthorizationStatus()
+                            
+                            // Update toggle state based on actual authorization
+                            await MainActor.run {
+                                healthSyncEnabled = healthKit.isAuthorized
+                            }
+                            
+                            // Sync data after authorization if authorized
+                            if healthKit.isAuthorized {
+                                try? await healthKit.syncToBackend()
+                            } else {
+                                await MainActor.run {
+                                    errorMessage = "HealthKit authorization was not granted. Please enable it in Settings > Privacy & Security > Health."
+                                    showingError = true
+                                }
+                            }
                         } catch {
                             await MainActor.run {
                                 errorMessage = "Failed to connect to Apple Health: \(error.localizedDescription)"
@@ -237,9 +253,15 @@ struct ProfileView: View {
                             }
                         }
                     }
+                } else {
+                    // User disabled HealthKit sync
+                    // Note: We can't revoke authorization, but we can stop syncing
+                    print("ℹ️ User disabled HealthKit sync")
                 }
             }
             .onAppear {
+                // Check current authorization status when view appears
+                healthKit.checkAuthorizationStatus()
                 healthSyncEnabled = healthKit.isAuthorized
             }
 

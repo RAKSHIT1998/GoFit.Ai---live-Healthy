@@ -597,8 +597,10 @@ struct PermissionsView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     @EnvironmentObject var auth: AuthViewModel
     @Environment(\.dismiss) var dismiss
+    @StateObject private var healthKit = HealthKitService.shared
     @State private var cameraPermissionGranted = false
     @State private var healthPermissionGranted = false
+    @State private var isRequestingHealth = false
     
     var body: some View {
         NavigationView {
@@ -633,17 +635,27 @@ struct PermissionsView: View {
                         icon: "heart.fill",
                         title: "Apple Health",
                         description: "To sync steps, heart rate, and calories",
-                        isGranted: healthPermissionGranted
+                        isGranted: healthKit.isAuthorized || healthPermissionGranted
                     ) {
-                        requestHealthPermission()
+                        if !isRequestingHealth {
+                            requestHealthPermission()
+                        }
                     }
+                    .overlay(
+                        Group {
+                            if isRequestingHealth {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle())
+                            }
+                        }
+                    )
                 }
                 .padding(.horizontal, 24)
                 
                 Spacer()
                 
                 Button(action: {
-                    viewModel.appleHealthEnabled = healthPermissionGranted
+                    viewModel.appleHealthEnabled = healthKit.isAuthorized || healthPermissionGranted
                     auth.didFinishOnboarding = true
                     auth.saveLocalState()
                     dismiss()
@@ -658,10 +670,14 @@ struct PermissionsView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
-            }
-            .navigationTitle("Permissions")
-            .navigationBarTitleDisplayMode(.inline)
         }
+        .navigationTitle("Permissions")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Check current authorization status when view appears
+            healthPermissionGranted = healthKit.isAuthorized
+        }
+    }
     }
     
     private func requestCameraPermission() {
@@ -670,8 +686,25 @@ struct PermissionsView: View {
     }
     
     private func requestHealthPermission() {
-        // HealthKit permission will be requested when user first syncs
-        healthPermissionGranted = true
+        isRequestingHealth = true
+        Task {
+            do {
+                // Actually request HealthKit authorization
+                try await HealthKitService.shared.requestAuthorization()
+                await MainActor.run {
+                    // Update the UI to reflect authorization status
+                    healthPermissionGranted = HealthKitService.shared.isAuthorized
+                    viewModel.appleHealthEnabled = healthPermissionGranted
+                    isRequestingHealth = false
+                }
+            } catch {
+                print("⚠️ Failed to request HealthKit authorization: \(error.localizedDescription)")
+                await MainActor.run {
+                    healthPermissionGranted = false
+                    isRequestingHealth = false
+                }
+            }
+        }
     }
 }
 
