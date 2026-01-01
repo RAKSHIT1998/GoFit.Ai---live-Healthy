@@ -47,9 +47,8 @@ class HealthKitService: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
             
             // Re-check authorization status after requesting
-            await MainActor.run {
-                checkAuthorizationStatus()
-            }
+            // No need for MainActor.run since class is already @MainActor
+            checkAuthorizationStatus()
         } catch {
             print("⚠️ HealthKit authorization error: \(error.localizedDescription)")
             // If entitlement is missing, log but don't crash
@@ -64,9 +63,8 @@ class HealthKitService: ObservableObject {
     func checkAuthorizationStatus() {
         guard HKHealthStore.isHealthDataAvailable() else {
             print("⚠️ HealthKit not available on this device")
-            Task { @MainActor in
-                self.isAuthorized = false
-            }
+            // Direct assignment is safe since class is @MainActor
+            isAuthorized = false
             return
         }
         
@@ -75,9 +73,8 @@ class HealthKitService: ObservableObject {
         guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount),
               let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
             print("⚠️ HealthKit types not available")
-            Task { @MainActor in
-                self.isAuthorized = false
-            }
+            // Direct assignment is safe since class is @MainActor
+            isAuthorized = false
             return
         }
         
@@ -98,10 +95,9 @@ class HealthKitService: ObservableObject {
         print("   Active Calories: \(caloriesStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(caloriesStatus.rawValue))")")
         print("   Overall: \(newAuthorizedStatus ? "✅ Authorized" : "❌ Not authorized")")
         
-        // Update on main thread to ensure UI updates
-        Task { @MainActor in
-            self.isAuthorized = newAuthorizedStatus
-        }
+        // Direct assignment is safe since class is @MainActor-annotated
+        // No need for async task dispatch - avoids race conditions
+        isAuthorized = newAuthorizedStatus
     }
     
     // Force refresh authorization status (useful after user changes settings)
