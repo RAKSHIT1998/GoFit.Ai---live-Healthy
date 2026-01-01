@@ -63,8 +63,30 @@ struct CameraView: UIViewRepresentable {
             }
             // Use standard resolution for faster capture (iOS 16+)
             if #available(iOS 16.0, *) {
-                // Set max dimensions to standard resolution for speed
-                settings.maxPhotoDimensions = CMVideoDimensions(width: 1920, height: 1080)
+                // Get supported dimensions from the photo output to avoid crashes
+                // Only use dimensions that are actually supported by the device
+                let targetWidth: Int32 = 1920
+                let targetHeight: Int32 = 1080
+                
+                // Find the largest supported dimension <= 1920x1080 for best quality at target speed
+                let suitableDimensions = output.supportedMaxPhotoDimensions.filter { dimension in
+                    dimension.width <= targetWidth && dimension.height <= targetHeight
+                }
+                
+                if let bestDimension = suitableDimensions.max(by: { dim1, dim2 in
+                    // Sort by total pixels (width * height) to get the largest suitable dimension
+                    (dim1.width * dim1.height) < (dim2.width * dim2.height)
+                }) {
+                    // Use the largest supported dimension that's <= 1920x1080 for faster capture
+                    settings.maxPhotoDimensions = bestDimension
+                } else if !output.supportedMaxPhotoDimensions.isEmpty,
+                          let smallestDimension = output.supportedMaxPhotoDimensions.min(by: { dim1, dim2 in
+                              (dim1.width * dim1.height) < (dim2.width * dim2.height)
+                          }) {
+                    // Fallback to smallest supported dimension if no suitable one found
+                    settings.maxPhotoDimensions = smallestDimension
+                }
+                // If no supported dimensions available, don't set maxPhotoDimensions (use default)
             } else {
                 // Fallback for iOS < 16
                 settings.isHighResolutionPhotoEnabled = false
