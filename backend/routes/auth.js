@@ -102,6 +102,7 @@ router.post('/register', async (req, res) => {
     console.log('✅ User created successfully in database:', {
       id: user._id.toString(),
       email: user.email,
+      name: user.name,
       subscriptionStatus: user.subscription.status,
       trialEndDate: user.subscription.trialEndDate,
       hasOnboardingData: !!(user.onboardingData && Object.keys(user.onboardingData).length > 0),
@@ -109,6 +110,37 @@ router.post('/register', async (req, res) => {
       drinkingFrequency: user.drinkingFrequency || 'not set',
       smokingStatus: user.smokingStatus || 'not set'
     });
+
+    // Auto-calculate calories based on onboarding data
+    try {
+      const { calculateCalories, calculateMacros } = await import('../utils/calorieCalculator.js');
+      
+      const calorieData = calculateCalories(user);
+      if (calorieData) {
+        const macros = calculateMacros(calorieData.recommendedCalories, user.dietaryPreferences);
+        
+        // Update user metrics
+        user.metrics = {
+          ...user.metrics,
+          targetCalories: calorieData.recommendedCalories,
+          targetProtein: macros.protein,
+          targetCarbs: macros.carbs,
+          targetFat: macros.fat
+        };
+        await user.save();
+        
+        console.log('✅ Auto-calculated calories for new user:', {
+          calories: calorieData.recommendedCalories,
+          protein: macros.protein,
+          carbs: macros.carbs,
+          fat: macros.fat,
+          goal: calorieData.goal
+        });
+      }
+    } catch (error) {
+      console.error('⚠️ Failed to auto-calculate calories (non-critical):', error.message);
+      // Don't fail registration if calorie calculation fails
+    }
 
     // Generate token
     const token = generateToken(user._id);

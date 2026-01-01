@@ -22,6 +22,7 @@ import measurementRoutes from './routes/measurements.js';
 import barcodeRoutes from './routes/barcode.js';
 import educationRoutes from './routes/education.js';
 import analyticsRoutes from './routes/analytics.js';
+import onboardingRoutes from './routes/onboarding.js';
 
 dotenv.config();
 
@@ -74,7 +75,8 @@ app.get('/', (req, res) => {
       measurements: '/api/measurements',
       barcode: '/api/barcode',
       education: '/api/education',
-      analytics: '/api/analytics'
+      analytics: '/api/analytics',
+      onboarding: '/api/onboarding'
     }
   });
 });
@@ -102,6 +104,7 @@ app.use('/api/measurements', measurementRoutes);
 app.use('/api/barcode', barcodeRoutes);
 app.use('/api/education', educationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
