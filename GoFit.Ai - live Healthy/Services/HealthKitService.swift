@@ -14,10 +14,12 @@ class HealthKitService: ObservableObject {
     @Published var restingHeartRate: Double = 0
     @Published var averageHeartRate: Double = 0
     
-    // Periodic sync task
-    // nonisolated(unsafe) is safe here because Task cancellation is thread-safe
-    // and we only access this from @MainActor methods or deinit
+    // Periodic sync task - thread-safe access via serial queue
+    // Using nonisolated(unsafe) with a serial queue to synchronize access
+    // from both @MainActor methods and deinit (which can run on any thread)
     nonisolated(unsafe) private var periodicSyncTask: Task<Void, Never>?
+    // nonisolated queue to allow access from deinit (any thread) and @MainActor methods
+    nonisolated private let periodicSyncQueue = DispatchQueue(label: "com.gofit.healthkit.periodicSync")
     
     private init() {
         checkAuthorizationStatus()
@@ -44,9 +46,12 @@ class HealthKitService: ObservableObject {
     }
     
     deinit {
-        // Cancel periodic sync task (can be done from any context)
-        periodicSyncTask?.cancel()
-        periodicSyncTask = nil
+        // Cancel periodic sync task safely from any thread
+        // Use serial queue to ensure exclusive access
+        periodicSyncQueue.sync {
+            periodicSyncTask?.cancel()
+            periodicSyncTask = nil
+        }
         NotificationCenter.default.removeObserver(self)
     }
     
@@ -56,7 +61,8 @@ class HealthKitService: ObservableObject {
         // Cancel any existing sync task
         stopPeriodicSync()
         
-        periodicSyncTask = Task { [weak self] in
+        // Create new task and store it safely
+        let newTask = Task { [weak self] in
             while !Task.isCancelled {
                 // Wait 15 minutes
                 try? await Task.sleep(nanoseconds: 15 * 60 * 1_000_000_000)
@@ -84,12 +90,20 @@ class HealthKitService: ObservableObject {
                 }
             }
         }
+        
+        // Store the task safely using serial queue to ensure exclusive write access
+        periodicSyncQueue.sync {
+            periodicSyncTask = newTask
+        }
     }
     
     // Stop automatic periodic syncing
     func stopPeriodicSync() {
-        periodicSyncTask?.cancel()
-        periodicSyncTask = nil
+        // Use serial queue to ensure exclusive access when canceling and clearing
+        periodicSyncQueue.sync {
+            periodicSyncTask?.cancel()
+            periodicSyncTask = nil
+        }
     }
     
     // Request authorization
