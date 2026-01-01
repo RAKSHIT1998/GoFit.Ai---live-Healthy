@@ -42,7 +42,14 @@ class HealthKitService: ObservableObject {
             ]
             
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
-            checkAuthorizationStatus()
+            
+            // Wait a moment for authorization to be processed
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            // Re-check authorization status after requesting
+            await MainActor.run {
+                checkAuthorizationStatus()
+            }
         } catch {
             print("⚠️ HealthKit authorization error: \(error.localizedDescription)")
             // If entitlement is missing, log but don't crash
@@ -56,23 +63,50 @@ class HealthKitService: ObservableObject {
     // Check authorization status
     func checkAuthorizationStatus() {
         guard HKHealthStore.isHealthDataAvailable() else {
-            isAuthorized = false
+            print("⚠️ HealthKit not available on this device")
+            Task { @MainActor in
+                self.isAuthorized = false
+            }
             return
         }
         
-        // Check if HealthKit is properly configured
-        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
-            isAuthorized = false
+        // Check authorization for all the types we need to read
+        // We consider authorized if at least the primary types (steps, active calories) are authorized
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount),
+              let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
+            print("⚠️ HealthKit types not available")
+            Task { @MainActor in
+                self.isAuthorized = false
+            }
             return
         }
         
-        // Check authorization status - only return true if actually authorized
-        // authorizationStatus doesn't throw, but we check for proper setup
-        let status = healthStore.authorizationStatus(for: stepType)
-        // Only return true if user has actually authorized sharing
-        // .notDetermined means user hasn't been asked yet, so not authorized
-        // .sharingDenied means user explicitly denied, so not authorized
-        isAuthorized = status == .sharingAuthorized
+        // Check authorization status for primary types
+        let stepStatus = healthStore.authorizationStatus(for: stepType)
+        let caloriesStatus = healthStore.authorizationStatus(for: caloriesType)
+        
+        // Consider authorized if at least one primary type is authorized
+        // This handles cases where user might authorize some types but not others
+        let isStepAuthorized = stepStatus == .sharingAuthorized
+        let isCaloriesAuthorized = caloriesStatus == .sharingAuthorized
+        
+        let newAuthorizedStatus = isStepAuthorized || isCaloriesAuthorized
+        
+        // Log detailed status for debugging
+        print("📊 HealthKit Authorization Status:")
+        print("   Steps: \(stepStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(stepStatus.rawValue))")")
+        print("   Active Calories: \(caloriesStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(caloriesStatus.rawValue))")")
+        print("   Overall: \(newAuthorizedStatus ? "✅ Authorized" : "❌ Not authorized")")
+        
+        // Update on main thread to ensure UI updates
+        Task { @MainActor in
+            self.isAuthorized = newAuthorizedStatus
+        }
+    }
+    
+    // Force refresh authorization status (useful after user changes settings)
+    func refreshAuthorizationStatus() {
+        checkAuthorizationStatus()
     }
     
     // Read today's steps
