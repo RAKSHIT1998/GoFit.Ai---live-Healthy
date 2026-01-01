@@ -4,6 +4,7 @@ struct OnboardingScreens: View {
     @StateObject private var viewModel = OnboardingViewModel()
     @EnvironmentObject var auth: AuthViewModel
     @State private var showingPermissions = false
+    @State private var showingSignup = false
     
     var body: some View {
         ZStack {
@@ -122,7 +123,15 @@ struct OnboardingScreens: View {
             }
         }
         .sheet(isPresented: $showingPermissions) {
-            PermissionsView(viewModel: viewModel)
+            PermissionsView(viewModel: viewModel, onComplete: {
+                showingPermissions = false
+                showingSignup = true
+            })
+        }
+        .sheet(isPresented: $showingSignup) {
+            OnboardingSignupView(viewModel: viewModel)
+                .environmentObject(auth)
+                .environmentObject(PurchaseManager())
         }
     }
     
@@ -682,6 +691,7 @@ struct PermissionsView: View {
     @State private var cameraPermissionGranted = false
     @State private var healthPermissionGranted = false
     @State private var isRequestingHealth = false
+    let onComplete: () -> Void
     
     var body: some View {
         NavigationView {
@@ -737,9 +747,8 @@ struct PermissionsView: View {
                 
                 Button(action: {
                     viewModel.appleHealthEnabled = healthKit.isAuthorized || healthPermissionGranted
-                    auth.didFinishOnboarding = true
-                    auth.saveLocalState()
                     dismiss()
+                    onComplete() // Show signup screen
                 }) {
                     Text("Continue")
                         .font(.headline)
@@ -756,7 +765,9 @@ struct PermissionsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 // Check current authorization status when view appears
+                healthKit.checkAuthorizationStatus()
                 healthPermissionGranted = healthKit.isAuthorized
+                print("📱 PermissionsView appeared - HealthKit authorized: \(healthKit.isAuthorized)")
             }
         }
     }
@@ -767,22 +778,41 @@ struct PermissionsView: View {
     }
     
     private func requestHealthPermission() {
+        // Check if already authorized before requesting
+        healthKit.checkAuthorizationStatus()
+        if healthKit.isAuthorized {
+            print("✅ HealthKit already authorized, skipping request")
+            healthPermissionGranted = true
+            viewModel.appleHealthEnabled = true
+            return
+        }
+        
         isRequestingHealth = true
         Task {
             do {
                 // Actually request HealthKit authorization
+                print("🔵 Requesting HealthKit authorization from PermissionsView...")
                 try await HealthKitService.shared.requestAuthorization()
                 await MainActor.run {
-                    // Update the UI to reflect authorization status
-                    healthPermissionGranted = HealthKitService.shared.isAuthorized
-                    viewModel.appleHealthEnabled = healthPermissionGranted
-                    isRequestingHealth = false
+                    // Re-check status after requesting (with a small delay to ensure status is updated)
+                    Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                        healthKit.checkAuthorizationStatus()
+                        // Update the UI to reflect authorization status
+                        healthPermissionGranted = healthKit.isAuthorized
+                        viewModel.appleHealthEnabled = healthPermissionGranted
+                        isRequestingHealth = false
+                        print("📱 HealthKit permission request completed - authorized: \(healthKit.isAuthorized)")
+                    }
                 }
             } catch {
                 print("⚠️ Failed to request HealthKit authorization: \(error.localizedDescription)")
                 await MainActor.run {
-                    healthPermissionGranted = false
+                    // Re-check status even on error (user might have granted in system dialog)
+                    healthKit.checkAuthorizationStatus()
+                    healthPermissionGranted = healthKit.isAuthorized
                     isRequestingHealth = false
+                    print("📱 HealthKit permission request failed - final status: authorized=\(healthKit.isAuthorized)")
                 }
             }
         }
@@ -827,6 +857,174 @@ struct PermissionCard: View {
         .padding()
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
+        }
+    }
+}
+
+// MARK: - Onboarding Signup View (Integrated into onboarding flow)
+struct OnboardingSignupView: View {
+    @ObservedObject var viewModel: OnboardingViewModel
+    @EnvironmentObject var auth: AuthViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var email = ""
+    @State private var password = ""
+    @State private var confirmPassword = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showingPaywall = false
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Design.Colors.background
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: Design.Spacing.xl) {
+                        Spacer(minLength: 40)
+                        
+                        // Logo and title
+                        VStack(spacing: Design.Spacing.md) {
+                            LogoView(size: .large, showText: false, color: Design.Colors.primary)
+                                .padding(.top, Design.Spacing.xl)
+                            
+                            Text("Create Your Account")
+                                .font(Design.Typography.display)
+                                .foregroundColor(.primary)
+                            
+                            Text("Almost there! Just create your account to get started")
+                                .font(Design.Typography.title3)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                        
+                        // Form Card
+                        ModernCard {
+                            VStack(spacing: Design.Spacing.md) {
+                                // Name (pre-filled from onboarding)
+                                CustomTextField(
+                                    placeholder: "Full Name",
+                                    text: Binding(
+                                        get: { viewModel.name.isEmpty ? "User" : viewModel.name },
+                                        set: { viewModel.name = $0 }
+                                    ),
+                                    icon: "person.fill"
+                                )
+                                .disabled(true) // Name from onboarding, can't change
+                                .opacity(0.7)
+                                
+                                CustomTextField(
+                                    placeholder: "Email",
+                                    text: $email,
+                                    icon: "envelope.fill",
+                                    keyboardType: .emailAddress
+                                )
+                                .autocapitalization(.none)
+                                .autocorrectionDisabled()
+                                
+                                CustomSecureField(
+                                    placeholder: "Password",
+                                    text: $password,
+                                    icon: "lock.fill"
+                                )
+                                
+                                CustomSecureField(
+                                    placeholder: "Confirm Password",
+                                    text: $confirmPassword,
+                                    icon: "lock.fill"
+                                )
+                            }
+                        }
+                        .padding(.horizontal, Design.Spacing.md)
+                        
+                        // Error message
+                        if let error = errorMessage {
+                            HStack(spacing: Design.Spacing.sm) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(.red)
+                                Text(error)
+                                    .font(Design.Typography.body)
+                                    .foregroundColor(.red)
+                            }
+                            .padding(Design.Spacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(Design.Radius.medium)
+                            .padding(.horizontal, Design.Spacing.md)
+                        }
+                        
+                        // Signup button
+                        Button(action: handleSignup) {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("Create Account")
+                            }
+                        }
+                        .buttonStyle(ModernButtonStyle())
+                        .disabled(isLoading || !isFormValid)
+                        .opacity((isLoading || !isFormValid) ? 0.6 : 1.0)
+                        .padding(.horizontal, Design.Spacing.md)
+                        
+                        Spacer(minLength: 40)
+                    }
+                }
+            }
+            .navigationTitle("Create Account")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .environmentObject(PurchaseManager())
+        }
+        .onChange(of: auth.isLoggedIn) { oldValue, newValue in
+            if newValue {
+                // Show paywall after signup
+                showingPaywall = true
+                // Mark onboarding as complete
+                auth.didFinishOnboarding = true
+                auth.saveLocalState()
+            }
+        }
+    }
+    
+    private var isFormValid: Bool {
+        !email.isEmpty && !password.isEmpty && 
+        password == confirmPassword && password.count >= 8 &&
+        Validators.isValidEmail(email)
+    }
+    
+    private func handleSignup() {
+        errorMessage = nil
+        
+        guard isFormValid else {
+            errorMessage = "Please fill in all fields correctly"
+            return
+        }
+        
+        isLoading = true
+        
+        Task {
+            do {
+                try await auth.signup(
+                    name: viewModel.name.isEmpty ? "User" : viewModel.name,
+                    email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                    password: password
+                )
+                // Success - onChange will handle showing paywall
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    if let nsError = error as NSError? {
+                        errorMessage = nsError.localizedDescription
+                    } else {
+                        errorMessage = "Failed to create account. Please try again."
+                    }
+                }
+            }
         }
     }
 }

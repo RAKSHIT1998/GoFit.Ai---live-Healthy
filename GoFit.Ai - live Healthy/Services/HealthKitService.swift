@@ -113,6 +113,13 @@ class HealthKitService: ObservableObject {
             throw HealthKitError.notAvailable
         }
         
+        // Check if already authorized before requesting
+        checkAuthorizationStatus()
+        if isAuthorized {
+            print("✅ HealthKit already authorized, skipping request")
+            return
+        }
+        
         // Check if HealthKit entitlement is available
         // If not, fail gracefully without crashing
         do {
@@ -130,20 +137,37 @@ class HealthKitService: ObservableObject {
                 HKObjectType.quantityType(forIdentifier: .dietaryWater)!
             ]
             
+            print("🔵 Requesting HealthKit authorization...")
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
             
             // Wait a moment for authorization to be processed
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
             
             // Re-check authorization status after requesting
-            // No need for MainActor.run since class is already @MainActor
             checkAuthorizationStatus()
+            print("📊 HealthKit authorization status after request: \(isAuthorized ? "✅ Authorized" : "❌ Not authorized")")
+            
+            // If authorized, immediately try to read data to show HealthKit we're using it
+            // This helps HealthKit show the app as "collecting data" in Settings
+            if isAuthorized {
+                print("📖 Reading HealthKit data immediately after authorization to register usage...")
+                do {
+                    try await readTodaySteps()
+                    try await readTodayActiveCalories()
+                    print("✅ Successfully read HealthKit data - app should now show as collecting data in Settings")
+                } catch {
+                    print("⚠️ Failed to read HealthKit data immediately after authorization: \(error.localizedDescription)")
+                    // Don't throw - authorization was successful, reading can fail for other reasons
+                }
+            }
         } catch {
             print("⚠️ HealthKit authorization error: \(error.localizedDescription)")
             // If entitlement is missing, log but don't crash
             if (error as NSError).domain == "com.apple.healthkit" && (error as NSError).code == 4 {
                 print("⚠️ HealthKit entitlement is missing. Please enable HealthKit capability in Xcode.")
             }
+            // Re-check status even on error
+            checkAuthorizationStatus()
             throw error
         }
     }
@@ -171,14 +195,23 @@ class HealthKitService: ObservableObject {
         let stepStatus = healthStore.authorizationStatus(for: stepType)
         let caloriesStatus = healthStore.authorizationStatus(for: caloriesType)
         
-        // For read types, .sharingAuthorized means read access is granted
-        // We require at least ONE primary type to be authorized for the app to be considered "authorized"
-        // This supports partial authorization (user might authorize steps but not calories, or vice versa)
+        // For read types, authorization status can be:
+        // .notDetermined - user hasn't been asked yet
+        // .sharingDenied - user explicitly denied
+        // .sharingAuthorized - user granted read access
+        // Note: For read-only types, .sharingAuthorized means we can read data
         let isStepAuthorized = stepStatus == .sharingAuthorized
         let isCaloriesAuthorized = caloriesStatus == .sharingAuthorized
         
-        // App is authorized if at least one primary type is authorized
-        // This ensures that isAuthorized=true means we can read at least some primary data
+        // Also check if status is not denied (could be authorized or not determined)
+        // If user has granted permission, status will be .sharingAuthorized
+        // If user denied, status will be .sharingDenied
+        // If not determined, we haven't asked yet
+        let stepNotDenied = stepStatus != .sharingDenied
+        let caloriesNotDenied = caloriesStatus != .sharingDenied
+        
+        // App is authorized if at least one primary type is explicitly authorized
+        // We only consider it authorized if status is .sharingAuthorized (not just not denied)
         let newAuthorizedStatus = isStepAuthorized || isCaloriesAuthorized
         
         // Check heart rate for logging (optional type, doesn't affect isAuthorized)
@@ -189,12 +222,16 @@ class HealthKitService: ObservableObject {
         }
         
         // Log detailed status for debugging
+        let stepStatusString = statusString(for: stepStatus)
+        let caloriesStatusString = statusString(for: caloriesStatus)
+        
         print("📊 HealthKit Authorization Status Check:")
-        print("   Steps: \(isStepAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(stepStatus.rawValue))")")
-        print("   Active Calories: \(isCaloriesAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(caloriesStatus.rawValue))")")
+        print("   Steps: \(isStepAuthorized ? "✅ Authorized" : "❌ Not authorized") - Status: \(stepStatusString) (\(stepStatus.rawValue))")
+        print("   Active Calories: \(isCaloriesAuthorized ? "✅ Authorized" : "❌ Not authorized") - Status: \(caloriesStatusString) (\(caloriesStatus.rawValue))")
         if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
             let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
-            print("   Heart Rate: \(heartRateAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(heartRateStatus.rawValue))") [Optional]")
+            let heartRateStatusString = statusString(for: heartRateStatus)
+            print("   Heart Rate: \(heartRateAuthorized ? "✅ Authorized" : "❌ Not authorized") - Status: \(heartRateStatusString) (\(heartRateStatus.rawValue)) [Optional]")
         }
         print("   Overall: \(newAuthorizedStatus ? "✅ Authorized" : "❌ Not authorized")")
         if newAuthorizedStatus && (!isStepAuthorized || !isCaloriesAuthorized) {
@@ -209,6 +246,20 @@ class HealthKitService: ObservableObject {
     // Force refresh authorization status (useful after user changes settings)
     func refreshAuthorizationStatus() {
         checkAuthorizationStatus()
+    }
+    
+    // Helper to convert authorization status to readable string
+    private func statusString(for status: HKAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined:
+            return "Not Determined"
+        case .sharingDenied:
+            return "Denied"
+        case .sharingAuthorized:
+            return "Authorized"
+        @unknown default:
+            return "Unknown"
+        }
     }
     
     // Read today's steps
