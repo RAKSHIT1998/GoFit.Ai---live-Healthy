@@ -30,41 +30,62 @@ class HealthKitService: ObservableObject {
             Task { @MainActor in
                 guard let self = self else { return }
                 self.checkAuthorizationStatus()
-                // Sync when app comes to foreground if authorized
-                if self.isAuthorized {
+                // Sync when app comes to foreground if authorized and user is logged in
+                if self.isAuthorized, AuthService.shared.readToken() != nil {
                     try? await self.syncToBackend()
                 }
             }
         }
         
-        // Start periodic syncing
-        startPeriodicSync()
+        // Don't start periodic sync automatically - it will be started when user logs in
+        // This prevents syncing when user is not logged in
     }
     
     deinit {
-        periodicSyncTask?.cancel()
+        stopPeriodicSync()
         NotificationCenter.default.removeObserver(self)
     }
     
     // Start automatic periodic syncing (every 15 minutes)
-    private func startPeriodicSync() {
-        periodicSyncTask?.cancel()
+    // Should only be called when user is logged in
+    func startPeriodicSync() {
+        // Cancel any existing sync task
+        stopPeriodicSync()
+        
         periodicSyncTask = Task { [weak self] in
             while !Task.isCancelled {
                 // Wait 15 minutes
                 try? await Task.sleep(nanoseconds: 15 * 60 * 1_000_000_000)
                 
-                // Sync if authorized
-                if let self = self, self.isAuthorized {
-                    do {
-                        try await self.syncToBackend()
-                        print("✅ Periodic HealthKit sync completed")
-                    } catch {
-                        print("⚠️ Periodic HealthKit sync failed: \(error.localizedDescription)")
+                // Check if user is still logged in before syncing
+                guard let self = self,
+                      self.isAuthorized,
+                      AuthService.shared.readToken() != nil else {
+                    // User logged out or not authorized, stop periodic sync
+                    print("⚠️ Stopping periodic sync - user not logged in or not authorized")
+                    return
+                }
+                
+                do {
+                    try await self.syncToBackend()
+                    print("✅ Periodic HealthKit sync completed")
+                } catch {
+                    print("⚠️ Periodic HealthKit sync failed: \(error.localizedDescription)")
+                    // If sync fails due to auth, stop periodic sync
+                    if let error = error as NSError,
+                       error.domain == "AuthError" || error.code == 401 {
+                        print("⚠️ Auth error detected, stopping periodic sync")
+                        return
                     }
                 }
             }
         }
+    }
+    
+    // Stop automatic periodic syncing
+    func stopPeriodicSync() {
+        periodicSyncTask?.cancel()
+        periodicSyncTask = nil
     }
     
     // Request authorization

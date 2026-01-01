@@ -35,6 +35,9 @@ struct RootView: View {
                 healthKit.checkAuthorizationStatus()
                 
                 if healthKit.isAuthorized {
+                    // Start periodic sync when user is logged in
+                    healthKit.startPeriodicSync()
+                    
                     Task {
                         do {
                             try await healthKit.syncToBackend()
@@ -44,6 +47,9 @@ struct RootView: View {
                         }
                     }
                 }
+            } else {
+                // Stop periodic sync when user is not logged in
+                healthKit.stopPeriodicSync()
             }
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
@@ -58,6 +64,9 @@ struct RootView: View {
                     healthKit.checkAuthorizationStatus()
                     
                     if healthKit.isAuthorized {
+                        // Start periodic sync when user logs in
+                        healthKit.startPeriodicSync()
+                        
                         do {
                             try await healthKit.syncToBackend()
                             print("✅ HealthKit synced after login")
@@ -66,6 +75,10 @@ struct RootView: View {
                         }
                     }
                 }
+            } else {
+                // When user logs out, stop periodic sync
+                healthKit.stopPeriodicSync()
+                print("🛑 Stopped HealthKit periodic sync - user logged out")
             }
         }
     }
