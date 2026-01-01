@@ -370,17 +370,15 @@ class OnboardingViewModel: ObservableObject {
     func canProceed() -> Bool {
         switch currentStep {
         case 0: return true // Welcome screen
-        case 1: return !name.isEmpty
-        case 2: return weightKg > 0 && heightCm > 0 // Weight & Height
+        case 1: return !name.isEmpty // Name required
+        case 2: return weightKg > 0 && heightCm > 0 // Weight & Height required
         case 3: return true // Goal selection
         case 4: return true // Activity level
         case 5: return true // Dietary preferences (optional)
         case 6: return true // Allergies (optional)
-        case 7: return true // Fasting preference
-        case 8: return true // Workout preferences (optional)
-        case 9: return true // Favorite cuisines (optional)
-        case 10: return true // Food preferences (optional)
-        case 11: return true // Workout time & lifestyle (optional)
+        case 7: return true // Workout preferences (optional)
+        case 8: return true // Favorite cuisines & food preferences (optional)
+        case 9: return true // Lifestyle & motivation (optional)
         default: return true
         }
     }

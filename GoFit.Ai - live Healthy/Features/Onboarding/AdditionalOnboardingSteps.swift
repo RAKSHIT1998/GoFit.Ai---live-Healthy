@@ -519,3 +519,206 @@ struct LifestyleFactorCard: View {
     }
 }
 
+// MARK: - Combined Cuisines & Food Preferences Step (More Engaging)
+struct CuisinesAndFoodPreferencesStep: View {
+    @ObservedObject var viewModel: OnboardingViewModel
+    
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Image(systemName: "fork.knife.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.white)
+                    .symbolEffect(.bounce, value: viewModel.favoriteCuisines.count)
+                
+                Text("What Do You Love to Eat?")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                
+                Text("Help us create meals you'll actually enjoy")
+                    .font(.body)
+                    .foregroundColor(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+            }
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Favorite Cuisines Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Favorite Cuisines")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                        
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(OnboardingViewModel.CuisineType.allCases.filter { $0 != .none }, id: \.self) { cuisine in
+                                CuisineCard(
+                                    cuisine: cuisine,
+                                    isSelected: viewModel.favoriteCuisines.contains(cuisine)
+                                ) {
+                                    withAnimation(.spring()) {
+                                        if viewModel.favoriteCuisines.contains(cuisine) {
+                                            viewModel.favoriteCuisines.remove(cuisine)
+                                        } else {
+                                            viewModel.favoriteCuisines.insert(cuisine)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                    
+                    // Food Preferences Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Food Preferences")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                        
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(OnboardingViewModel.FoodPreference.allCases, id: \.self) { pref in
+                                FoodPreferenceCard(
+                                    preference: pref,
+                                    isSelected: viewModel.foodPreferences.contains(pref)
+                                ) {
+                                    withAnimation(.spring()) {
+                                        if viewModel.foodPreferences.contains(pref) {
+                                            viewModel.foodPreferences.remove(pref)
+                                        } else {
+                                            viewModel.foodPreferences.insert(pref)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.top, 40)
+    }
+}
+
+// MARK: - Combined Lifestyle & Motivation Step (More Engaging)
+struct LifestyleAndMotivationStep: View {
+    @ObservedObject var viewModel: OnboardingViewModel
+    
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+            
+            VStack(spacing: 16) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 60))
+                    .foregroundColor(.white)
+                    .symbolEffect(.pulse, value: viewModel.motivationLevel)
+                
+                Text("Tell Us About Your Lifestyle")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                
+                Text("This helps us personalize your experience")
+                    .font(.body)
+                    .foregroundColor(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+            }
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Motivation Level
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("How motivated are you?")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(OnboardingViewModel.MotivationLevel.allCases, id: \.self) { level in
+                                MotivationCard(
+                                    level: level,
+                                    isSelected: viewModel.motivationLevel == level
+                                ) {
+                                    withAnimation(.spring()) {
+                                        viewModel.motivationLevel = level
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                    
+                    // Lifestyle Factors
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Lifestyle Factors (optional)")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(OnboardingViewModel.LifestyleFactor.allCases, id: \.self) { factor in
+                                LifestyleFactorCard(
+                                    factor: factor,
+                                    isSelected: viewModel.lifestyleFactors.contains(factor)
+                                ) {
+                                    withAnimation(.spring()) {
+                                        if viewModel.lifestyleFactors.contains(factor) {
+                                            viewModel.lifestyleFactors.remove(factor)
+                                        } else {
+                                            viewModel.lifestyleFactors.insert(factor)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.top, 40)
+    }
+}
+
+struct MotivationCard: View {
+    let level: OnboardingViewModel.MotivationLevel
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Text(level.emoji)
+                    .font(.system(size: 32))
+                
+                Text(level.displayName)
+                    .font(.body)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(Design.Colors.primary)
+                }
+            }
+            .padding()
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Design.Colors.primary : Color.clear, lineWidth: 2)
+            )
+        }
+    }
+}
+

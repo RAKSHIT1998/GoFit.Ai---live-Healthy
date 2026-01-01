@@ -100,6 +100,11 @@ final class AuthService {
             body["foodPreferences"] = data.foodPreferences
             body["workoutTimeAvailability"] = data.workoutTimeAvailability
             body["lifestyleFactors"] = data.lifestyleFactors
+            body["favoriteFoods"] = data.favoriteFoods
+            body["mealTimingPreference"] = data.mealTimingPreference
+            body["cookingSkill"] = data.cookingSkill
+            body["budgetPreference"] = data.budgetPreference
+            body["motivationLevel"] = data.motivationLevel
             print("🔵 Including comprehensive onboarding data in signup")
         }
         

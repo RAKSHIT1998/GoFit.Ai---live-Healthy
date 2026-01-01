@@ -379,4 +379,9 @@ struct OnboardingData: Codable {
     let foodPreferences: [String]
     let workoutTimeAvailability: String
     let lifestyleFactors: [String]
+    let favoriteFoods: [String]
+    let mealTimingPreference: String
+    let cookingSkill: String
+    let budgetPreference: String
+    let motivationLevel: String
 }

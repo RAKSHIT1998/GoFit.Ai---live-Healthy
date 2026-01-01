@@ -38,7 +38,7 @@ struct OnboardingScreens: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                 
-                // Content
+                // Content - 10 Engaging Interactive Screens
                 TabView(selection: $viewModel.currentStep) {
                     WelcomeStep()
                         .tag(0)
@@ -61,20 +61,14 @@ struct OnboardingScreens: View {
                     AllergiesStep(viewModel: viewModel)
                         .tag(6)
                     
-                    FastingPreferenceStep(viewModel: viewModel)
+                    WorkoutPreferencesStep(viewModel: viewModel)
                         .tag(7)
                     
-                    WorkoutPreferencesStep(viewModel: viewModel)
+                    CuisinesAndFoodPreferencesStep(viewModel: viewModel)
                         .tag(8)
                     
-                    FavoriteCuisinesStep(viewModel: viewModel)
+                    LifestyleAndMotivationStep(viewModel: viewModel)
                         .tag(9)
-                    
-                    FoodPreferencesStep(viewModel: viewModel)
-                        .tag(10)
-                    
-                    LifestyleStep(viewModel: viewModel)
-                        .tag(11)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(), value: viewModel.currentStep)
@@ -151,7 +145,12 @@ struct OnboardingScreens: View {
             favoriteCuisines: viewModel.favoriteCuisines.map { $0.rawValue },
             foodPreferences: viewModel.foodPreferences.map { $0.rawValue },
             workoutTimeAvailability: viewModel.workoutTimeAvailability.rawValue,
-            lifestyleFactors: viewModel.lifestyleFactors.map { $0.rawValue }
+            lifestyleFactors: viewModel.lifestyleFactors.map { $0.rawValue },
+            favoriteFoods: viewModel.favoriteFoods,
+            mealTimingPreference: viewModel.mealTimingPreference.rawValue,
+            cookingSkill: viewModel.cookingSkill.rawValue,
+            budgetPreference: viewModel.budgetPreference.rawValue,
+            motivationLevel: viewModel.motivationLevel.rawValue
         )
         
         // If skip authentication is enabled, skip permissions too
@@ -165,38 +164,76 @@ struct OnboardingScreens: View {
     }
 }
 
-// MARK: - Welcome Step
+// MARK: - Welcome Step (Enhanced & More Engaging)
 struct WelcomeStep: View {
+    @State private var animateFeatures = false
+    
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 32) {
             Spacer()
             
-            // Logo
-            VStack(spacing: 16) {
+            // Logo with animation
+            VStack(spacing: 20) {
                 LogoViewLight(size: .xlarge, showText: false)
+                    .scaleEffect(animateFeatures ? 1.0 : 0.8)
+                    .opacity(animateFeatures ? 1.0 : 0.0)
                 
                 Text("Welcome to\nGoFit.Ai")
                     .font(.system(size: 42, weight: .bold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .opacity(animateFeatures ? 1.0 : 0.0)
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 24)
             
             Text("Your AI-powered health companion")
                 .font(.title3)
                 .foregroundColor(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
+                .opacity(animateFeatures ? 1.0 : 0.0)
             
-            VStack(alignment: .leading, spacing: 16) {
-                OnboardingFeatureRow(icon: "camera.fill", text: "Snap meals for instant nutrition analysis")
-                OnboardingFeatureRow(icon: "sparkles", text: "Get personalized AI meal & workout plans")
-                OnboardingFeatureRow(icon: "applewatch", text: "Sync with Apple Health & Watch")
-                OnboardingFeatureRow(icon: "timer", text: "Track intermittent fasting")
+            VStack(alignment: .leading, spacing: 20) {
+                OnboardingFeatureRow(
+                    icon: "camera.fill",
+                    text: "Snap meals for instant nutrition analysis",
+                    delay: 0.1
+                )
+                .opacity(animateFeatures ? 1.0 : 0.0)
+                .offset(x: animateFeatures ? 0 : -20)
+                
+                OnboardingFeatureRow(
+                    icon: "sparkles",
+                    text: "Get personalized AI meal & workout plans",
+                    delay: 0.2
+                )
+                .opacity(animateFeatures ? 1.0 : 0.0)
+                .offset(x: animateFeatures ? 0 : -20)
+                
+                OnboardingFeatureRow(
+                    icon: "chart.bar.fill",
+                    text: "Track your progress and goals",
+                    delay: 0.3
+                )
+                .opacity(animateFeatures ? 1.0 : 0.0)
+                .offset(x: animateFeatures ? 0 : -20)
+                
+                OnboardingFeatureRow(
+                    icon: "timer",
+                    text: "Track intermittent fasting",
+                    delay: 0.4
+                )
+                .opacity(animateFeatures ? 1.0 : 0.0)
+                .offset(x: animateFeatures ? 0 : -20)
             }
-            .padding(.top, 32)
+            .padding(.top, 40)
             .padding(.horizontal, 32)
             
             Spacer()
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
+                animateFeatures = true
+            }
         }
     }
 }
@@ -204,18 +241,25 @@ struct WelcomeStep: View {
 struct OnboardingFeatureRow: View {
     let icon: String
     let text: String
+    var delay: Double = 0
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(.white)
-                .frame(width: 32)
+                .font(.title2)
+                .foregroundColor(Design.Colors.primary)
+                .frame(width: 40)
+                .symbolEffect(.pulse, value: delay)
             
             Text(text)
                 .font(.body)
-                .foregroundColor(.white.opacity(0.9))
+                .fontWeight(.medium)
+                .foregroundColor(.white)
         }
+        .padding()
+        .background(Design.Colors.cardBackground.opacity(0.3))
+        .cornerRadius(16)
+        .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: delay)
     }
 }
 
