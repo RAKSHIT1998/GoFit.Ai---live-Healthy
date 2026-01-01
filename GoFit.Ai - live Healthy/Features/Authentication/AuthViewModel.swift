@@ -353,8 +353,21 @@ final class AuthViewModel: ObservableObject {
     func resetOnboarding() {
         self.didFinishOnboarding = false
         self.onboardingData = nil
+        // Clear name if it's a default/test value
+        if self.name.lowercased() == "rakshit" || self.name == "User" || self.name == "Dev User" {
+            self.name = ""
+        }
         saveLocalState()
         print("🔄 Onboarding reset - will show onboarding on next launch")
+    }
+    
+    // Clear any test/default names
+    func clearTestData() {
+        if self.name.lowercased() == "rakshit" || self.name == "User" || self.name == "Dev User" {
+            self.name = ""
+            saveLocalState()
+            print("🧹 Cleared test name from saved state")
+        }
     }
 }
 

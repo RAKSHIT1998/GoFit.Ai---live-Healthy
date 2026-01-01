@@ -148,12 +148,28 @@ struct OnboardingScreens: View {
             OnboardingSignupView(viewModel: viewModel)
                 .environmentObject(auth)
                 .environmentObject(PurchaseManager())
+                .onAppear {
+                    // Clear any test/default names from saved state
+                    auth.clearTestData()
+                    
+                    // Debug: Log the name state when signup view appears
+                    print("📱 OnboardingSignupView appeared")
+                    print("📱 viewModel.name: '\(viewModel.name)'")
+                    print("📱 auth.name: '\(auth.name)'")
+                    print("📱 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
+                }
         }
     }
     
     private func completeOnboarding() {
         // Save all onboarding data to auth view model
-        auth.name = viewModel.name.isEmpty ? "User" : viewModel.name
+        // Only update auth.name if viewModel.name is not empty (don't overwrite with empty)
+        if !viewModel.name.isEmpty {
+            auth.name = viewModel.name
+            print("✅ Setting auth.name from onboarding: '\(viewModel.name)'")
+        } else {
+            print("⚠️ viewModel.name is empty, keeping existing auth.name: '\(auth.name)'")
+        }
         auth.goal = viewModel.goal.rawValue
         auth.dietPrefs = viewModel.dietaryPreferences.map { $0.rawValue }
         auth.weightKg = viewModel.weightKg > 0 ? viewModel.weightKg : 70
@@ -161,7 +177,7 @@ struct OnboardingScreens: View {
         
         // Store comprehensive onboarding data for signup
         auth.onboardingData = OnboardingData(
-            name: viewModel.name,
+            name: viewModel.name.isEmpty ? auth.name : viewModel.name,
             weightKg: viewModel.weightKg,
             heightCm: viewModel.heightCm,
             goal: viewModel.goal.rawValue,
@@ -949,7 +965,19 @@ struct OnboardingSignupView: View {
                                     CustomTextField(
                                         placeholder: "Full Name",
                                         text: Binding(
-                                            get: { viewModel.name.isEmpty ? "User" : viewModel.name },
+                                            get: { 
+                                                // Prioritize viewModel.name from onboarding
+                                                // Only use auth.name if viewModel.name is empty and auth.name is not "rakshit"
+                                                if !viewModel.name.isEmpty {
+                                                    return viewModel.name
+                                                } else if !auth.name.isEmpty && auth.name.lowercased() != "rakshit" {
+                                                    return auth.name
+                                                } else if let onboardingName = auth.onboardingData?.name, !onboardingName.isEmpty {
+                                                    return onboardingName
+                                                } else {
+                                                    return "" // Show empty instead of "User" or "rakshit"
+                                                }
+                                            },
                                             set: { viewModel.name = $0 }
                                         ),
                                         icon: "person.fill"
@@ -1070,10 +1098,17 @@ struct OnboardingSignupView: View {
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(PurchaseManager())
+                .onDisappear {
+                    // After paywall dismisses (purchase or close), dismiss signup view
+                    // RootView will automatically show MainTabView since auth.isLoggedIn is true
+                    if auth.isLoggedIn {
+                        dismiss()
+                    }
+                }
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
-            if newValue {
-                // Show paywall after signup
+            if newValue && !showingPaywall {
+                // Show paywall after signup (if not already showing)
                 showingPaywall = true
                 // Mark onboarding as complete
                 auth.didFinishOnboarding = true
@@ -1127,25 +1162,67 @@ struct OnboardingSignupView: View {
         
         Task {
             do {
+                // Get the name from onboarding - prioritize viewModel.name, then auth.name, never use "rakshit" or defaults
+                let signupName: String
+                if !viewModel.name.isEmpty {
+                    signupName = viewModel.name
+                } else if !auth.name.isEmpty && auth.name.lowercased() != "rakshit" {
+                    signupName = auth.name
+                } else if let onboardingName = auth.onboardingData?.name, !onboardingName.isEmpty {
+                    signupName = onboardingName
+                } else {
+                    signupName = "User"
+                }
+                
                 print("🔵 Starting signup from OnboardingSignupView...")
+                print("🔵 Name being used: '\(signupName)'")
+                print("🔵 viewModel.name: '\(viewModel.name)'")
+                print("🔵 auth.name: '\(auth.name)'")
+                print("🔵 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
+                print("🔵 Email: \(email.trimmingCharacters(in: .whitespacesAndNewlines))")
                 print("🔵 Onboarding data available: \(auth.onboardingData != nil ? "Yes" : "No")")
+                
                 try await auth.signup(
-                    name: viewModel.name.isEmpty ? "User" : viewModel.name,
+                    name: signupName,
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: password
                 )
                 print("✅ Signup successful from OnboardingSignupView")
-                // Success - onChange will handle showing paywall
+                
+                // Mark onboarding as complete and show paywall
+                await MainActor.run {
+                    auth.didFinishOnboarding = true
+                    auth.saveLocalState()
+                    
+                    // Show paywall immediately after successful signup
+                    showingPaywall = true
+                }
             } catch {
                 print("❌ Signup failed in OnboardingSignupView: \(error.localizedDescription)")
+                print("❌ Error type: \(type(of: error))")
+                if let urlError = error as? URLError {
+                    print("❌ URLError code: \(urlError.code.rawValue)")
+                    print("❌ URLError description: \(urlError.localizedDescription)")
+                }
                 await MainActor.run {
                     isLoading = false
                     if let nsError = error as NSError? {
                         let errorMsg = nsError.localizedDescription
                         errorMessage = errorMsg.isEmpty ? "Failed to create account. Please check your connection and try again." : errorMsg
-                        print("❌ Error details: code=\(nsError.code), domain=\(nsError.domain)")
+                        print("❌ Error details: code=\(nsError.code), domain=\(nsError.domain), userInfo=\(nsError.userInfo)")
+                    } else if let urlError = error as? URLError {
+                        switch urlError.code {
+                        case .notConnectedToInternet:
+                            errorMessage = "No internet connection. Please check your network."
+                        case .timedOut:
+                            errorMessage = "Connection timed out. Please try again."
+                        case .cannotFindHost:
+                            errorMessage = "Cannot reach server. Please check your connection."
+                        default:
+                            errorMessage = "Network error: \(urlError.localizedDescription)"
+                        }
                     } else {
-                        errorMessage = "Failed to create account. Please try again."
+                        errorMessage = "Failed to create account: \(error.localizedDescription)"
                     }
                 }
             }
