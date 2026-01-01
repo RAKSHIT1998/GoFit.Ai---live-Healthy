@@ -15,7 +15,9 @@ class HealthKitService: ObservableObject {
     @Published var averageHeartRate: Double = 0
     
     // Periodic sync task
-    private var periodicSyncTask: Task<Void, Never>?
+    // nonisolated(unsafe) is safe here because Task cancellation is thread-safe
+    // and we only access this from @MainActor methods or deinit
+    nonisolated(unsafe) private var periodicSyncTask: Task<Void, Never>?
     
     private init() {
         checkAuthorizationStatus()
@@ -74,8 +76,8 @@ class HealthKitService: ObservableObject {
                 } catch {
                     print("⚠️ Periodic HealthKit sync failed: \(error.localizedDescription)")
                     // If sync fails due to auth, stop periodic sync
-                    if let error = error as NSError,
-                       error.domain == "AuthError" || error.code == 401 {
+                    let nsError = error as NSError
+                    if nsError.domain == "AuthError" || nsError.code == 401 {
                         print("⚠️ Auth error detected, stopping periodic sync")
                         return
                     }
