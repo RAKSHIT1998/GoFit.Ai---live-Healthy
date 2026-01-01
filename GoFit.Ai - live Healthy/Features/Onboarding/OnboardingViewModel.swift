@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 class OnboardingViewModel: ObservableObject {
     @Published var currentStep: Int = 0
-    @Published var totalSteps: Int = 12 // Increased for more questions
+    @Published var totalSteps: Int = 10 // 10 engaging screens
     
     // User data collected during onboarding
     @Published var name: String = ""
@@ -24,6 +24,13 @@ class OnboardingViewModel: ObservableObject {
     @Published var foodPreferences: Set<FoodPreference> = []
     @Published var workoutTimeAvailability: WorkoutTime = .moderate
     @Published var lifestyleFactors: Set<LifestyleFactor> = []
+    
+    // Additional engaging questions
+    @Published var favoriteFoods: [String] = []
+    @Published var mealTimingPreference: MealTiming = .regular
+    @Published var cookingSkill: CookingSkill = .intermediate
+    @Published var budgetPreference: BudgetPreference = .moderate
+    @Published var motivationLevel: MotivationLevel = .moderate
     
     enum GoalType: String, CaseIterable, Codable {
         case lose = "lose"
@@ -258,6 +265,88 @@ class OnboardingViewModel: ObservableObject {
             case .familyMeals: return "Family Meals"
             case .workFromHome: return "Work from Home"
             case .nightShift: return "Night Shift"
+            }
+        }
+    }
+    
+    enum MealTiming: String, CaseIterable, Codable {
+        case early = "early"
+        case regular = "regular"
+        case late = "late"
+        case flexible = "flexible"
+        
+        var displayName: String {
+            switch self {
+            case .early: return "Early Bird (6-8 AM breakfast)"
+            case .regular: return "Regular (8-10 AM breakfast)"
+            case .late: return "Late Riser (10 AM+ breakfast)"
+            case .flexible: return "Flexible Schedule"
+            }
+        }
+    }
+    
+    enum CookingSkill: String, CaseIterable, Codable {
+        case beginner = "beginner"
+        case intermediate = "intermediate"
+        case advanced = "advanced"
+        case expert = "expert"
+        
+        var displayName: String {
+            switch self {
+            case .beginner: return "Beginner - Simple recipes"
+            case .intermediate: return "Intermediate - Can follow recipes"
+            case .advanced: return "Advanced - Can modify recipes"
+            case .expert: return "Expert - Create my own recipes"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .beginner: return "1.circle.fill"
+            case .intermediate: return "2.circle.fill"
+            case .advanced: return "3.circle.fill"
+            case .expert: return "star.fill"
+            }
+        }
+    }
+    
+    enum BudgetPreference: String, CaseIterable, Codable {
+        case budget = "budget"
+        case moderate = "moderate"
+        case premium = "premium"
+        case flexible = "flexible"
+        
+        var displayName: String {
+            switch self {
+            case .budget: return "Budget Friendly ($)"
+            case .moderate: return "Moderate ($$)"
+            case .premium: return "Premium ($$$)"
+            case .flexible: return "Flexible - Quality matters"
+            }
+        }
+    }
+    
+    enum MotivationLevel: String, CaseIterable, Codable {
+        case low = "low"
+        case moderate = "moderate"
+        case high = "high"
+        case veryHigh = "very_high"
+        
+        var displayName: String {
+            switch self {
+            case .low: return "Just Starting Out"
+            case .moderate: return "Motivated"
+            case .high: return "Very Motivated"
+            case .veryHigh: return "Extremely Committed"
+            }
+        }
+        
+        var emoji: String {
+            switch self {
+            case .low: return "🌱"
+            case .moderate: return "💪"
+            case .high: return "🔥"
+            case .veryHigh: return "⚡"
             }
         }
     }

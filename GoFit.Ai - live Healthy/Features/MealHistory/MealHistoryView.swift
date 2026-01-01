@@ -126,6 +126,13 @@ struct MealHistoryView: View {
                 }
             }
         } catch {
+            // Ignore cancellation errors - they're expected when view disappears
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                // Request was cancelled (e.g., view disappeared) - this is normal
+                return
+            }
+            
+            // Only log actual errors, not cancellations
             print("Failed to load meals: \(error)")
             await MainActor.run {
                 // Don't clear meals on error, just log it
