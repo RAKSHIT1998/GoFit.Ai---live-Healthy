@@ -210,6 +210,7 @@ class PurchaseManager: ObservableObject {
     // MARK: - Backend Verification
     private func verifyReceiptWithBackend(transaction: Transaction) async {
         do {
+            print("🔄 Verifying subscription with backend...")
             let payload = transaction.jsonRepresentation.base64EncodedString()
 
             struct Request: Codable {
@@ -228,40 +229,100 @@ class PurchaseManager: ObservableObject {
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.timeoutInterval = 30.0
 
-            if let token = AuthService.shared.readToken()?.accessToken {
-                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            guard let token = AuthService.shared.readToken()?.accessToken else {
+                print("❌ No auth token found for subscription verification")
+                return
             }
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
             req.httpBody = try JSONEncoder().encode(body)
-            _ = try await URLSession.shared.data(for: req)
+            
+            let (data, response) = try await URLSession.shared.data(for: req)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ Invalid response from subscription verification")
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                print("❌ Subscription verification failed with status \(httpResponse.statusCode): \(errorMessage)")
+                return
+            }
+            
+            print("✅ Subscription verified successfully with backend")
+            
+            // Decode response to get subscription status
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let status = json["subscriptionStatus"] as? String {
+                print("📊 Subscription status: \(status)")
+            }
 
         } catch {
-            print("❌ Backend verification error:", error)
+            print("❌ Backend verification error: \(error.localizedDescription)")
         }
     }
 
     private func checkSubscriptionStatus() async {
         do {
+            print("🔄 Checking subscription status with backend...")
             let url = URL(string: "\(NetworkManager.shared.baseURL)/subscriptions/status")!
             var req = URLRequest(url: url)
             req.httpMethod = "GET"
+            req.timeoutInterval = 30.0
 
-            if let token = AuthService.shared.readToken()?.accessToken {
-                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            guard let token = AuthService.shared.readToken()?.accessToken else {
+                print("❌ No auth token found for subscription status check")
+                return
             }
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-            let (data, _) = try await URLSession.shared.data(for: req)
+            let (data, response) = try await URLSession.shared.data(for: req)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ Invalid response from subscription status check")
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                print("❌ Subscription status check failed with status \(httpResponse.statusCode): \(errorMessage)")
+                return
+            }
 
             struct Response: Codable {
                 let hasActiveSubscription: Bool
+                let subscription: SubscriptionInfo?
+                let isInTrial: Bool?
+                let trialDaysRemaining: Int?
+            }
+            
+            struct SubscriptionInfo: Codable {
+                let status: String
+                let plan: String?
+                let endDate: String?
             }
 
-            let response = try JSONDecoder().decode(Response.self, from: data)
-            hasActiveSubscription = response.hasActiveSubscription
+            let backendResponse = try JSONDecoder().decode(Response.self, from: data)
+            hasActiveSubscription = backendResponse.hasActiveSubscription
+            
+            if let isInTrial = backendResponse.isInTrial, isInTrial {
+                subscriptionStatus = .trial
+            } else if backendResponse.hasActiveSubscription {
+                subscriptionStatus = .active
+            } else {
+                subscriptionStatus = .expired
+            }
+            
+            print("✅ Subscription status from backend: \(backendResponse.hasActiveSubscription ? "Active" : "Inactive")")
+            if let daysRemaining = backendResponse.trialDaysRemaining {
+                print("📊 Trial days remaining: \(daysRemaining)")
+            }
 
         } catch {
-            print("❌ Subscription status fetch failed:", error)
+            print("❌ Subscription status fetch failed: \(error.localizedDescription)")
         }
     }
 

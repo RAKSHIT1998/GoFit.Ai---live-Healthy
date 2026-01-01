@@ -237,14 +237,27 @@ class HealthKitService: ObservableObject {
     
     // Sync data to backend
     func syncToBackend() async throws {
+        // Check authorization first
+        guard isAuthorized else {
+            print("⚠️ HealthKit not authorized, skipping sync")
+            throw HealthKitError.notAuthorized
+        }
+        
         let today = Date()
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: today)
         
+        print("🔄 Starting HealthKit sync to backend...")
+        
         // Read all today's data
-        try await readTodaySteps()
-        try await readTodayActiveCalories()
-        try await readHeartRate()
+        do {
+            try await readTodaySteps()
+            try await readTodayActiveCalories()
+            try await readHeartRate()
+        } catch {
+            print("❌ Error reading HealthKit data: \(error.localizedDescription)")
+            throw error
+        }
         
         // Prepare sync data
         let syncData: [String: Any] = [
@@ -257,23 +270,46 @@ class HealthKitService: ObservableObject {
             "date": ISO8601DateFormatter().string(from: startOfDay)
         ]
         
+        print("📊 Syncing data: steps=\(todaySteps), calories=\(todayActiveCalories), heartRate=\(averageHeartRate)")
+        
         // Send to backend
         let url = URL(string: "\(NetworkManager.shared.baseURL)/health/sync")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30.0
         
-        if let token = AuthService.shared.readToken()?.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        guard let token = AuthService.shared.readToken()?.accessToken else {
+            print("❌ No auth token found for HealthKit sync")
+            throw HealthKitError.notAuthorized
+        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: syncData)
+        } catch {
+            print("❌ Error encoding sync data: \(error.localizedDescription)")
+            throw error
         }
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: syncData)
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw NSError(domain: "HealthKitSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to sync health data"])
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ Invalid response from backend")
+                throw NSError(domain: "HealthKitSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from server"])
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                print("❌ Backend sync failed with status \(httpResponse.statusCode): \(errorMessage)")
+                throw NSError(domain: "HealthKitSync", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to sync health data: \(errorMessage)"])
+            }
+            
+            print("✅ HealthKit data synced successfully to backend")
+        } catch {
+            print("❌ Network error during HealthKit sync: \(error.localizedDescription)")
+            throw error
         }
     }
     
@@ -292,6 +328,7 @@ class HealthKitService: ObservableObject {
 
 enum HealthKitError: LocalizedError {
     case notAvailable
+    case notAuthorized
     case invalidType
     case authorizationDenied
     case authorizationNotDetermined
