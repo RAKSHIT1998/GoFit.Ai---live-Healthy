@@ -973,38 +973,39 @@ struct OnboardingSignupView: View {
                                 }
                             }
                             .padding(.horizontal, Design.Spacing.md)
-                        
-                        // Error message
-                        if let error = errorMessage {
-                            HStack(spacing: Design.Spacing.sm) {
-                                Image(systemName: "exclamationmark.circle.fill")
-                                    .foregroundColor(.red)
-                                Text(error)
-                                    .font(Design.Typography.body)
-                                    .foregroundColor(.red)
+                            
+                            // Error message
+                            if let error = errorMessage {
+                                HStack(spacing: Design.Spacing.sm) {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(.red)
+                                    Text(error)
+                                        .font(Design.Typography.body)
+                                        .foregroundColor(.red)
+                                }
+                                .padding(Design.Spacing.md)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.red.opacity(0.1))
+                                .cornerRadius(Design.Radius.medium)
+                                .padding(.horizontal, Design.Spacing.md)
                             }
-                            .padding(Design.Spacing.md)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(Design.Radius.medium)
+                            
+                            // Signup button
+                            Button(action: handleSignup) {
+                                if isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                } else {
+                                    Text("Create Account")
+                                }
+                            }
+                            .buttonStyle(ModernButtonStyle())
+                            .disabled(isLoading || !isFormValid)
+                            .opacity((isLoading || !isFormValid) ? 0.6 : 1.0)
                             .padding(.horizontal, Design.Spacing.md)
+                            
+                            Spacer(minLength: 40)
                         }
-                        
-                        // Signup button
-                        Button(action: handleSignup) {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Text("Create Account")
-                            }
-                        }
-                        .buttonStyle(ModernButtonStyle())
-                        .disabled(isLoading || !isFormValid)
-                        .opacity((isLoading || !isFormValid) ? 0.6 : 1.0)
-                        .padding(.horizontal, Design.Spacing.md)
-                        
-                        Spacer(minLength: 40)
                     }
                     .onChange(of: focusedField) { oldValue, newValue in
                         if let field = newValue {
