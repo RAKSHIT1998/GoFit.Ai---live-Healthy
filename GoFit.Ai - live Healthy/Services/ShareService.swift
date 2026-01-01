@@ -50,11 +50,8 @@ class ShareService {
         )
         
         completion(image)
-        
-        // Share the image
-        if let image = image {
-            shareImage(image: image, text: "Check out my fitness progress with GoFit.Ai! 💪")
-        }
+        // Note: This method is used for preview generation only.
+        // Sharing happens explicitly when user taps "Share as Image" button in ShareProgressView.
     }
     
     // MARK: - Generate Share Text
