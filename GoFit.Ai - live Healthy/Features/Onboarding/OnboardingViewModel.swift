@@ -19,7 +19,6 @@ class OnboardingViewModel: ObservableObject {
     @Published var weightKg: Double = 70
     @Published var heightCm: Double = 170
     @Published var workoutPreferences: Set<WorkoutType> = []
-    @Published var favoriteFoods: [String] = []
     @Published var favoriteCuisines: Set<CuisineType> = []
     @Published var foodPreferences: Set<FoodPreference> = []
     @Published var workoutTimeAvailability: WorkoutTime = .moderate
