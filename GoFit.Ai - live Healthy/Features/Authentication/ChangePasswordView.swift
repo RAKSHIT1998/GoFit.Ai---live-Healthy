@@ -87,7 +87,7 @@ struct ChangePasswordView: View {
                 struct ChangePasswordResponse: Codable {
                     let message: String
                 }
-                let response: ChangePasswordResponse = try await NetworkManager.shared.request(
+                let _: ChangePasswordResponse = try await NetworkManager.shared.request(
                     "auth/change-password",
                     method: "POST",
                     body: body
