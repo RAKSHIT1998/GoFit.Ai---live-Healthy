@@ -6,6 +6,14 @@ struct WeightHeightStep: View {
     @State private var weightText: String = ""
     @State private var heightText: String = ""
     @State private var unitSystem: UnitSystem = .metric
+    @FocusState private var focusedField: WeightHeightField?
+    
+    enum WeightHeightField: Hashable {
+        case weight
+        case height
+        case heightFeet
+        case heightInches
+    }
     
     enum UnitSystem {
         case metric
@@ -47,6 +55,7 @@ struct WeightHeightStep: View {
                         .padding()
                         .background(Color.white.opacity(0.2))
                         .cornerRadius(16)
+                        .focused($focusedField, equals: .weight)
                         .onChange(of: weightText) { oldValue, newValue in
                             if let value = Double(newValue) {
                                 if unitSystem == .metric {
@@ -73,6 +82,7 @@ struct WeightHeightStep: View {
                             .padding()
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
+                            .focused($focusedField, equals: .height)
                             .onChange(of: heightText) { oldValue, newValue in
                                 if let value = Double(newValue) {
                                     viewModel.heightCm = value
@@ -96,6 +106,7 @@ struct WeightHeightStep: View {
                             .padding()
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
+                            .focused($focusedField, equals: .heightFeet)
                             
                             Text("'")
                                 .font(.title2)
@@ -117,6 +128,7 @@ struct WeightHeightStep: View {
                             .padding()
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(16)
+                            .focused($focusedField, equals: .heightInches)
                             
                             Text("\"")
                                 .font(.title2)
@@ -138,6 +150,22 @@ struct WeightHeightStep: View {
             Spacer()
         }
         .padding(.top, 40)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .foregroundColor(Design.Colors.primary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside
+            focusedField = nil
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .onAppear {
             // Initialize text fields with current values
             if viewModel.weightKg > 0 {
@@ -146,6 +174,16 @@ struct WeightHeightStep: View {
             if viewModel.heightCm > 0 {
                 heightText = String(format: "%.0f", viewModel.heightCm)
             }
+        }
+    }
+    
+    private func updateHeightFromImperial() {
+        let parts = heightText.split(separator: "'")
+        if let feetStr = parts.first, let feet = Double(feetStr),
+           parts.count > 1, let inchesStr = String(parts[1].dropLast()), let inches = Double(inchesStr) {
+            // Convert feet and inches to cm
+            let totalInches = (feet * 12) + inches
+            viewModel.heightCm = totalInches * 2.54
         }
     }
     

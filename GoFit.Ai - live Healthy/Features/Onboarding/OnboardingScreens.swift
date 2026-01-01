@@ -5,6 +5,7 @@ struct OnboardingScreens: View {
     @EnvironmentObject var auth: AuthViewModel
     @State private var showingPermissions = false
     @State private var showingSignup = false
+    @FocusState private var isKeyboardVisible: Bool
     
     var body: some View {
         ZStack {
@@ -96,6 +97,10 @@ struct OnboardingScreens: View {
                     Spacer()
                     
                     Button(action: {
+                        // Dismiss keyboard when moving to next step
+                        isKeyboardVisible = false
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        
                         if viewModel.currentStep < viewModel.totalSteps - 1 {
                             viewModel.nextStep()
                         } else {
@@ -121,6 +126,17 @@ struct OnboardingScreens: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside
+            isKeyboardVisible = false
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+        .onChange(of: viewModel.currentStep) { oldValue, newValue in
+            // Dismiss keyboard when step changes
+            isKeyboardVisible = false
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
         .sheet(isPresented: $showingPermissions) {
             PermissionsView(viewModel: viewModel, onComplete: {
@@ -280,6 +296,7 @@ struct OnboardingFeatureRow: View {
 // MARK: - Name Step
 struct NameStep: View {
     @ObservedObject var viewModel: OnboardingViewModel
+    @FocusState private var isNameFocused: Bool
     
     var body: some View {
         VStack(spacing: 32) {
@@ -310,10 +327,27 @@ struct NameStep: View {
                 .cornerRadius(16)
                 .padding(.horizontal, 32)
                 .autocapitalization(.words)
+                .focused($isNameFocused)
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") {
+                            isNameFocused = false
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                        .foregroundColor(Design.Colors.primary)
+                    }
+                }
             
             Spacer()
         }
         .padding(.top, 60)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Dismiss keyboard when tapping outside
+            isNameFocused = false
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
     }
 }
 
