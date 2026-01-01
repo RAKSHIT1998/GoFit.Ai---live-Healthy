@@ -79,6 +79,7 @@ final class AuthViewModel: ObservableObject {
             self.goal = obj.goal.isEmpty ? "maintain" : obj.goal
             self.dietPrefs = obj.dietPrefs
             self.userId = obj.userId
+            print("📱 Loaded local state: didFinishOnboarding=\(self.didFinishOnboarding), isLoggedIn=\(self.isLoggedIn)")
         } else {
             // Initialize with defaults if no saved state
             self.didFinishOnboarding = false
@@ -87,6 +88,7 @@ final class AuthViewModel: ObservableObject {
             self.heightCm = 170
             self.goal = "maintain"
             self.dietPrefs = []
+            print("📱 No saved state found - initializing with defaults: didFinishOnboarding=false")
         }
     }
 
@@ -343,6 +345,16 @@ final class AuthViewModel: ObservableObject {
         self.heightCm = 170
         self.goal = "maintain"
         self.dietPrefs = []
+        self.onboardingData = nil
+        print("🔄 App state reset - onboarding will show on next launch")
+    }
+    
+    // Reset onboarding only (keep login state)
+    func resetOnboarding() {
+        self.didFinishOnboarding = false
+        self.onboardingData = nil
+        saveLocalState()
+        print("🔄 Onboarding reset - will show onboarding on next launch")
     }
 }
 

@@ -21,6 +21,10 @@ struct RootView: View {
             }
         }
         .onAppear {
+            // Debug: Log current state
+            print("📱 RootView appeared - didFinishOnboarding: \(auth.didFinishOnboarding), isLoggedIn: \(auth.isLoggedIn)")
+        }
+        .onAppear {
             purchases.loadProducts()
             
             // Check subscription status on app launch

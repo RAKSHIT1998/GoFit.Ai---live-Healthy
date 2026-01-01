@@ -7,7 +7,7 @@ struct EnvironmentConfig {
     
     // ⚠️ DEVELOPMENT ONLY: Set to true to skip authentication
     // ⚠️ NEVER enable this in production builds!
-    static let skipAuthentication: Bool = true
+    static let skipAuthentication: Bool = false // Set to true to skip auth for development
     
     static var apiBaseURL: String {
         #if DEBUG
