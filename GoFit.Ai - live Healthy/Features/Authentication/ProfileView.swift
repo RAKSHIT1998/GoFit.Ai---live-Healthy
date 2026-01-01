@@ -14,12 +14,29 @@ struct ProfileView: View {
 
     @State private var notificationsEnabled = true
     @State private var healthSyncEnabled = true
-    @State private var units: UnitSystem = .metric
+    @AppStorage("unitsPreference") private var unitsPreference: String = "metric"
+    @AppStorage("darkModePreference") private var darkModePreference: String = "system"
     @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showingError = false
 
     enum UnitSystem: String, CaseIterable {
         case metric = "Metric"
         case imperial = "Imperial"
+    }
+    
+    enum DarkModePreference: String, CaseIterable {
+        case system = "System"
+        case light = "Light"
+        case dark = "Dark"
+    }
+    
+    private var currentUnits: UnitSystem {
+        UnitSystem(rawValue: unitsPreference.capitalized) ?? .metric
+    }
+    
+    private var currentDarkMode: DarkModePreference {
+        DarkModePreference(rawValue: darkModePreference.capitalized) ?? .system
     }
 
     var body: some View {
@@ -63,10 +80,10 @@ struct ProfileView: View {
             } message: {
                 Text("This action cannot be undone.")
             }
-            .alert("Export Data", isPresented: $showingExportData) {
-                Button("OK") { exportData() }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK") { }
             } message: {
-                Text("Your data export will be emailed to you.")
+                Text(errorMessage ?? "An error occurred")
             }
         }
     }
@@ -208,9 +225,22 @@ struct ProfileView: View {
             .onChange(of: healthSyncEnabled) { oldValue, newValue in
                 if newValue {
                     Task {
-                        try? await healthKit.requestAuthorization()
+                        do {
+                            try await healthKit.requestAuthorization()
+                            // Sync data after authorization
+                            try? await healthKit.syncToBackend()
+                        } catch {
+                            await MainActor.run {
+                                errorMessage = "Failed to connect to Apple Health: \(error.localizedDescription)"
+                                showingError = true
+                                healthSyncEnabled = false
+                            }
+                        }
                     }
                 }
+            }
+            .onAppear {
+                healthSyncEnabled = healthKit.isAuthorized
             }
 
             SettingsRow(
@@ -228,23 +258,45 @@ struct ProfileView: View {
     // MARK: - Preferences
     private var preferencesSection: some View {
         SettingsSection(title: "Preferences") {
-            SettingsRow(
-                icon: "ruler.fill",
-                iconColor: .blue,
-                title: "Units",
-                subtitle: units.rawValue,
-                showChevron: true,
-                action: {
-                    units = units == .metric ? .imperial : .metric
+            Menu {
+                Button("Metric") {
+                    unitsPreference = "metric"
                 }
-            )
+                Button("Imperial") {
+                    unitsPreference = "imperial"
+                }
+            } label: {
+                SettingsRow(
+                    icon: "ruler.fill",
+                    iconColor: .blue,
+                    title: "Units",
+                    subtitle: currentUnits.rawValue,
+                    showChevron: true
+                )
+            }
 
-            SettingsRow(
-                icon: "moon.fill",
-                iconColor: .indigo,
-                title: "Dark Mode",
-                subtitle: "System"
-            )
+            Menu {
+                Button("System") {
+                    darkModePreference = "system"
+                    updateColorScheme()
+                }
+                Button("Light") {
+                    darkModePreference = "light"
+                    updateColorScheme()
+                }
+                Button("Dark") {
+                    darkModePreference = "dark"
+                    updateColorScheme()
+                }
+            } label: {
+                SettingsRow(
+                    icon: "moon.fill",
+                    iconColor: .indigo,
+                    title: "Dark Mode",
+                    subtitle: currentDarkMode.rawValue,
+                    showChevron: true
+                )
+            }
         }
     }
 
@@ -278,15 +330,72 @@ struct ProfileView: View {
     private func deleteAccount() {
         isLoading = true
         Task {
-            auth.logout()
-            isLoading = false
+            do {
+                let _: EmptyResponse = try await NetworkManager.shared.request(
+                    "auth/account",
+                    method: "DELETE",
+                    body: nil
+                )
+                
+                await MainActor.run {
+                    isLoading = false
+                    auth.logout()
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = "Failed to delete account: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
         }
     }
 
     private func exportData() {
         isLoading = true
         Task {
-            isLoading = false
+            do {
+                // Use dictionary request method for export data
+                let exportData = try await NetworkManager.shared.requestDictionary(
+                    "auth/export",
+                    method: "GET",
+                    body: nil
+                )
+                
+                // Convert to JSON string
+                let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? ""
+                
+                // Create file and share
+                await MainActor.run {
+                    isLoading = false
+                    shareData(jsonString: jsonString)
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = "Failed to export data: \(error.localizedDescription)"
+                    showingError = true
+                }
+            }
         }
+    }
+    
+    private func shareData(jsonString: String) {
+        let activityVC = UIActivityViewController(
+            activityItems: [jsonString],
+            applicationActivities: nil
+        )
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+            rootViewController.present(activityVC, animated: true)
+        }
+    }
+    
+    private func updateColorScheme() {
+        // Color scheme is handled by the app's environment
+        // The preference is stored and can be read by the root view
+        NotificationCenter.default.post(name: NSNotification.Name("ColorSchemeChanged"), object: nil)
     }
 }

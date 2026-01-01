@@ -106,6 +106,9 @@ struct WorkoutSuggestionsView: View {
                         }
                         .padding(.bottom, Design.Spacing.xl)
                     }
+                    .refreshable {
+                        await loadRecommendations()
+                    }
                 } else {
                     EmptyStateView(
                         icon: "sparkles",
@@ -567,8 +570,10 @@ struct WorkoutSuggestionsView: View {
         do {
             // Try to fetch from backend
             if !EnvironmentConfig.skipAuthentication {
+                // Force fresh fetch by adding timestamp to prevent caching
+                let endpoint = "recommendations/daily?t=\(Date().timeIntervalSince1970)"
                 let response: RecommendationResponse = try await NetworkManager.shared.request(
-                    "recommendations/daily",
+                    endpoint,
                     method: "GET",
                     body: nil
                 )

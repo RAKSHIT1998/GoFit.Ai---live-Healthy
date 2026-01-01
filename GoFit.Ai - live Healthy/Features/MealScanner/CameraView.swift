@@ -25,6 +25,11 @@ struct CameraView: UIViewRepresentable {
             // Use photo preset optimized for still image capture
             session.sessionPreset = .photo
             
+            // Configure session for fastest possible startup
+            if session.canSetSessionPreset(.photo) {
+                session.sessionPreset = .photo
+            }
+            
             // Camera device
             guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let input = try? AVCaptureDeviceInput(device: captureDevice),
@@ -33,13 +38,28 @@ struct CameraView: UIViewRepresentable {
                 return
             }
             self.device = captureDevice
+            
+            // Configure device for faster autofocus
+            do {
+                try captureDevice.lockForConfiguration()
+                if captureDevice.isFocusModeSupported(.continuousAutoFocus) {
+                    captureDevice.focusMode = .continuousAutoFocus
+                }
+                if captureDevice.isExposureModeSupported(.continuousAutoExposure) {
+                    captureDevice.exposureMode = .continuousAutoExposure
+                }
+                captureDevice.unlockForConfiguration()
+            } catch {
+                print("⚠️ Could not configure camera device: \(error)")
+            }
+            
             session.addInput(input)
             if session.canAddOutput(output) {
                 session.addOutput(output)
             }
             
             session.commitConfiguration()
-            // Start session immediately for faster camera opening
+            // Start session immediately on background queue for faster camera opening
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 self?.session.startRunning()
             }

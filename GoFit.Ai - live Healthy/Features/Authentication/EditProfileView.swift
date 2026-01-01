@@ -68,28 +68,27 @@ struct EditProfileView: View {
     private func saveProfile() {
         isLoading = true
 
-        auth.name = name
-        if let w = Double(weight) { auth.weightKg = w }
-        if let h = Double(height) { auth.heightCm = h }
-        auth.goal = selectedGoal
-        auth.saveLocalState()
-
         Task {
             struct ProfileUpdate: Codable {
                 let name: String
+                let goals: String
                 let metrics: Metrics
             }
 
             struct Metrics: Codable {
-                let weightKg: Double
-                let heightCm: Double
+                let weightKg: Double?
+                let heightCm: Double?
             }
+            
+            let weightValue = Double(weight) ?? 0
+            let heightValue = Double(height) ?? 0
 
             let payload = ProfileUpdate(
-                name: auth.name,
+                name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                goals: selectedGoal,
                 metrics: Metrics(
-                    weightKg: auth.weightKg,
-                    heightCm: auth.heightCm
+                    weightKg: weightValue > 0 ? weightValue : nil,
+                    heightCm: heightValue > 0 ? heightValue : nil
                 )
             )
 
@@ -100,13 +99,29 @@ struct EditProfileView: View {
                     method: "PUT",
                     body: body
                 )
+                
+                // Update local state
+                await MainActor.run {
+                    auth.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if weightValue > 0 { auth.weightKg = weightValue }
+                    if heightValue > 0 { auth.heightCm = heightValue }
+                    auth.goal = selectedGoal
+                    auth.saveLocalState()
+                    
+                    // Refresh user profile from backend
+                    Task {
+                        await auth.refreshUserProfile()
+                    }
+                    
+                    isLoading = false
+                    dismiss()
+                }
             } catch {
-                print("Profile update failed:", error)
-            }
-
-            await MainActor.run {
-                isLoading = false
-                dismiss()
+                await MainActor.run {
+                    isLoading = false
+                    print("Profile update failed:", error)
+                    // Show error to user
+                }
             }
         }
     }

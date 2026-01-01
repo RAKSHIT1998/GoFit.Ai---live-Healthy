@@ -84,7 +84,10 @@ struct ChangePasswordView: View {
 
             do {
                 let body = try JSONEncoder().encode(payload)
-                let _: EmptyResponse = try await NetworkManager.shared.request(
+                struct ChangePasswordResponse: Codable {
+                    let message: String
+                }
+                let response: ChangePasswordResponse = try await NetworkManager.shared.request(
                     "auth/change-password",
                     method: "POST",
                     body: body
@@ -92,13 +95,29 @@ struct ChangePasswordView: View {
 
                 await MainActor.run {
                     isLoading = false
+                    // Clear password fields
+                    currentPassword = ""
+                    newPassword = ""
+                    confirmPassword = ""
+                    errorMessage = nil
                     dismiss()
                 }
 
             } catch {
                 await MainActor.run {
                     isLoading = false
-                    errorMessage = error.localizedDescription
+                    if let nsError = error as NSError? {
+                        // Try to extract error message from response
+                        if nsError.code == 401 {
+                            errorMessage = "Current password is incorrect"
+                        } else if nsError.code == 400 {
+                            errorMessage = "New password must be at least 8 characters"
+                        } else {
+                            errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                        }
+                    } else {
+                        errorMessage = error.localizedDescription
+                    }
                 }
             }
         }

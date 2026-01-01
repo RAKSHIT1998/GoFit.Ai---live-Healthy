@@ -16,6 +16,8 @@ struct MealScannerView3: View {
     @State private var showEditScreen = false
 
     @State private var showManualLog = false
+    @State private var showFlash = false
+    @State private var isCapturing = false
     
     var body: some View {
         NavigationView {
@@ -25,6 +27,14 @@ struct MealScannerView3: View {
                     CameraView(capturedImage: $capturedImage, captureTrigger: captureTrigger)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
+                    
+                    // Flash effect overlay (like Snapchat)
+                    if showFlash {
+                        Color.white
+                            .ignoresSafeArea()
+                            .opacity(0.8)
+                            .animation(.easeOut(duration: 0.1), value: showFlash)
+                    }
                     
                     VStack {
                         HStack {
@@ -43,28 +53,53 @@ struct MealScannerView3: View {
                         }
                         Spacer()
                         
-                        // Capture Button
+                        // Capture Button - Snapchat style
                         Button(action: { 
-                            // Provide immediate haptic feedback
+                            // Prevent multiple captures
+                            guard !isCapturing else { return }
+                            isCapturing = true
+                            
+                            // Immediate haptic feedback
                             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                             impactFeedback.impactOccurred()
-                            // Trigger capture immediately
+                            
+                            // Flash effect
+                            withAnimation(.easeOut(duration: 0.1)) {
+                                showFlash = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                showFlash = false
+                            }
+                            
+                            // Trigger capture immediately - photo taken instantly
                             captureTrigger += 1
+                            
+                            // Reset capture flag after a short delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                isCapturing = false
+                            }
                         }) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white)
+                                    .fill(isCapturing ? Color.gray : Color.white)
                                     .frame(width: 70, height: 70)
+                                    .animation(.easeInOut(duration: 0.1), value: isCapturing)
                                 
                                 Circle()
                                     .stroke(Color.white, lineWidth: 4)
                                     .frame(width: 80, height: 80)
                                 
-                                Image(systemName: "camera.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.black)
+                                if isCapturing {
+                                    ProgressView()
+                                        .tint(.black)
+                                } else {
+                                    Image(systemName: "camera.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.black)
+                                }
                             }
                         }
+                        .disabled(isCapturing)
                         .padding(.bottom, 40)
                     }
                 }
@@ -91,15 +126,40 @@ struct MealScannerView3: View {
                     .background(Design.Colors.background)
                 }
 
-                // Results Section
+                // Results Section - Show dish names and nutrition prominently
                 if let resp = uploadResult {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("AI Analysis Results")
-                                .font(Design.Typography.title2)
-                                .fontWeight(.bold)
+                        VStack(alignment: .leading, spacing: 20) {
+                            // Prominent dish names header
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Detected Food")
+                                    .font(Design.Typography.title)
+                                    .fontWeight(.bold)
+                                
+                                if let items = resp.parsedItems, !items.isEmpty {
+                                    // Show all dish names clearly at the top
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ForEach(items, id: \.name) { item in
+                                            HStack(spacing: 12) {
+                                                Image(systemName: "fork.knife.circle.fill")
+                                                    .foregroundColor(Design.Colors.primary)
+                                                    .font(.title3)
+                                                Text(item.name)
+                                                    .font(Design.Typography.title3)
+                                                    .fontWeight(.semibold)
+                                            }
+                                            .padding(.vertical, 4)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.top)
+                            
+                            Divider()
                                 .padding(.horizontal)
                             
+                            // Detailed nutrition for each item
                             if let items = resp.parsedItems, !items.isEmpty {
                                 ForEach(items, id: \.name) { it in
                                     VStack(alignment: .leading, spacing: 12) {
@@ -226,10 +286,11 @@ struct MealScannerView3: View {
                 }
             }
             .onChange(of: capturedImage) { oldValue, newImage in
-                if newImage != nil {
-                    // Automatically upload when photo is captured
+                if let newImage = newImage, newImage != oldValue {
+                    // Automatically upload immediately when photo is captured (Snapchat style)
+                    // No preview needed - instant analysis
                     Task {
-                        await uploadImage(newImage!)
+                        await uploadImage(newImage)
                     }
                 }
             }
@@ -260,10 +321,15 @@ struct MealScannerView3: View {
         }
     }
 
-    // Upload image to backend which uses OpenAI vision etc and returns parsed items
+    // Upload image to backend which uses Gemini vision and returns parsed items
     func uploadImage(_ image: UIImage) async {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { 
-            errorMsg = "Failed to process image"
+        // Optimize image for faster upload - use slightly lower quality for speed
+        // Still good enough for food recognition
+        guard let data = image.jpegData(compressionQuality: 0.75) else { 
+            await MainActor.run {
+                errorMsg = "Failed to process image"
+                isCapturing = false
+            }
             return 
         }
         
@@ -278,10 +344,18 @@ struct MealScannerView3: View {
             return
         }
         
-        isUploading = true
-        errorMsg = nil
-        uploadResult = nil
-        defer { isUploading = false }
+        await MainActor.run {
+            isUploading = true
+            errorMsg = nil
+            uploadResult = nil
+            isCapturing = false // Reset capture state
+        }
+        
+        defer { 
+            Task { @MainActor in
+                isUploading = false
+            }
+        }
 
         do {
             let resp = try await NetworkManager.shared.uploadMealImage(data: data, filename: "meal.jpg", userId: authVM.userId)
@@ -311,7 +385,12 @@ struct MealScannerView3: View {
                 } else if errorMessage.contains("no food items") || errorMessage.contains("no items") {
                     errorMsg = "Could not identify food items. Please try a clearer photo."
                 } else if errorMessage.contains("Gemini") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("not configured") || errorMessage.contains("Food recognition service") || errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") {
-                    errorMsg = (errorMessage.contains("Food recognition") || errorMessage.contains("recognition service")) ? errorMessage : "Food recognition service is not configured. Please contact support."
+                    // Use the backend error message if it contains helpful information, otherwise show a generic message
+                    if errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("environment variable") {
+                        errorMsg = errorMessage
+                    } else {
+                        errorMsg = "Food recognition service is not configured. Please contact support."
+                    }
                 } else if errorMessage.contains("authentication failed") || errorMessage.contains("API key") {
                     errorMsg = "Service configuration error. Please contact support."
                 } else if errorMessage.contains("Rate limit") || errorMessage.contains("currently busy") {
@@ -342,6 +421,9 @@ struct MealScannerView3: View {
             let saved = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
             // set uploadResult from returned saved response if needed
             uploadResult = saved
+            
+            // Post notification to refresh meal history
+            NotificationCenter.default.post(name: NSNotification.Name("MealSaved"), object: nil)
         } catch {
             errorMsg = "Save error: \(error.localizedDescription)"
         }

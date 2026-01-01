@@ -72,6 +72,11 @@ struct MealHistoryView: View {
             .refreshable {
                 await loadMeals()
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MealSaved"))) { _ in
+                Task {
+                    await loadMeals()
+                }
+            }
         }
     }
     
@@ -97,27 +102,34 @@ struct MealHistoryView: View {
                 let fat: Double?
             }
             
-            let responses: [MealResponse] = try await NetworkManager.shared.request("meals/list", method: "GET", body: nil)
+            // Force fresh fetch by adding timestamp to prevent caching
+            let endpoint = "meals/list?t=\(Date().timeIntervalSince1970)"
+            let responses: [MealResponse] = try await NetworkManager.shared.request(endpoint, method: "GET", body: nil)
             
-            meals = responses.map { response in
-                MealHistoryItem(
-                    id: response._id,
-                    date: ISO8601DateFormatter().date(from: response.timestamp) ?? Date(),
-                    items: response.items.map { item in
-                        MealHistoryItem.MealItem(
-                            name: item.name,
-                            calories: item.calories ?? 0,
-                            protein: item.protein ?? 0,
-                            carbs: item.carbs ?? 0,
-                            fat: item.fat ?? 0
-                        )
-                    },
-                    totalCalories: response.totalCalories ?? 0,
-                    mealType: response.mealType ?? "meal"
-                )
+            await MainActor.run {
+                meals = responses.map { response in
+                    MealHistoryItem(
+                        id: response._id,
+                        date: ISO8601DateFormatter().date(from: response.timestamp) ?? Date(),
+                        items: response.items.map { item in
+                            MealHistoryItem.MealItem(
+                                name: item.name,
+                                calories: item.calories ?? 0,
+                                protein: item.protein ?? 0,
+                                carbs: item.carbs ?? 0,
+                                fat: item.fat ?? 0
+                            )
+                        },
+                        totalCalories: response.totalCalories ?? 0,
+                        mealType: response.mealType ?? "meal"
+                    )
+                }
             }
         } catch {
             print("Failed to load meals: \(error)")
+            await MainActor.run {
+                // Don't clear meals on error, just log it
+            }
         }
     }
 }

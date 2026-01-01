@@ -106,6 +106,11 @@ struct HomeDashboardView: View {
                     await syncHealthData() // Then sync with HealthKit
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MealSaved"))) { _ in
+                Task {
+                    await loadSummary()
+                }
+            }
         }
     }
 
@@ -539,9 +544,11 @@ struct HomeDashboardView: View {
                 let sugar: Double?
             }
 
+            // Force fresh fetch by adding timestamp to prevent caching
+            let endpoint = "meals/summary/today?t=\(Date().timeIntervalSince1970)"
             let summary: Summary =
                 try await NetworkManager.shared.request(
-                    "meals/summary/today",
+                    endpoint,
                     method: "GET",
                     body: nil
                 )
@@ -623,8 +630,10 @@ struct HomeDashboardView: View {
                 let water: Double?
             }
             
+            // Force fresh fetch by adding timestamp to prevent caching
+            let endpoint = "health/summary?t=\(Date().timeIntervalSince1970)"
             let summary: HealthSummary = try await NetworkManager.shared.request(
-                "health/summary",
+                endpoint,
                 method: "GET",
                 body: nil
             )
@@ -657,8 +666,10 @@ struct HomeDashboardView: View {
                 let activeCalories: Double?
             }
             
+            // Force fresh fetch by adding timestamp to prevent caching
+            let endpoint = "health/summary?t=\(Date().timeIntervalSince1970)"
             let summary: HealthSummary = try await NetworkManager.shared.request(
-                "health/summary",
+                endpoint,
                 method: "GET",
                 body: nil
             )

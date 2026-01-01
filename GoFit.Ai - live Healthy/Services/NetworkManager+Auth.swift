@@ -30,6 +30,32 @@ final class NetworkManager {
         }
         return try JSONDecoder().decode(T.self, from: data)
     }
+    
+    // Request that returns a dictionary (for export data)
+    func requestDictionary(_ path: String, method: String = "GET", body: Data? = nil) async throws -> [String: Any] {
+        let url = baseURL.appendingPathComponent(path)
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        if let token = AuthService.shared.readToken()?.accessToken {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let body = body {
+            req.httpBody = body
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let httpResponse = resp as? HTTPURLResponse, 200...299 ~= httpResponse.statusCode else {
+            let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
+            if let errStr = String(data: data, encoding: .utf8) {
+                throw NSError(domain: "NetworkError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errStr])
+            }
+            throw URLError(.badServerResponse)
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])
+        }
+        return json
+    }
 
     // Upload image (multipart) with JWT
     func uploadMealImage(data: Data, filename: String = "meal.jpg", userId: String?) async throws -> ServerMealResponse {

@@ -339,6 +339,108 @@ router.post('/apple', async (req, res) => {
   }
 });
 
+// Export user data
+router.get('/export', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate('meals')
+      .populate('fastingSessions')
+      .select('-passwordHash');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get all user data
+    const Meal = (await import('../models/Meal.js')).default;
+    const FastingSession = (await import('../models/FastingSession.js')).default;
+    const WaterLog = (await import('../models/WaterLog.js')).default;
+    const WeightLog = (await import('../models/WeightLog.js')).default;
+
+    const [meals, fastingSessions, waterLogs, weightLogs] = await Promise.all([
+      Meal.find({ userId: req.user._id }).lean(),
+      FastingSession.find({ userId: req.user._id }).lean(),
+      WaterLog.find({ userId: req.user._id }).lean(),
+      WeightLog.find({ userId: req.user._id }).lean()
+    ]);
+
+    const exportData = {
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        goals: user.goals,
+        activityLevel: user.activityLevel,
+        dietaryPreferences: user.dietaryPreferences,
+        allergies: user.allergies,
+        fastingPreference: user.fastingPreference,
+        metrics: user.metrics,
+        subscription: user.subscription,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      },
+      meals: meals.map(m => ({
+        ...m,
+        _id: m._id.toString(),
+        userId: m.userId?.toString()
+      })),
+      fastingSessions: fastingSessions.map(f => ({
+        ...f,
+        _id: f._id.toString(),
+        userId: f.userId?.toString()
+      })),
+      waterLogs: waterLogs.map(w => ({
+        ...w,
+        _id: w._id.toString(),
+        userId: w.userId?.toString()
+      })),
+      weightLogs: weightLogs.map(w => ({
+        ...w,
+        _id: w._id.toString(),
+        userId: w.userId?.toString()
+      })),
+      exportDate: new Date().toISOString()
+    };
+
+    res.json(exportData);
+  } catch (error) {
+    console.error('Export data error:', error);
+    res.status(500).json({ message: 'Failed to export data', error: error.message });
+  }
+});
+
+// Delete account
+router.delete('/account', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Delete all associated data
+    const Meal = (await import('../models/Meal.js')).default;
+    const FastingSession = (await import('../models/FastingSession.js')).default;
+    const WaterLog = (await import('../models/WaterLog.js')).default;
+    const WeightLog = (await import('../models/WeightLog.js')).default;
+
+    await Promise.all([
+      Meal.deleteMany({ userId: req.user._id }),
+      FastingSession.deleteMany({ userId: req.user._id }),
+      WaterLog.deleteMany({ userId: req.user._id }),
+      WeightLog.deleteMany({ userId: req.user._id })
+    ]);
+
+    // Delete user account
+    await user.deleteOne();
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ message: 'Failed to delete account', error: error.message });
+  }
+});
+
 // Helper function
 function generateToken(userId) {
   const secret = process.env.JWT_SECRET;

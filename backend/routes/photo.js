@@ -16,8 +16,16 @@ const upload = multer({
 
 // Initialize Google Gemini AI
 // Get your free API key at: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+
+// Log Gemini status on module load
+if (GEMINI_API_KEY) {
+  console.log(`✅ GEMINI_API_KEY loaded (length: ${GEMINI_API_KEY.length}, starts with: ${GEMINI_API_KEY.substring(0, 10)}...)`);
+} else {
+  console.error('❌ GEMINI_API_KEY is missing or empty. Food recognition will not work.');
+  console.error('   Set GEMINI_API_KEY in Render environment variables: https://aistudio.google.com/app/apikey');
+}
 
 // Initialize S3 client
 const s3 = new AWS.S3({
@@ -80,11 +88,17 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     }
 
     // Check if Google Gemini API key is configured
-    if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.length === 0) {
       console.error('❌ GEMINI_API_KEY is not set or empty');
+      console.error('   Environment check:', {
+        hasEnvVar: !!process.env.GEMINI_API_KEY,
+        envVarLength: process.env.GEMINI_API_KEY?.length || 0,
+        trimmedLength: GEMINI_API_KEY.length
+      });
       return res.status(500).json({ 
-        message: 'Food recognition service is not configured. Please set GEMINI_API_KEY environment variable. Get your free API key at https://aistudio.google.com/app/apikey',
-        error: 'Gemini API key missing'
+        message: 'Food recognition service is not configured. Please set GEMINI_API_KEY environment variable in Render. Get your free API key at https://aistudio.google.com/app/apikey',
+        error: 'Gemini API key missing',
+        hint: 'Go to Render Dashboard → Your Service → Environment → Add GEMINI_API_KEY'
       });
     }
     
