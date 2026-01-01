@@ -105,7 +105,34 @@ const userSchema = new mongoose.Schema({
     favoriteCuisines: [String],
     foodPreferences: [String],
     workoutTimeAvailability: String,
-    lifestyleFactors: [String]
+    lifestyleFactors: [String],
+    favoriteFoods: [String],
+    mealTimingPreference: String,
+    cookingSkill: String,
+    budgetPreference: String,
+    motivationLevel: String,
+    drinkingFrequency: String,
+    smokingStatus: String
+  },
+  // Direct fields for easier access (also stored in onboardingData)
+  workoutPreferences: [String],
+  favoriteCuisines: [String],
+  foodPreferences: [String],
+  workoutTimeAvailability: {
+    type: String,
+    enum: ['very_little', 'little', 'moderate', 'plenty', 'unlimited', 'any'],
+    default: 'any'
+  },
+  lifestyleFactors: [String],
+  drinkingFrequency: {
+    type: String,
+    enum: ['never', 'rarely', 'occasionally', 'regularly', 'frequently'],
+    default: 'never'
+  },
+  smokingStatus: {
+    type: String,
+    enum: ['never', 'former', 'occasional', 'regular'],
+    default: 'never'
   },
   healthData: {
     lastSyncDate: Date,

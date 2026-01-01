@@ -1007,19 +1007,52 @@ struct OnboardingSignupView: View {
         
         isLoading = true
         
+        // Ensure onboarding data is set before signup
+        // It should already be set from completeOnboarding, but set it again to be safe
+        if auth.onboardingData == nil {
+            auth.onboardingData = OnboardingData(
+                name: viewModel.name.isEmpty ? "User" : viewModel.name,
+                weightKg: viewModel.weightKg,
+                heightCm: viewModel.heightCm,
+                goal: viewModel.goal.rawValue,
+                activityLevel: viewModel.activityLevel.rawValue,
+                dietaryPreferences: viewModel.dietaryPreferences.map { $0.rawValue },
+                allergies: Array(viewModel.allergies),
+                fastingPreference: viewModel.fastingPreference.rawValue,
+                workoutPreferences: viewModel.workoutPreferences.map { $0.rawValue },
+                favoriteCuisines: viewModel.favoriteCuisines.map { $0.rawValue },
+                foodPreferences: viewModel.foodPreferences.map { $0.rawValue },
+                workoutTimeAvailability: viewModel.workoutTimeAvailability.rawValue,
+                lifestyleFactors: viewModel.lifestyleFactors.map { $0.rawValue },
+                favoriteFoods: viewModel.favoriteFoods,
+                mealTimingPreference: viewModel.mealTimingPreference.rawValue,
+                cookingSkill: viewModel.cookingSkill.rawValue,
+                budgetPreference: viewModel.budgetPreference.rawValue,
+                motivationLevel: viewModel.motivationLevel.rawValue,
+                drinkingFrequency: viewModel.drinkingFrequency.rawValue,
+                smokingStatus: viewModel.smokingStatus.rawValue
+            )
+        }
+        
         Task {
             do {
+                print("🔵 Starting signup from OnboardingSignupView...")
+                print("🔵 Onboarding data available: \(auth.onboardingData != nil ? "Yes" : "No")")
                 try await auth.signup(
                     name: viewModel.name.isEmpty ? "User" : viewModel.name,
                     email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                     password: password
                 )
+                print("✅ Signup successful from OnboardingSignupView")
                 // Success - onChange will handle showing paywall
             } catch {
+                print("❌ Signup failed in OnboardingSignupView: \(error.localizedDescription)")
                 await MainActor.run {
                     isLoading = false
                     if let nsError = error as NSError? {
-                        errorMessage = nsError.localizedDescription
+                        let errorMsg = nsError.localizedDescription
+                        errorMessage = errorMsg.isEmpty ? "Failed to create account. Please check your connection and try again." : errorMsg
+                        print("❌ Error details: code=\(nsError.code), domain=\(nsError.domain)")
                     } else {
                         errorMessage = "Failed to create account. Please try again."
                     }

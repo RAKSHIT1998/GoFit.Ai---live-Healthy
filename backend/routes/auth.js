@@ -13,13 +13,22 @@ router.post('/register', async (req, res) => {
       goals, activityLevel, dietaryPreferences, allergies, fastingPreference,
       weightKg, heightCm,
       workoutPreferences, favoriteCuisines, foodPreferences, 
-      workoutTimeAvailability, lifestyleFactors
+      workoutTimeAvailability, lifestyleFactors,
+      favoriteFoods, mealTimingPreference, cookingSkill,
+      budgetPreference, motivationLevel, drinkingFrequency, smokingStatus
     } = req.body;
 
     console.log('🔵 Registration request received:', { 
       name: name?.substring(0, 10) + '...', 
       email: email?.substring(0, 10) + '...',
-      hasPassword: !!password 
+      hasPassword: !!password,
+      hasOnboardingData: !!(workoutPreferences || favoriteCuisines || drinkingFrequency || smokingStatus),
+      onboardingFields: {
+        workoutPreferences: workoutPreferences?.length || 0,
+        favoriteCuisines: favoriteCuisines?.length || 0,
+        drinkingFrequency: drinkingFrequency || 'not provided',
+        smokingStatus: smokingStatus || 'not provided'
+      }
     });
 
     if (!name || !email || !password) {
@@ -57,12 +66,28 @@ router.post('/register', async (req, res) => {
         weightKg: weightKg || 70,
         heightCm: heightCm || 170
       },
+      // Direct fields for easier access
+      workoutPreferences: workoutPreferences || [],
+      favoriteCuisines: favoriteCuisines || [],
+      foodPreferences: foodPreferences || [],
+      workoutTimeAvailability: workoutTimeAvailability || 'any',
+      lifestyleFactors: lifestyleFactors || [],
+      drinkingFrequency: drinkingFrequency || 'never',
+      smokingStatus: smokingStatus || 'never',
+      // Comprehensive onboarding data for AI personalization
       onboardingData: {
         workoutPreferences: workoutPreferences || [],
         favoriteCuisines: favoriteCuisines || [],
         foodPreferences: foodPreferences || [],
-        workoutTimeAvailability: workoutTimeAvailability || 'moderate',
-        lifestyleFactors: lifestyleFactors || []
+        workoutTimeAvailability: workoutTimeAvailability || 'any',
+        lifestyleFactors: lifestyleFactors || [],
+        favoriteFoods: favoriteFoods || [],
+        mealTimingPreference: mealTimingPreference || 'regular',
+        cookingSkill: cookingSkill || 'intermediate',
+        budgetPreference: budgetPreference || 'moderate',
+        motivationLevel: motivationLevel || 'moderate',
+        drinkingFrequency: drinkingFrequency || 'never',
+        smokingStatus: smokingStatus || 'never'
       },
       subscription: {
         status: 'trial', // Start with trial status
@@ -78,7 +103,11 @@ router.post('/register', async (req, res) => {
       id: user._id.toString(),
       email: user.email,
       subscriptionStatus: user.subscription.status,
-      trialEndDate: user.subscription.trialEndDate
+      trialEndDate: user.subscription.trialEndDate,
+      hasOnboardingData: !!(user.onboardingData && Object.keys(user.onboardingData).length > 0),
+      workoutPreferences: user.workoutPreferences?.length || 0,
+      drinkingFrequency: user.drinkingFrequency || 'not set',
+      smokingStatus: user.smokingStatus || 'not set'
     });
 
     // Generate token
