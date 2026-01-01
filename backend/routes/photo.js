@@ -122,25 +122,36 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       console.log('🤖 Starting Google Gemini analysis for user:', userId);
       console.log('📝 GEMINI_API_KEY status:', GEMINI_API_KEY ? `Set (${GEMINI_API_KEY.substring(0, 10)}...)` : 'NOT SET');
       
-      // Use Gemini Pro for image analysis (supports multimodal including images)
-      // Note: If gemini-pro doesn't work, try gemini-1.5-pro or gemini-1.5-flash
+      // Use Gemini 1.5 Flash for image analysis (fast and supports vision)
+      // Note: gemini-pro doesn't support images, must use gemini-1.5-pro or gemini-1.5-flash
       let model;
+      const modelPreference = process.env.GEMINI_MODEL || 'gemini-1.5-flash'; // Default to flash for speed
+      
       try {
-        model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-        console.log('✅ Using model: gemini-pro');
+        // Try preferred model first
+        model = genAI.getGenerativeModel({ model: modelPreference });
+        console.log(`✅ Using model: ${modelPreference}`);
       } catch (modelError) {
-        console.error('❌ Failed to initialize gemini-pro, trying alternatives:', modelError.message);
-        // Try alternative models if gemini-pro fails
-        try {
-          model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-          console.log('✅ Using model: gemini-1.5-pro');
-        } catch (e1) {
+        console.error(`❌ Failed to initialize ${modelPreference}, trying alternatives:`, modelError.message);
+        // Try alternative models if preferred fails
+        const fallbackModels = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro-vision'];
+        let modelInitialized = false;
+        
+        for (const fallbackModel of fallbackModels) {
+          if (fallbackModel === modelPreference) continue; // Skip if already tried
+          
           try {
-            model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-            console.log('✅ Using model: gemini-1.5-flash');
-          } catch (e2) {
-            throw new Error(`Failed to initialize any Gemini model. gemini-pro error: ${modelError.message}`);
+            model = genAI.getGenerativeModel({ model: fallbackModel });
+            console.log(`✅ Using fallback model: ${fallbackModel}`);
+            modelInitialized = true;
+            break;
+          } catch (e) {
+            console.error(`❌ Failed to initialize ${fallbackModel}:`, e.message);
           }
+        }
+        
+        if (!modelInitialized) {
+          throw new Error(`Failed to initialize any Gemini model. Last error: ${modelError.message}. Please check your GEMINI_API_KEY and model availability.`);
         }
       }
       
@@ -175,50 +186,72 @@ IMPORTANT:
 Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just the raw JSON array. Example format:
 [{"name": "Chicken Biryani", "calories": 450, "protein": 25, "carbs": 55, "fat": 12, "sugar": 2, "portionSize": "1 serving", "confidence": 0.9}]`;
 
-      const geminiPromise = model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: file.mimetype || 'image/jpeg'
-          }
+      // Generate content with image
+      const geminiPromise = (async () => {
+        try {
+          const result = await model.generateContent([
+            prompt,
+            {
+              inlineData: {
+                data: base64Image,
+                mimeType: file.mimetype || 'image/jpeg'
+              }
+            }
+          ]);
+          return result.response;
+        } catch (error) {
+          console.error('❌ Gemini API call error:', error);
+          throw error;
         }
-      ]);
+      })();
       
       // Race between Gemini call and timeout
-      const result = await Promise.race([geminiPromise, timeoutPromise]);
-      const response = result.response; // response is not a Promise, just access it directly
+      const response = await Promise.race([geminiPromise, timeoutPromise]);
       const content = response.text();
       
       console.log('✅ Google Gemini analysis completed');
+      console.log('📝 Response length:', content.length, 'characters');
       
       // Parse JSON from response
-    let items = [];
-    
-    try {
-        // Try to extract JSON array from response
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        items = JSON.parse(jsonMatch[0]);
-      } else {
+      let items = [];
+      
+      try {
+        // Try to extract JSON array from response (handle markdown code blocks)
+        let jsonString = content.trim();
+        
+        // Remove markdown code blocks if present
+        jsonString = jsonString.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
+        
+        // Try to find JSON array in the response
+        const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          items = JSON.parse(jsonMatch[0]);
+        } else {
           // Try parsing the entire content
-        items = JSON.parse(content);
+          items = JSON.parse(jsonString);
+        }
+        
+        console.log(`✅ Parsed ${items.length} food items from Gemini response`);
+      } catch (parseError) {
+        console.error('❌ Failed to parse Gemini response:', parseError);
+        console.error('📝 Gemini Response content (first 500 chars):', content.substring(0, 500));
+        console.error('📝 Full response length:', content.length);
+        
+        // Try to extract any useful information from the response
+        // Sometimes Gemini returns text before/after the JSON
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          try {
+            items = JSON.parse(jsonMatch[0]);
+            console.log('✅ Successfully parsed JSON after retry');
+          } catch (retryError) {
+            console.error('❌ Retry parse also failed:', retryError);
+            throw new Error(`Failed to parse Gemini response: ${parseError.message}. Response preview: ${content.substring(0, 200)}`);
+          }
+        } else {
+          throw new Error(`Failed to parse Gemini response: ${parseError.message}. No JSON array found in response.`);
+        }
       }
-    } catch (parseError) {
-        console.error('Failed to parse Gemini response:', parseError);
-        console.error('Gemini Response content:', content);
-      // Fallback: create a basic item
-      items = [{
-          name: "Food/Drink item",
-        calories: 200,
-        protein: 10,
-        carbs: 30,
-        fat: 5,
-        sugar: 5,
-        portionSize: "1 serving",
-        confidence: 0.5
-      }];
-    }
 
       // Validate items array
       if (!Array.isArray(items) || items.length === 0) {
@@ -234,6 +267,9 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
       sugar: acc.sugar + (item.sugar || 0)
     }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
 
+    // Get the model name that was actually used
+    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    
     res.json({
       items,
       imageUrl: imageUrl || null, // null if S3 not configured
@@ -243,7 +279,7 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
       totalCarbs: totals.carbs,
       totalFat: totals.fat,
       totalSugar: totals.sugar,
-        aiVersion: "gemini-pro",
+      aiVersion: modelName,
       s3Configured: s3Configured || false
     });
     } catch (geminiError) {
