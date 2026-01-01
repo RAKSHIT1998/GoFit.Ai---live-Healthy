@@ -248,7 +248,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     });
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response; // response is not a Promise, just access it directly
     const content = response.text();
     
   let recommendationData;

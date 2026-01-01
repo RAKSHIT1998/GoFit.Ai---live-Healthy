@@ -9,7 +9,24 @@ final class NetworkManager {
 
     // Generic JSON request with Bearer token (if present)
     func request<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil) async throws -> T {
-        let url = baseURL.appendingPathComponent(path)
+        // Construct URL properly - baseURL already includes /api
+        // Remove leading slash from path if present to avoid double slashes
+        let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        
+        // Ensure baseURL doesn't have trailing slash, then append path
+        var baseURLString = baseURL.absoluteString
+        if baseURLString.hasSuffix("/") {
+            baseURLString = String(baseURLString.dropLast())
+        }
+        let urlString = "\(baseURLString)/\(cleanPath)"
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL: \(urlString)"])
+        }
+        
+        // Debug: Log the URL being called
+        #if DEBUG
+        print("🌐 API Request: \(method) \(url.absoluteString)")
+        #endif
         var req = URLRequest(url: url)
         req.httpMethod = method
         if let token = AuthService.shared.readToken()?.accessToken {
@@ -33,7 +50,16 @@ final class NetworkManager {
     
     // Request that returns a dictionary (for export data)
     func requestDictionary(_ path: String, method: String = "GET", body: Data? = nil) async throws -> [String: Any] {
-        let url = baseURL.appendingPathComponent(path)
+        // Construct URL the same way as request method
+        let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        var baseURLString = baseURL.absoluteString
+        if baseURLString.hasSuffix("/") {
+            baseURLString = String(baseURLString.dropLast())
+        }
+        let urlString = "\(baseURLString)/\(cleanPath)"
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL: \(urlString)"])
+        }
         var req = URLRequest(url: url)
         req.httpMethod = method
         if let token = AuthService.shared.readToken()?.accessToken {

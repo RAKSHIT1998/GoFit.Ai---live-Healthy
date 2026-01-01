@@ -187,7 +187,7 @@ Return ONLY valid JSON array, no markdown, no explanations, no code blocks, just
       
       // Race between Gemini call and timeout
       const result = await Promise.race([geminiPromise, timeoutPromise]);
-      const response = await result.response;
+      const response = result.response; // response is not a Promise, just access it directly
       const content = response.text();
       
       console.log('✅ Google Gemini analysis completed');

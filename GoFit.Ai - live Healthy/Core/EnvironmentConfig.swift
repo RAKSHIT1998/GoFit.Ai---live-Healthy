@@ -2,6 +2,7 @@ import Foundation
 
 struct EnvironmentConfig {
     // Render backend URL - Your deployed backend service
+    // Note: Include /api in the URL since all routes are under /api
     private static let renderBackendURL = "https://gofit-ai-live-healthy-1.onrender.com/api"
     
     // ⚠️ DEVELOPMENT ONLY: Set to true to skip authentication
