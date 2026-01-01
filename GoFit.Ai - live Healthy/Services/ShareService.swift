@@ -55,7 +55,7 @@ class ShareService {
     }
     
     // MARK: - Generate Share Text
-    private func generateShareText(
+    func generateShareText(
         calories: String,
         steps: Int,
         activeCalories: Double,
@@ -74,7 +74,7 @@ class ShareService {
             text += "❤️ Heart Rate: \(Int(heartRate)) bpm\n"
         }
         
-        text += "\n📱 Tracked with GoFit.Ai\n"
+        text += "\n📱 Tracked with GoFit.Ai - Your AI-powered health companion\n"
         text += "#GoFitAi #Fitness #Health #Wellness"
         
         return text

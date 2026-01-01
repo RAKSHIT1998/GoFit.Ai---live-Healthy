@@ -190,21 +190,15 @@ struct ShareProgressView: View {
     }
     
     private func generateShareText() -> String {
-        var text = "💪 My Fitness Progress Today\n\n"
-        text += "📊 Stats:\n"
-        text += "🔥 Calories: \(calories)\n"
-        text += "🚶 Steps: \(steps.formatted())\n"
-        text += "⚡ Active Calories: \(Int(activeCalories).formatted())\n"
-        text += "💧 Water: \(String(format: "%.1f", waterIntake))L\n"
-        
-        if let heartRate = heartRate, heartRate > 0 {
-            text += "❤️ Heart Rate: \(Int(heartRate)) bpm\n"
-        }
-        
-        text += "\n📱 Tracked with GoFit.Ai - Your AI-powered health companion\n"
-        text += "#GoFitAi #Fitness #Health #Wellness"
-        
-        return text
+        // Use ShareService's method to ensure consistency
+        return ShareService.shared.generateShareText(
+            calories: calories,
+            steps: steps,
+            activeCalories: activeCalories,
+            waterIntake: waterIntake,
+            heartRate: heartRate,
+            userName: auth.name
+        )
     }
 }
 
