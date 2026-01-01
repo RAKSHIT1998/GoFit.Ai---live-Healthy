@@ -73,12 +73,24 @@ struct PaywallView: View {
                 .background(Design.Colors.primaryGradient)
                 .clipShape(Circle())
 
-            Text("Unlock Premium")
+            Text("Start Your Journey")
                 .font(Design.Typography.largeTitle)
 
-            Text("AI-powered nutrition & fitness tracking")
-                .font(Design.Typography.subheadline)
-                .foregroundColor(.secondary)
+            VStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "gift.fill")
+                        .font(.title3)
+                        .foregroundColor(Design.Colors.primary)
+                    Text("3-Day Free Trial")
+                        .font(Design.Typography.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(Design.Colors.primary)
+                }
+                
+                Text("Then continue with premium features")
+                    .font(Design.Typography.subheadline)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.top)
     }
@@ -159,19 +171,24 @@ struct PaywallView: View {
     private var terms: some View {
         VStack(spacing: 8) {
             if let product = purchases.getProduct(id: selectedPlan.id) {
-                VStack(spacing: 4) {
-                    HStack(spacing: 4) {
+                VStack(spacing: 8) {
+                    // Prominent 3-day free trial badge
+                    HStack(spacing: 6) {
                         Image(systemName: "gift.fill")
-                            .font(.caption2)
+                            .font(.title3)
                             .foregroundColor(Design.Colors.primary)
-                        Text("3-day free trial")
-                            .font(.caption)
-                            .fontWeight(.semibold)
+                        Text("3-Day Free Trial")
+                            .font(Design.Typography.headline)
+                            .fontWeight(.bold)
                             .foregroundColor(Design.Colors.primary)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Design.Colors.primary.opacity(0.1))
+                    .cornerRadius(12)
                     
                     Text("Then \(product.displayPrice)/\(selectedPlan.periodText)")
-                        .font(.caption2)
+                        .font(Design.Typography.subheadline)
                         .foregroundColor(.secondary)
                     
                     Text("Cancel anytime in Settings")

@@ -12,6 +12,14 @@ struct AuthView: View {
     @State private var errorMessage: String?
     @State private var showingPaywall = false
     
+    // Use onboarding name if available
+    private var displayName: String {
+        if !isLoginMode && !auth.name.isEmpty {
+            return auth.name
+        }
+        return name
+    }
+    
     var body: some View {
         ZStack {
             // Adaptive background for dark mode
@@ -42,9 +50,13 @@ struct AuthView: View {
                             if !isLoginMode {
                                 CustomTextField(
                                     placeholder: "Full Name",
-                                    text: $name,
+                                    text: Binding(
+                                        get: { !auth.name.isEmpty ? auth.name : name },
+                                        set: { name = $0 }
+                                    ),
                                     icon: "person.fill"
                                 )
+                                .disabled(!auth.name.isEmpty) // Disable if name from onboarding
                             }
                             
                             CustomTextField(
@@ -254,7 +266,9 @@ struct AuthView: View {
                         password = ""
                     }
                 } else {
-                    try await auth.signup(name: name, email: email, password: password)
+                    // Use name from onboarding if available, otherwise use form input
+                    let signupName = !auth.name.isEmpty ? auth.name : name
+                    try await auth.signup(name: signupName, email: email, password: password)
                     // After successful signup, show paywall
                     await MainActor.run {
                         isLoading = false

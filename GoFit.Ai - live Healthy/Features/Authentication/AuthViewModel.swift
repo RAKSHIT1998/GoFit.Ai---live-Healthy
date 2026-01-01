@@ -12,6 +12,9 @@ final class AuthViewModel: ObservableObject {
     @Published var heightCm: Double = 170
     @Published var goal: String = "maintain"
     @Published var dietPrefs: [String] = []
+    
+    // Comprehensive onboarding data
+    @Published var onboardingData: OnboardingData?
 
     // token / userId
     @Published private(set) var token: AuthToken?
@@ -146,11 +149,15 @@ final class AuthViewModel: ObservableObject {
         
         print("🔵 Starting signup for: \(email)")
         
-        // Perform signup
+        // Include comprehensive onboarding data if available
+        let onboardingData = self.onboardingData
+        
+        // Perform signup with all onboarding data
         let token = try await AuthService.shared.signup(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-            password: password
+            password: password,
+            onboardingData: onboardingData
         )
         
         print("✅ Signup successful, token received")
@@ -355,4 +362,21 @@ struct UserProfile: Codable {
     let id: String
     let email: String
     let name: String
+}
+
+// Comprehensive onboarding data structure
+struct OnboardingData: Codable {
+    let name: String
+    let weightKg: Double
+    let heightCm: Double
+    let goal: String
+    let activityLevel: String
+    let dietaryPreferences: [String]
+    let allergies: [String]
+    let fastingPreference: String
+    let workoutPreferences: [String]
+    let favoriteCuisines: [String]
+    let foodPreferences: [String]
+    let workoutTimeAvailability: String
+    let lifestyleFactors: [String]
 }

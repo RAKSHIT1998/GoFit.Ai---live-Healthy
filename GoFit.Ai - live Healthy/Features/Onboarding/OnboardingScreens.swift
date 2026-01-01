@@ -46,20 +46,35 @@ struct OnboardingScreens: View {
                     NameStep(viewModel: viewModel)
                         .tag(1)
                     
-                    GoalStep(viewModel: viewModel)
+                    WeightHeightStep(viewModel: viewModel)
                         .tag(2)
                     
-                    ActivityStep(viewModel: viewModel)
+                    GoalStep(viewModel: viewModel)
                         .tag(3)
                     
-                    DietaryPreferencesStep(viewModel: viewModel)
+                    ActivityStep(viewModel: viewModel)
                         .tag(4)
                     
-                    AllergiesStep(viewModel: viewModel)
+                    DietaryPreferencesStep(viewModel: viewModel)
                         .tag(5)
                     
-                    FastingPreferenceStep(viewModel: viewModel)
+                    AllergiesStep(viewModel: viewModel)
                         .tag(6)
+                    
+                    FastingPreferenceStep(viewModel: viewModel)
+                        .tag(7)
+                    
+                    WorkoutPreferencesStep(viewModel: viewModel)
+                        .tag(8)
+                    
+                    FavoriteCuisinesStep(viewModel: viewModel)
+                        .tag(9)
+                    
+                    FoodPreferencesStep(viewModel: viewModel)
+                        .tag(10)
+                    
+                    LifestyleStep(viewModel: viewModel)
+                        .tag(11)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(), value: viewModel.currentStep)
@@ -115,19 +130,36 @@ struct OnboardingScreens: View {
     }
     
     private func completeOnboarding() {
-        // Save onboarding data to auth view model
+        // Save all onboarding data to auth view model
         auth.name = viewModel.name.isEmpty ? "User" : viewModel.name
         auth.goal = viewModel.goal.rawValue
         auth.dietPrefs = viewModel.dietaryPreferences.map { $0.rawValue }
-        auth.weightKg = 70 // Default if not set
-        auth.heightCm = 170 // Default if not set
+        auth.weightKg = viewModel.weightKg > 0 ? viewModel.weightKg : 70
+        auth.heightCm = viewModel.heightCm > 0 ? viewModel.heightCm : 170
+        
+        // Store comprehensive onboarding data for signup
+        auth.onboardingData = OnboardingData(
+            name: viewModel.name,
+            weightKg: viewModel.weightKg,
+            heightCm: viewModel.heightCm,
+            goal: viewModel.goal.rawValue,
+            activityLevel: viewModel.activityLevel.rawValue,
+            dietaryPreferences: viewModel.dietaryPreferences.map { $0.rawValue },
+            allergies: Array(viewModel.allergies),
+            fastingPreference: viewModel.fastingPreference.rawValue,
+            workoutPreferences: viewModel.workoutPreferences.map { $0.rawValue },
+            favoriteCuisines: viewModel.favoriteCuisines.map { $0.rawValue },
+            foodPreferences: viewModel.foodPreferences.map { $0.rawValue },
+            workoutTimeAvailability: viewModel.workoutTimeAvailability.rawValue,
+            lifestyleFactors: viewModel.lifestyleFactors.map { $0.rawValue }
+        )
         
         // If skip authentication is enabled, skip permissions too
         if EnvironmentConfig.skipAuthentication {
             auth.didFinishOnboarding = true
             auth.saveLocalState()
         } else {
-            // Show permissions screen
+            // Show permissions screen, then signup
             showingPermissions = true
         }
     }

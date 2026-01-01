@@ -116,7 +116,7 @@ async function generateRecommendation(user) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Build enhanced context for AI with ML insights
+  // Build enhanced context for AI with ML insights and comprehensive onboarding data
   const context = {
     user: {
       goals: user.goals,
@@ -124,7 +124,15 @@ async function generateRecommendation(user) {
       dietaryPreferences: user.dietaryPreferences,
       allergies: user.allergies,
       fastingPreference: user.fastingPreference,
+      weightKg: user.metrics?.weightKg || 70,
+      heightCm: user.metrics?.heightCm || 170,
       targetCalories: user.metrics?.targetCalories || 2000,
+      // Comprehensive onboarding data for personalization
+      workoutPreferences: user.onboardingData?.workoutPreferences || [],
+      favoriteCuisines: user.onboardingData?.favoriteCuisines || [],
+      foodPreferences: user.onboardingData?.foodPreferences || [],
+      workoutTimeAvailability: user.onboardingData?.workoutTimeAvailability || 'moderate',
+      lifestyleFactors: user.onboardingData?.lifestyleFactors || [],
       // Add ML insights
       userType: mlInsights?.userType || 'beginner',
       favoriteFoods: mlInsights?.preferences?.favoriteFoods || [],
@@ -178,18 +186,24 @@ RECENT MEAL HISTORY (last 5 meals):
 ${JSON.stringify(context.recentMeals.slice(0, 5), null, 2)}
 
 INSTRUCTIONS:
-1. **PRIORITIZE ML INSIGHTS**: Use the machine learning insights to personalize recommendations:
+1. **PRIORITIZE ONBOARDING DATA**: Use the comprehensive onboarding data collected during signup:
+   - **Workout Preferences**: Incorporate their preferred workout types (${context.user.workoutPreferences.join(', ') || 'general fitness'}) into the workout plan
+   - **Favorite Cuisines**: Include meals from their favorite cuisines (${context.user.favoriteCuisines.join(', ') || 'varied'}) in meal suggestions
+   - **Food Preferences**: Consider their food preferences (${context.user.foodPreferences.join(', ') || 'balanced'}) when creating meal plans
+   - **Workout Time**: Design workouts that fit their available time (${context.user.workoutTimeAvailability})
+   - **Lifestyle Factors**: Adapt recommendations based on their lifestyle (${context.user.lifestyleFactors.join(', ') || 'standard'})
+2. **PRIORITIZE ML INSIGHTS**: Use the machine learning insights to personalize recommendations:
    - If user has favorite foods, incorporate them into meal suggestions
    - Respect preferred meal times from their behavior patterns
    - Match their preferred macro ratio when possible
    - Consider their user type (${context.user.userType}) for appropriate recommendations
-2. Analyze the user's recent meals to understand their eating patterns and preferences
-3. Create a balanced meal plan that aligns with their goals (${context.user.goals}) AND learned preferences
-4. Ensure meals are diverse, nutritious, and match their dietary preferences
-5. Design workouts that complement their activity level and goals
-6. Consider their fasting preference when scheduling meals
-7. **GRADUAL ADAPTATION**: If this is a returning user, gradually adapt recommendations based on their behavior patterns
-8. Provide detailed, practical instructions for both meals and exercises
+3. Analyze the user's recent meals to understand their eating patterns and preferences
+4. Create a balanced meal plan that aligns with their goals (${context.user.goals}) AND learned preferences
+5. Ensure meals are diverse, nutritious, and match their dietary preferences
+6. Design workouts that complement their activity level, goals, AND workout preferences
+7. Consider their fasting preference when scheduling meals
+8. **GRADUAL ADAPTATION**: If this is a returning user, gradually adapt recommendations based on their behavior patterns
+9. Provide detailed, practical instructions for both meals and exercises
 
 Return a JSON object with:
 - mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] } 

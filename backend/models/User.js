@@ -99,6 +99,14 @@ const userSchema = new mongoose.Schema({
     targetCarbs: Number,
     targetFat: Number
   },
+  // Comprehensive onboarding data for AI personalization
+  onboardingData: {
+    workoutPreferences: [String],
+    favoriteCuisines: [String],
+    foodPreferences: [String],
+    workoutTimeAvailability: String,
+    lifestyleFactors: [String]
+  },
   healthData: {
     lastSyncDate: Date,
     dailySteps: [{

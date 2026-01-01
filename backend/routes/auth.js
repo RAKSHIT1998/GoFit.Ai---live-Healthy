@@ -8,7 +8,13 @@ const router = express.Router();
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, goals, activityLevel, dietaryPreferences, allergies, fastingPreference } = req.body;
+    const { 
+      name, email, password, 
+      goals, activityLevel, dietaryPreferences, allergies, fastingPreference,
+      weightKg, heightCm,
+      workoutPreferences, favoriteCuisines, foodPreferences, 
+      workoutTimeAvailability, lifestyleFactors
+    } = req.body;
 
     console.log('🔵 Registration request received:', { 
       name: name?.substring(0, 10) + '...', 
@@ -47,6 +53,17 @@ router.post('/register', async (req, res) => {
       dietaryPreferences: dietaryPreferences || [],
       allergies: allergies || [],
       fastingPreference: fastingPreference || 'none',
+      metrics: {
+        weightKg: weightKg || 70,
+        heightCm: heightCm || 170
+      },
+      onboardingData: {
+        workoutPreferences: workoutPreferences || [],
+        favoriteCuisines: favoriteCuisines || [],
+        foodPreferences: foodPreferences || [],
+        workoutTimeAvailability: workoutTimeAvailability || 'moderate',
+        lifestyleFactors: lifestyleFactors || []
+      },
       subscription: {
         status: 'trial', // Start with trial status
         startDate: now,

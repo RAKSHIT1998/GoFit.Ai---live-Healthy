@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 class OnboardingViewModel: ObservableObject {
     @Published var currentStep: Int = 0
-    @Published var totalSteps: Int = 7
+    @Published var totalSteps: Int = 12 // Increased for more questions
     
     // User data collected during onboarding
     @Published var name: String = ""
@@ -14,6 +14,16 @@ class OnboardingViewModel: ObservableObject {
     @Published var allergies: Set<String> = []
     @Published var fastingPreference: FastingPreference = .none
     @Published var appleHealthEnabled: Bool = false
+    
+    // New comprehensive questions
+    @Published var weightKg: Double = 70
+    @Published var heightCm: Double = 170
+    @Published var workoutPreferences: Set<WorkoutType> = []
+    @Published var favoriteFoods: [String] = []
+    @Published var favoriteCuisines: Set<CuisineType> = []
+    @Published var foodPreferences: Set<FoodPreference> = []
+    @Published var workoutTimeAvailability: WorkoutTime = .moderate
+    @Published var lifestyleFactors: Set<LifestyleFactor> = []
     
     enum GoalType: String, CaseIterable, Codable {
         case lose = "lose"
@@ -105,6 +115,153 @@ class OnboardingViewModel: ObservableObject {
         }
     }
     
+    enum WorkoutType: String, CaseIterable, Codable {
+        case cardio = "cardio"
+        case strength = "strength"
+        case yoga = "yoga"
+        case pilates = "pilates"
+        case hiit = "hiit"
+        case running = "running"
+        case cycling = "cycling"
+        case swimming = "swimming"
+        case dancing = "dancing"
+        case boxing = "boxing"
+        case homeWorkouts = "home_workouts"
+        case gym = "gym"
+        
+        var displayName: String {
+            switch self {
+            case .cardio: return "Cardio"
+            case .strength: return "Strength Training"
+            case .yoga: return "Yoga"
+            case .pilates: return "Pilates"
+            case .hiit: return "HIIT"
+            case .running: return "Running"
+            case .cycling: return "Cycling"
+            case .swimming: return "Swimming"
+            case .dancing: return "Dancing"
+            case .boxing: return "Boxing"
+            case .homeWorkouts: return "Home Workouts"
+            case .gym: return "Gym Training"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .cardio: return "heart.fill"
+            case .strength: return "dumbbell.fill"
+            case .yoga: return "figure.flexibility"
+            case .pilates: return "figure.core.training"
+            case .hiit: return "flame.fill"
+            case .running: return "figure.run"
+            case .cycling: return "bicycle"
+            case .swimming: return "figure.pool.swim"
+            case .dancing: return "music.note"
+            case .boxing: return "figure.boxing"
+            case .homeWorkouts: return "house.fill"
+            case .gym: return "building.2.fill"
+            }
+        }
+    }
+    
+    enum CuisineType: String, CaseIterable, Codable {
+        case italian = "italian"
+        case mexican = "mexican"
+        case asian = "asian"
+        case indian = "indian"
+        case mediterranean = "mediterranean"
+        case american = "american"
+        case japanese = "japanese"
+        case thai = "thai"
+        case chinese = "chinese"
+        case french = "french"
+        case middleEastern = "middle_eastern"
+        case none = "none"
+        
+        var displayName: String {
+            switch self {
+            case .italian: return "Italian"
+            case .mexican: return "Mexican"
+            case .asian: return "Asian"
+            case .indian: return "Indian"
+            case .mediterranean: return "Mediterranean"
+            case .american: return "American"
+            case .japanese: return "Japanese"
+            case .thai: return "Thai"
+            case .chinese: return "Chinese"
+            case .french: return "French"
+            case .middleEastern: return "Middle Eastern"
+            case .none: return "No Preference"
+            }
+        }
+    }
+    
+    enum FoodPreference: String, CaseIterable, Codable {
+        case spicy = "spicy"
+        case sweet = "sweet"
+        case savory = "savory"
+        case healthy = "healthy"
+        case comfort = "comfort"
+        case quick = "quick"
+        case gourmet = "gourmet"
+        case simple = "simple"
+        
+        var displayName: String {
+            switch self {
+            case .spicy: return "Spicy Foods"
+            case .sweet: return "Sweet Foods"
+            case .savory: return "Savory Foods"
+            case .healthy: return "Healthy Options"
+            case .comfort: return "Comfort Food"
+            case .quick: return "Quick Meals"
+            case .gourmet: return "Gourmet"
+            case .simple: return "Simple & Clean"
+            }
+        }
+    }
+    
+    enum WorkoutTime: String, CaseIterable, Codable {
+        case veryLittle = "very_little"
+        case little = "little"
+        case moderate = "moderate"
+        case plenty = "plenty"
+        case unlimited = "unlimited"
+        
+        var displayName: String {
+            switch self {
+            case .veryLittle: return "15-30 min/day"
+            case .little: return "30-45 min/day"
+            case .moderate: return "45-60 min/day"
+            case .plenty: return "1-2 hours/day"
+            case .unlimited: return "2+ hours/day"
+            }
+        }
+    }
+    
+    enum LifestyleFactor: String, CaseIterable, Codable {
+        case busySchedule = "busy_schedule"
+        case travelFrequently = "travel_frequently"
+        case cookAtHome = "cook_at_home"
+        case eatOutOften = "eat_out_often"
+        case mealPrep = "meal_prep"
+        case familyMeals = "family_meals"
+        case workFromHome = "work_from_home"
+        case nightShift = "night_shift"
+        
+        var displayName: String {
+            switch self {
+            case .busySchedule: return "Busy Schedule"
+            case .travelFrequently: return "Travel Frequently"
+            case .cookAtHome: return "Cook at Home"
+            case .eatOutOften: return "Eat Out Often"
+            case .mealPrep: return "Meal Prep"
+            case .familyMeals: return "Family Meals"
+            case .workFromHome: return "Work from Home"
+            case .nightShift: return "Night Shift"
+            }
+        }
+    }
+    
     func nextStep() {
         if currentStep < totalSteps - 1 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
@@ -125,11 +282,16 @@ class OnboardingViewModel: ObservableObject {
         switch currentStep {
         case 0: return true // Welcome screen
         case 1: return !name.isEmpty
-        case 2: return true // Goal selection
-        case 3: return true // Activity level
-        case 4: return true // Dietary preferences (optional)
-        case 5: return true // Allergies (optional)
-        case 6: return true // Fasting preference
+        case 2: return weightKg > 0 && heightCm > 0 // Weight & Height
+        case 3: return true // Goal selection
+        case 4: return true // Activity level
+        case 5: return true // Dietary preferences (optional)
+        case 6: return true // Allergies (optional)
+        case 7: return true // Fasting preference
+        case 8: return true // Workout preferences (optional)
+        case 9: return true // Favorite cuisines (optional)
+        case 10: return true // Food preferences (optional)
+        case 11: return true // Workout time & lifestyle (optional)
         default: return true
         }
     }

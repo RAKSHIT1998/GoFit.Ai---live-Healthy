@@ -71,7 +71,7 @@ final class AuthService {
     }
 
     // Signup
-    func signup(name: String, email: String, password: String) async throws -> AuthToken {
+    func signup(name: String, email: String, password: String, onboardingData: OnboardingData? = nil) async throws -> AuthToken {
         let url = baseURL.appendingPathComponent("auth/register")
         
         // Debug logging
@@ -82,8 +82,28 @@ final class AuthService {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.timeoutInterval = 30.0 // 30 second timeout
-        let body = ["name": name, "email": email, "password": password]
-        req.httpBody = try JSONEncoder().encode(body)
+        
+        // Build request body with onboarding data
+        var body: [String: Any] = ["name": name, "email": email, "password": password]
+        
+        // Add comprehensive onboarding data if available
+        if let data = onboardingData {
+            body["weightKg"] = data.weightKg
+            body["heightCm"] = data.heightCm
+            body["goals"] = data.goal
+            body["activityLevel"] = data.activityLevel
+            body["dietaryPreferences"] = data.dietaryPreferences
+            body["allergies"] = data.allergies
+            body["fastingPreference"] = data.fastingPreference
+            body["workoutPreferences"] = data.workoutPreferences
+            body["favoriteCuisines"] = data.favoriteCuisines
+            body["foodPreferences"] = data.foodPreferences
+            body["workoutTimeAvailability"] = data.workoutTimeAvailability
+            body["lifestyleFactors"] = data.lifestyleFactors
+            print("🔵 Including comprehensive onboarding data in signup")
+        }
+        
+        req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         
         // Log request body (without password for security)
         if let bodyString = String(data: req.httpBody!, encoding: .utf8) {
