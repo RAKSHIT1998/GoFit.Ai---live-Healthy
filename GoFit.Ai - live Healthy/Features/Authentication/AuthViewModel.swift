@@ -41,13 +41,27 @@ final class AuthViewModel: ObservableObject {
             return
         }
         
-        if let t = AuthService.shared.readToken() {
+        // Check for existing token - if found, user stays logged in
+        if let t = AuthService.shared.readToken(), !t.accessToken.isEmpty {
             self.token = t
             self.isLoggedIn = true
-            // Try to fetch user profile to restore session
-            Task {
-                await refreshUserProfile()
+            // Restore user data from local state if available
+            if let savedUserId = self.userId, !savedUserId.isEmpty {
+                // User data already loaded from local state, just verify token is still valid
+                // Try to refresh profile in background (non-blocking)
+                Task {
+                    await refreshUserProfile()
+                }
+            } else {
+                // No local user data, try to fetch from backend
+                Task {
+                    await refreshUserProfile()
+                }
             }
+        } else {
+            // No token found - user is not logged in
+            self.isLoggedIn = false
+            self.token = nil
         }
     }
 
@@ -95,6 +109,8 @@ final class AuthViewModel: ObservableObject {
         let token = try await AuthService.shared.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
         self.token = token
         self.isLoggedIn = true
+        // Save token immediately to ensure persistence
+        AuthService.shared.saveToken(token)
         
         // Fetch user profile to get complete user data
         do {
@@ -110,6 +126,7 @@ final class AuthViewModel: ObservableObject {
             // Use email from login form as fallback
             self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
             saveLocalState()
+            // Don't throw - login was successful, profile fetch is secondary
         }
     }
 
@@ -140,6 +157,8 @@ final class AuthViewModel: ObservableObject {
         
         self.token = token
         self.isLoggedIn = true
+        // Save token immediately to ensure persistence
+        AuthService.shared.saveToken(token)
         
         // Fetch user profile to get complete user data (including userId from database)
         do {
@@ -181,6 +200,8 @@ final class AuthViewModel: ObservableObject {
         )
         self.token = token
         self.isLoggedIn = true
+        // Save token immediately to ensure persistence
+        AuthService.shared.saveToken(token)
         
         // Update name and email if provided
         if let name = result.fullName, !name.isEmpty {
@@ -205,6 +226,7 @@ final class AuthViewModel: ObservableObject {
             print("⚠️ Failed to fetch user profile after Apple Sign In: \(error.localizedDescription)")
             // Still save state with what we have
             saveLocalState()
+            // Don't throw - Apple Sign In was successful, profile fetch is secondary
         }
     }
     
@@ -240,7 +262,15 @@ final class AuthViewModel: ObservableObject {
         // Check if token exists before attempting refresh
         guard let token = AuthService.shared.readToken(), !token.accessToken.isEmpty else {
             print("⚠️ No token found, cannot refresh profile")
-            // Don't log out - token might be valid but just not loaded yet
+            // Only log out if we're supposed to be logged in but have no token
+            // This handles edge cases where token was deleted externally
+            await MainActor.run {
+                if self.isLoggedIn {
+                    print("⚠️ User marked as logged in but no token found. Keeping user logged in with cached data.")
+                    // Don't log out - keep user logged in with cached data
+                    // Token might be temporarily unavailable but will be restored
+                }
+            }
             return
         }
         
@@ -254,18 +284,40 @@ final class AuthViewModel: ObservableObject {
                 print("✅ User profile refreshed successfully")
             }
         } catch {
-            // Check if it's a 401 (unauthorized) error
-            if let nsError = error as NSError?,
-               nsError.code == 401 {
-                print("❌ Token expired or invalid (401). Logging out user.")
-                await MainActor.run {
-                    // Only log out on actual 401 errors, not network issues
-                    self.logout()
+            // Check if it's a 401 (unauthorized) error - ONLY log out on actual auth failures
+            // NetworkManager throws NSError with status code in the 'code' field
+            var isUnauthorized = false
+            
+            if let nsError = error as NSError? {
+                // NetworkManager sets the HTTP status code as the NSError code
+                // Check if error code is 401 (unauthorized)
+                if nsError.code == 401 {
+                    isUnauthorized = true
+                } else if nsError.domain == "NetworkError" && nsError.code == 401 {
+                    isUnauthorized = true
                 }
+                
+                if isUnauthorized {
+                    print("❌ Token expired or invalid (401). Logging out user.")
+                    await MainActor.run {
+                        self.logout()
+                    }
+                } else {
+                    // For network errors, timeouts, server errors (500, 503, etc.), don't log out
+                    print("⚠️ Failed to refresh user profile (non-auth error): \(error.localizedDescription)")
+                    print("⚠️ Error code: \(nsError.code), domain: \(nsError.domain)")
+                    // User stays logged in - this is likely a temporary network issue
+                    // The token is still valid, just couldn't reach the server
+                }
+            } else if let urlError = error as? URLError {
+                // Network errors (no connection, timeout, etc.) should NOT log out user
+                print("⚠️ Failed to refresh user profile (network error): \(urlError.localizedDescription)")
+                print("⚠️ URLError code: \(urlError.code.rawValue)")
+                // User stays logged in - likely a network issue
             } else {
-                // For other errors (network, timeout, etc.), don't log out
-                print("⚠️ Failed to refresh user profile (non-auth error): \(error.localizedDescription)")
-                // User can still use the app - might be a temporary network issue
+                // Unknown error type - don't log out
+                print("⚠️ Failed to refresh user profile (unknown error): \(error.localizedDescription)")
+                // User stays logged in
             }
         }
     }
