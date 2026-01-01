@@ -83,8 +83,8 @@ class HealthKitService: ObservableObject {
             return
         }
         
-        // Check authorization for all the types we need to read
-        // We consider authorized if at least the primary types (steps, active calories) are authorized
+        // Check authorization for primary types (steps and active calories)
+        // These types should always be available in HealthKit
         guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount),
               let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
             print("⚠️ HealthKit types not available")
@@ -98,33 +98,34 @@ class HealthKitService: ObservableObject {
         let caloriesStatus = healthStore.authorizationStatus(for: caloriesType)
         
         // For read types, .sharingAuthorized means read access is granted
-        // Also check if status is not .notDetermined and not .sharingDenied
-        // This handles cases where user grants permissions in Settings
+        // We require at least ONE primary type to be authorized for the app to be considered "authorized"
+        // This supports partial authorization (user might authorize steps but not calories, or vice versa)
         let isStepAuthorized = stepStatus == .sharingAuthorized
         let isCaloriesAuthorized = caloriesStatus == .sharingAuthorized
         
-        // Also check other types to be more comprehensive
-        var hasAnyAuthorization = isStepAuthorized || isCaloriesAuthorized
+        // App is authorized if at least one primary type is authorized
+        // This ensures that isAuthorized=true means we can read at least some primary data
+        let newAuthorizedStatus = isStepAuthorized || isCaloriesAuthorized
         
-        // Check heart rate as well (another common type)
+        // Check heart rate for logging (optional type, doesn't affect isAuthorized)
+        var heartRateAuthorized = false
         if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
             let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
-            if heartRateStatus == .sharingAuthorized {
-                hasAnyAuthorization = true
-            }
+            heartRateAuthorized = heartRateStatus == .sharingAuthorized
         }
-        
-        let newAuthorizedStatus = hasAnyAuthorization
         
         // Log detailed status for debugging
         print("📊 HealthKit Authorization Status Check:")
-        print("   Steps: \(stepStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(stepStatus.rawValue))")")
-        print("   Active Calories: \(caloriesStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(caloriesStatus.rawValue))")")
+        print("   Steps: \(isStepAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(stepStatus.rawValue))")")
+        print("   Active Calories: \(isCaloriesAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(caloriesStatus.rawValue))")")
         if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
             let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
-            print("   Heart Rate: \(heartRateStatus == .sharingAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(heartRateStatus.rawValue))")")
+            print("   Heart Rate: \(heartRateAuthorized ? "✅ Authorized" : "❌ Not authorized (status: \(heartRateStatus.rawValue))") [Optional]")
         }
         print("   Overall: \(newAuthorizedStatus ? "✅ Authorized" : "❌ Not authorized")")
+        if newAuthorizedStatus && (!isStepAuthorized || !isCaloriesAuthorized) {
+            print("   ⚠️ Partial authorization: Some primary types are not authorized")
+        }
         
         // Direct assignment is safe since class is @MainActor-annotated
         // No need for async task dispatch - avoids race conditions
