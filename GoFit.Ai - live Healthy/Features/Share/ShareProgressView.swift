@@ -158,7 +158,8 @@ struct ShareProgressView: View {
     
     private func generateShareImage() {
         isGeneratingImage = true
-        ShareService.shared.shareProgressImage(
+        // Use generateProgressImageAsync to generate without auto-sharing
+        ShareService.shared.generateProgressImageAsync(
             calories: calories,
             steps: steps,
             activeCalories: activeCalories,
