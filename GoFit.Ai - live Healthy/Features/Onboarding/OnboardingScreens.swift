@@ -210,8 +210,8 @@ struct WelcomeStep: View {
                 .offset(x: animateFeatures ? 0 : -20)
                 
                 OnboardingFeatureRow(
-                    icon: "chart.bar.fill",
-                    text: "Track your progress and goals",
+                    icon: "applewatch",
+                    text: "Sync with Apple Health & Watch",
                     delay: 0.3
                 )
                 .opacity(animateFeatures ? 1.0 : 0.0)
@@ -740,20 +740,20 @@ struct PermissionsView: View {
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-        .padding()
+                        .padding()
                         .background(Design.Colors.primary)
                         .cornerRadius(12)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
+            }
+            .navigationTitle("Permissions")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Check current authorization status when view appears
+                healthPermissionGranted = healthKit.isAuthorized
+            }
         }
-        .navigationTitle("Permissions")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            // Check current authorization status when view appears
-            healthPermissionGranted = healthKit.isAuthorized
-        }
-    }
     }
     
     private func requestCameraPermission() {

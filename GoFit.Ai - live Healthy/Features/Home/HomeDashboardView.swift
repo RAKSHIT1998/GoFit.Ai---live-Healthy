@@ -5,7 +5,6 @@ struct HomeDashboardView: View {
 
     @EnvironmentObject var auth: AuthViewModel
     @EnvironmentObject var purchases: PurchaseManager
-
     @StateObject private var healthKit = HealthKitService.shared
 
     @State private var showingScanner = false
@@ -739,12 +738,13 @@ struct HomeDashboardView: View {
             print("⚠️ HealthKit not authorized, skipping sync. Please enable HealthKit access in Settings > Privacy & Security > Health.")
             return
         }
-
+        
         do {
             try await healthKit.readTodaySteps()
             try await healthKit.readTodayActiveCalories()
             try await healthKit.readHeartRate()
             try await healthKit.syncToBackend()
+            print("✅ HealthKit data synced")
         } catch {
             print("⚠️ HealthKit sync error: \(error.localizedDescription)")
         }

@@ -96,6 +96,101 @@ struct ProfileView: View {
             } message: {
                 Text(errorMessage ?? "An error occurred")
             }
+            .onAppear {
+                // Check current authorization status when view appears
+                // This refreshes status if user granted permissions in Settings
+                healthKit.checkAuthorizationStatus()
+                healthSyncEnabled = healthKit.isAuthorized
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                // Refresh authorization status when app comes to foreground
+                // This handles cases where user grants permissions in Settings then returns to app
+                healthKit.checkAuthorizationStatus()
+                healthSyncEnabled = healthKit.isAuthorized
+            }
+        }
+    }
+    
+    // MARK: - Health Section
+    private var healthSection: some View {
+        SettingsSection(title: "Health & Fitness") {
+            HStack {
+                SettingsRow(
+                    icon: "heart.fill",
+                    iconColor: .pink,
+                    title: "Apple Health",
+                    subtitle: healthKit.isAuthorized ? "Connected" : "Not Connected"
+                )
+                Spacer()
+                Toggle("", isOn: $healthSyncEnabled)
+                    .labelsHidden()
+            }
+            .onChange(of: healthSyncEnabled) { oldValue, newValue in
+                if newValue {
+                    Task {
+                        do {
+                            print("🔵 Requesting HealthKit authorization from ProfileView...")
+                            
+                            // First, refresh status in case user granted permissions in Settings
+                            healthKit.checkAuthorizationStatus()
+                            
+                            // If already authorized, skip request
+                            if healthKit.isAuthorized {
+                                print("✅ HealthKit already authorized")
+                                await MainActor.run {
+                                    healthSyncEnabled = true
+                                }
+                                try? await healthKit.syncToBackend()
+                                return
+                            }
+                            
+                            // Request authorization if not already granted
+                            try await healthKit.requestAuthorization()
+                            
+                            // Re-check authorization status after requesting
+                            healthKit.checkAuthorizationStatus()
+                            
+                            // Update toggle state based on actual authorization
+                            await MainActor.run {
+                                healthSyncEnabled = healthKit.isAuthorized
+                            }
+                            
+                            // Sync data after authorization if authorized
+                            if healthKit.isAuthorized {
+                                try? await healthKit.syncToBackend()
+                            } else {
+                                // Give user option to check Settings
+                                await MainActor.run {
+                                    errorMessage = "HealthKit authorization was not granted. Please enable it in Settings > Privacy & Security > Health, then return to the app."
+                                    showingError = true
+                                }
+                            }
+                        } catch {
+                            await MainActor.run {
+                                errorMessage = "Failed to connect to Apple Health: \(error.localizedDescription)"
+                                showingError = true
+                                healthSyncEnabled = false
+                            }
+                        }
+                    }
+                } else {
+                    // User disabled HealthKit sync
+                    // Note: We can't revoke authorization, but we can stop syncing
+                    print("ℹ️ User disabled HealthKit sync")
+                }
+            }
+
+            SettingsRow(
+                icon: "applewatch",
+                iconColor: .black,
+                title: "Apple Watch",
+                subtitle: "Sync activity data",
+                action: {
+                    Task { 
+                        try? await healthKit.syncToBackend()
+                    }
+                }
+            )
         }
     }
 
@@ -239,99 +334,6 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Health (FIXED onChange)
-    private var healthSection: some View {
-        SettingsSection(title: "Health & Fitness") {
-            HStack {
-                SettingsRow(
-                    icon: "heart.fill",
-                    iconColor: .pink,
-                    title: "Apple Health",
-                    subtitle: healthKit.isAuthorized ? "Connected" : "Not Connected"
-                )
-                Spacer()
-                Toggle("", isOn: $healthSyncEnabled)
-                    .labelsHidden()
-            }
-            // ✅ iOS 17 FIX
-            .onChange(of: healthSyncEnabled) { oldValue, newValue in
-                if newValue {
-                    Task {
-                        do {
-                            print("🔵 Requesting HealthKit authorization from ProfileView...")
-                            
-                            // First, refresh status in case user granted permissions in Settings
-                            healthKit.checkAuthorizationStatus()
-                            
-                            // If already authorized, skip request
-                            if healthKit.isAuthorized {
-                                print("✅ HealthKit already authorized")
-                                await MainActor.run {
-                                    healthSyncEnabled = true
-                                }
-                                try? await healthKit.syncToBackend()
-                                return
-                            }
-                            
-                            // Request authorization if not already granted
-                            try await healthKit.requestAuthorization()
-                            
-                            // Re-check authorization status after requesting
-                            healthKit.checkAuthorizationStatus()
-                            
-                            // Update toggle state based on actual authorization
-                            await MainActor.run {
-                                healthSyncEnabled = healthKit.isAuthorized
-                            }
-                            
-                            // Sync data after authorization if authorized
-                            if healthKit.isAuthorized {
-                                try? await healthKit.syncToBackend()
-                            } else {
-                                // Give user option to check Settings
-                                await MainActor.run {
-                                    errorMessage = "HealthKit authorization was not granted. Please enable it in Settings > Privacy & Security > Health, then return to the app."
-                                    showingError = true
-                                }
-                            }
-                        } catch {
-                            await MainActor.run {
-                                errorMessage = "Failed to connect to Apple Health: \(error.localizedDescription)"
-                                showingError = true
-                                healthSyncEnabled = false
-                            }
-                        }
-                    }
-                } else {
-                    // User disabled HealthKit sync
-                    // Note: We can't revoke authorization, but we can stop syncing
-                    print("ℹ️ User disabled HealthKit sync")
-                }
-            }
-            .onAppear {
-                // Check current authorization status when view appears
-                // This refreshes status if user granted permissions in Settings
-                healthKit.checkAuthorizationStatus()
-                healthSyncEnabled = healthKit.isAuthorized
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                // Refresh authorization status when app comes to foreground
-                // This handles cases where user grants permissions in Settings then returns to app
-                healthKit.checkAuthorizationStatus()
-                healthSyncEnabled = healthKit.isAuthorized
-            }
-
-            SettingsRow(
-                icon: "applewatch",
-                iconColor: .black,
-                title: "Apple Watch",
-                subtitle: "Sync activity data",
-                action: {
-                    Task { try? await healthKit.syncToBackend() }
-                }
-            )
-        }
-    }
 
     // MARK: - Preferences
     private var preferencesSection: some View {
