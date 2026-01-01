@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var showingDeleteAccount = false
     @State private var showingExportData = false
     @State private var showingChangePassword = false
+    @State private var showingShareProgress = false
 
     @State private var notificationsEnabled = true
     @State private var healthSyncEnabled = true
@@ -74,6 +75,16 @@ struct ProfileView: View {
             .sheet(isPresented: $showingChangePassword) {
                 ChangePasswordView().environmentObject(auth)
             }
+            .sheet(isPresented: $showingShareProgress) {
+                ShareProgressView(
+                    calories: "1,450", // TODO: Get actual calories from backend
+                    steps: healthKit.todaySteps,
+                    activeCalories: healthKit.todayActiveCalories,
+                    waterIntake: 0.0, // TODO: Get actual water intake
+                    heartRate: healthKit.restingHeartRate > 0 ? healthKit.restingHeartRate : nil
+                )
+                .environmentObject(auth)
+            }
             .alert("Delete Account", isPresented: $showingDeleteAccount) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) { deleteAccount() }
@@ -135,10 +146,31 @@ struct ProfileView: View {
 
     // MARK: - Quick Stats
     private var quickStatsSection: some View {
-        HStack(spacing: 12) {
-            StatCard(icon: "flame.fill", value: "1,450", label: "Calories", color: .orange)
-            StatCard(icon: "figure.walk", value: "\(healthKit.todaySteps)", label: "Steps", color: .green)
-            StatCard(icon: "timer", value: "12h", label: "Fasting", color: .purple)
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                StatCard(icon: "flame.fill", value: "1,450", label: "Calories", color: .orange)
+                StatCard(icon: "figure.walk", value: "\(healthKit.todaySteps)", label: "Steps", color: .green)
+                StatCard(icon: "timer", value: "12h", label: "Fasting", color: .purple)
+            }
+            
+            // Share Progress Button
+            Button {
+                showingShareProgress = true
+            } label: {
+                HStack {
+                    Image(systemName: "square.and.arrow.up.fill")
+                        .font(.title3)
+                    Text("Share My Progress")
+                        .font(Design.Typography.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                }
+                .foregroundColor(.white)
+                .padding()
+                .background(Design.Colors.primaryGradient)
+                .cornerRadius(16)
+            }
         }
     }
 

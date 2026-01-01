@@ -13,6 +13,7 @@ struct HomeDashboardView: View {
     @State private var showingFasting = false
     @State private var showingWorkout = false
     @State private var showingLiquidLog = false
+    @State private var showingShareProgress = false
 
     @State private var todayCalories = "—"
     @State private var todayProtein = "—"
@@ -66,6 +67,9 @@ struct HomeDashboardView: View {
                         Button { showingFasting = true } label: {
                             Label("Fasting", systemImage: "timer")
                         }
+                        Button { showingShareProgress = true } label: {
+                            Label("Share Progress", systemImage: "square.and.arrow.up")
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")
                             .foregroundColor(Design.Colors.primary)
@@ -93,6 +97,16 @@ struct HomeDashboardView: View {
                             await loadWaterIntake()
                         }
                     }
+            }
+            .sheet(isPresented: $showingShareProgress) {
+                ShareProgressView(
+                    calories: todayCalories,
+                    steps: healthKit.todaySteps,
+                    activeCalories: healthKit.todayActiveCalories,
+                    waterIntake: waterIntake,
+                    heartRate: healthKit.restingHeartRate > 0 ? healthKit.restingHeartRate : nil
+                )
+                .environmentObject(auth)
             }
             .onAppear {
                 withAnimation(Design.Animation.spring) {
@@ -136,7 +150,7 @@ struct HomeDashboardView: View {
     // MARK: - Main Stats (Clean White Design)
     private var mainStatsCard: some View {
         VStack(spacing: Design.Spacing.lg) {
-            // Calories Display
+            // Header with Share Button
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Calories")
@@ -149,6 +163,15 @@ struct HomeDashboardView: View {
                 }
                 
                 Spacer()
+                
+                // Share Button
+                Button {
+                    showingShareProgress = true
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.title3)
+                        .foregroundColor(Design.Colors.primary)
+                }
                 
                 VStack(alignment: .trailing, spacing: 8) {
                     Text("Burned")
