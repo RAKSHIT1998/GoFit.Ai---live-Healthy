@@ -337,6 +337,8 @@ enum HealthKitError: LocalizedError {
         switch self {
         case .notAvailable:
             return "HealthKit is not available on this device"
+        case .notAuthorized:
+            return "HealthKit authorization not granted"
         case .invalidType:
             return "Invalid HealthKit type"
         case .authorizationDenied:

@@ -265,7 +265,7 @@ class PurchaseManager: ObservableObject {
         }
     }
 
-    private func checkSubscriptionStatus() async {
+    func checkSubscriptionStatus() async {
         do {
             print("🔄 Checking subscription status with backend...")
             let url = URL(string: "\(NetworkManager.shared.baseURL)/subscriptions/status")!
