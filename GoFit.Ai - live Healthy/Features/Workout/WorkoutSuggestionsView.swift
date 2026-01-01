@@ -80,7 +80,7 @@ struct WorkoutSuggestionsView: View {
                         title: "Oops!",
                         message: error,
                         action: {
-                            Task { await loadRecommendations() }
+                            Task { await loadRecommendations(forceRefresh: true) }
                         },
                         actionTitle: "Try Again"
                     )
@@ -107,7 +107,8 @@ struct WorkoutSuggestionsView: View {
                         .padding(.bottom, Design.Spacing.xl)
                     }
                     .refreshable {
-                        await loadRecommendations()
+                        isRefreshing = true
+                        await loadRecommendations(forceRefresh: true)
                     }
                 } else {
                     EmptyStateView(
@@ -115,7 +116,7 @@ struct WorkoutSuggestionsView: View {
                         title: "No Recommendations",
                         message: "Tap refresh to generate AI-powered meal and workout recommendations",
                         action: {
-                            Task { await loadRecommendations() }
+                            Task { await loadRecommendations(forceRefresh: true) }
                         },
                         actionTitle: "Generate"
                     )
@@ -126,12 +127,18 @@ struct WorkoutSuggestionsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        Task { await loadRecommendations() }
+                        Task { await loadRecommendations(forceRefresh: true) }
                     }) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(Design.Colors.primary)
-                            .font(Design.Typography.headline)
+                        if isRefreshing {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(Design.Colors.primary)
+                                .font(Design.Typography.headline)
+                        }
                     }
+                    .disabled(isRefreshing)
                 }
             }
             .task {
@@ -562,23 +569,40 @@ struct WorkoutSuggestionsView: View {
     }
     
     // MARK: - Network
-    private func loadRecommendations() async {
+    @State private var isRefreshing = false
+    
+    private func loadRecommendations(forceRefresh: Bool = false) async {
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer { 
+            isLoading = false
+            isRefreshing = false
+        }
         
         do {
             // Try to fetch from backend
             if !EnvironmentConfig.skipAuthentication {
-                // Force fresh fetch by adding timestamp to prevent caching
-                let endpoint = "recommendations/daily?t=\(Date().timeIntervalSince1970)"
+                let endpoint: String
+                let method: String
+                
+                if forceRefresh {
+                    // Force regenerate new recommendations
+                    endpoint = "recommendations/regenerate"
+                    method = "POST"
+                } else {
+                    // Get today's recommendations (may be cached)
+                    endpoint = "recommendations/daily"
+                    method = "GET"
+                }
+                
                 let response: RecommendationResponse = try await NetworkManager.shared.request(
                     endpoint,
-                    method: "GET",
+                    method: method,
                     body: nil
                 )
                 await MainActor.run {
                     recommendation = response
+                    errorMessage = nil
                 }
             } else {
                 // Mock data for dev mode
@@ -588,9 +612,27 @@ struct WorkoutSuggestionsView: View {
             }
         } catch {
             await MainActor.run {
-                // Use mock data if backend fails
-                recommendation = mockRecommendation
-                errorMessage = "Using demo data. Backend connection failed."
+                if let nsError = error as NSError? {
+                    let errorMessageText = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                    
+                    // Check for specific error types
+                    if errorMessageText.contains("GEMINI_API_KEY") || 
+                       errorMessageText.contains("not configured") ||
+                       errorMessageText.contains("AI recommendation service") {
+                        errorMessage = "AI recommendations are not configured. Please set GEMINI_API_KEY in Render environment variables."
+                    } else if errorMessageText.contains("timeout") {
+                        errorMessage = "Request timed out. Please try again."
+                    } else {
+                        errorMessage = "Failed to load recommendations: \(errorMessageText)"
+                    }
+                } else {
+                    errorMessage = "Failed to load recommendations: \(error.localizedDescription)"
+                }
+                
+                // Only use mock data if we have no recommendation at all
+                if recommendation == nil {
+                    recommendation = mockRecommendation
+                }
             }
         }
     }

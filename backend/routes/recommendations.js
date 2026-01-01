@@ -238,18 +238,57 @@ You are an expert nutritionist and certified personal trainer with years of expe
 Ensure all recommendations are safe, achievable, and aligned with the user's profile.`;
 
   try {
-    // Use Gemini Pro for recommendations (stable and widely available)
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-pro',
-      generationConfig: {
-        temperature: 0.7, // Balanced creativity and consistency
-        maxOutputTokens: 4000 // Increased for more detailed meal recipes and workout instructions
+    // Use Gemini 1.5 Flash for recommendations (faster and more reliable)
+    // Can also use gemini-1.5-pro for better quality
+    const modelPreference = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    
+    let model;
+    try {
+      model = genAI.getGenerativeModel({ 
+        model: modelPreference,
+        generationConfig: {
+          temperature: 0.7, // Balanced creativity and consistency
+          maxOutputTokens: 4000 // Increased for more detailed meal recipes and workout instructions
+        }
+      });
+      console.log(`✅ Using model: ${modelPreference} for recommendations`);
+    } catch (modelError) {
+      console.error(`❌ Failed to initialize ${modelPreference}, trying fallback:`, modelError.message);
+      // Try fallback models
+      const fallbackModels = ['gemini-1.5-pro', 'gemini-pro'];
+      let modelInitialized = false;
+      
+      for (const fallbackModel of fallbackModels) {
+        if (fallbackModel === modelPreference) continue;
+        
+        try {
+          model = genAI.getGenerativeModel({ 
+            model: fallbackModel,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4000
+            }
+          });
+          console.log(`✅ Using fallback model: ${fallbackModel}`);
+          modelInitialized = true;
+          break;
+        } catch (e) {
+          console.error(`❌ Failed to initialize ${fallbackModel}:`, e.message);
+        }
       }
-    });
+      
+      if (!modelInitialized) {
+        throw new Error(`Failed to initialize any Gemini model. Last error: ${modelError.message}`);
+      }
+    }
 
+    // Generate content with proper async handling
     const result = await model.generateContent(prompt);
-    const response = result.response; // response is not a Promise, just access it directly
+    const response = result.response;
     const content = response.text();
+    
+    console.log('✅ Gemini recommendation generation completed');
+    console.log('📝 Response length:', content.length, 'characters');
     
   let recommendationData;
 
@@ -258,7 +297,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     let jsonString = content.trim();
     
     // Remove markdown code blocks if present
-    jsonString = jsonString.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    jsonString = jsonString.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
     
     // Try to extract JSON object
     const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
@@ -267,9 +306,12 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     } else {
       recommendationData = JSON.parse(jsonString);
     }
+    
+    console.log('✅ Successfully parsed recommendation data');
     } catch (parseError) {
-      console.error('Failed to parse Gemini recommendation response:', parseError);
-      console.error('Response content:', content ? content.substring(0, 500) : 'No content');
+      console.error('❌ Failed to parse Gemini recommendation response:', parseError);
+      console.error('📝 Response content (first 500 chars):', content ? content.substring(0, 500) : 'No content');
+      console.error('📝 Full response length:', content ? content.length : 0);
     // Fallback recommendation with full details
     recommendationData = {
       mealPlan: {
@@ -347,7 +389,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     workoutPlan: recommendationData.workoutPlan,
     hydrationGoal: recommendationData.hydrationGoal,
     insights: recommendationData.insights || [],
-    aiVersion: "gemini-pro",
+    aiVersion: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
     // Add ML metadata
     mlMetadata: {
       userType: context.user.userType,
