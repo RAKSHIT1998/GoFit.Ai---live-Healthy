@@ -203,13 +203,6 @@ class HealthKitService: ObservableObject {
         let isStepAuthorized = stepStatus == .sharingAuthorized
         let isCaloriesAuthorized = caloriesStatus == .sharingAuthorized
         
-        // Also check if status is not denied (could be authorized or not determined)
-        // If user has granted permission, status will be .sharingAuthorized
-        // If user denied, status will be .sharingDenied
-        // If not determined, we haven't asked yet
-        let stepNotDenied = stepStatus != .sharingDenied
-        let caloriesNotDenied = caloriesStatus != .sharingDenied
-        
         // App is authorized if at least one primary type is explicitly authorized
         // We only consider it authorized if status is .sharingAuthorized (not just not denied)
         let newAuthorizedStatus = isStepAuthorized || isCaloriesAuthorized

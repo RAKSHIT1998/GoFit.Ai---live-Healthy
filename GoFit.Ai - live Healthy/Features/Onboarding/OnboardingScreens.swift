@@ -793,17 +793,15 @@ struct PermissionsView: View {
                 // Actually request HealthKit authorization
                 print("🔵 Requesting HealthKit authorization from PermissionsView...")
                 try await HealthKitService.shared.requestAuthorization()
-                await MainActor.run {
-                    // Re-check status after requesting (with a small delay to ensure status is updated)
-                    Task {
-                        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-                        healthKit.checkAuthorizationStatus()
-                        // Update the UI to reflect authorization status
-                        healthPermissionGranted = healthKit.isAuthorized
-                        viewModel.appleHealthEnabled = healthPermissionGranted
-                        isRequestingHealth = false
-                        print("📱 HealthKit permission request completed - authorized: \(healthKit.isAuthorized)")
-                    }
+                // Re-check status after requesting (with a small delay to ensure status is updated)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                    healthKit.checkAuthorizationStatus()
+                    // Update the UI to reflect authorization status
+                    healthPermissionGranted = healthKit.isAuthorized
+                    viewModel.appleHealthEnabled = healthPermissionGranted
+                    isRequestingHealth = false
+                    print("📱 HealthKit permission request completed - authorized: \(healthKit.isAuthorized)")
                 }
             } catch {
                 print("⚠️ Failed to request HealthKit authorization: \(error.localizedDescription)")
@@ -874,70 +872,107 @@ struct OnboardingSignupView: View {
     @State private var errorMessage: String?
     @State private var showingPaywall = false
     
+    // Focus state for keyboard management
+    @FocusState private var focusedField: SignupField?
+    
+    enum SignupField: Hashable {
+        case email
+        case password
+        case confirmPassword
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {
                 Design.Colors.background
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: Design.Spacing.xl) {
-                        Spacer(minLength: 40)
-                        
-                        // Logo and title
-                        VStack(spacing: Design.Spacing.md) {
-                            LogoView(size: .large, showText: false, color: Design.Colors.primary)
-                                .padding(.top, Design.Spacing.xl)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: Design.Spacing.xl) {
+                            Spacer(minLength: 40)
                             
-                            Text("Create Your Account")
-                                .font(Design.Typography.display)
-                                .foregroundColor(.primary)
-                            
-                            Text("Almost there! Just create your account to get started")
-                                .font(Design.Typography.title3)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
-                        
-                        // Form Card
-                        ModernCard {
+                            // Logo and title
                             VStack(spacing: Design.Spacing.md) {
-                                // Name (pre-filled from onboarding)
-                                CustomTextField(
-                                    placeholder: "Full Name",
-                                    text: Binding(
-                                        get: { viewModel.name.isEmpty ? "User" : viewModel.name },
-                                        set: { viewModel.name = $0 }
-                                    ),
-                                    icon: "person.fill"
-                                )
-                                .disabled(true) // Name from onboarding, can't change
-                                .opacity(0.7)
+                                LogoView(size: .large, showText: false, color: Design.Colors.primary)
+                                    .padding(.top, Design.Spacing.xl)
                                 
-                                CustomTextField(
-                                    placeholder: "Email",
-                                    text: $email,
-                                    icon: "envelope.fill",
-                                    keyboardType: .emailAddress
-                                )
-                                .autocapitalization(.none)
-                                .autocorrectionDisabled()
+                                Text("Create Your Account")
+                                    .font(Design.Typography.display)
+                                    .foregroundColor(.primary)
                                 
-                                CustomSecureField(
-                                    placeholder: "Password",
-                                    text: $password,
-                                    icon: "lock.fill"
-                                )
-                                
-                                CustomSecureField(
-                                    placeholder: "Confirm Password",
-                                    text: $confirmPassword,
-                                    icon: "lock.fill"
-                                )
+                                Text("Almost there! Just create your account to get started")
+                                    .font(Design.Typography.title3)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
                             }
-                        }
-                        .padding(.horizontal, Design.Spacing.md)
+                            
+                            // Form Card
+                            ModernCard {
+                                VStack(spacing: Design.Spacing.md) {
+                                    // Name (pre-filled from onboarding)
+                                    CustomTextField(
+                                        placeholder: "Full Name",
+                                        text: Binding(
+                                            get: { viewModel.name.isEmpty ? "User" : viewModel.name },
+                                            set: { viewModel.name = $0 }
+                                        ),
+                                        icon: "person.fill"
+                                    )
+                                    .disabled(true) // Name from onboarding, can't change
+                                    .opacity(0.7)
+                                    
+                                    CustomTextField(
+                                        placeholder: "Email",
+                                        text: $email,
+                                        icon: "envelope.fill",
+                                        keyboardType: .emailAddress
+                                    )
+                                    .focused($focusedField, equals: .email)
+                                    .submitLabel(.next)
+                                    .onSubmit {
+                                        focusedField = .password
+                                        withAnimation {
+                                            proxy.scrollTo("password", anchor: .center)
+                                        }
+                                    }
+                                    .id("email")
+                                    .autocapitalization(.none)
+                                    .autocorrectionDisabled()
+                                    
+                                    CustomSecureField(
+                                        placeholder: "Password",
+                                        text: $password,
+                                        icon: "lock.fill"
+                                    )
+                                    .focused($focusedField, equals: .password)
+                                    .submitLabel(.next)
+                                    .onSubmit {
+                                        focusedField = .confirmPassword
+                                        withAnimation {
+                                            proxy.scrollTo("confirmPassword", anchor: .center)
+                                        }
+                                    }
+                                    .id("password")
+                                    
+                                    CustomSecureField(
+                                        placeholder: "Confirm Password",
+                                        text: $confirmPassword,
+                                        icon: "lock.fill"
+                                    )
+                                    .focused($focusedField, equals: .confirmPassword)
+                                    .submitLabel(.done)
+                                    .onSubmit {
+                                        focusedField = nil
+                                        if isFormValid {
+                                            handleSignup()
+                                        }
+                                    }
+                                    .id("confirmPassword")
+                                }
+                            }
+                            .padding(.horizontal, Design.Spacing.md)
                         
                         // Error message
                         if let error = errorMessage {
@@ -971,10 +1006,31 @@ struct OnboardingSignupView: View {
                         
                         Spacer(minLength: 40)
                     }
+                    .onChange(of: focusedField) { oldValue, newValue in
+                        if let field = newValue {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(field == .email ? "email" : field == .password ? "password" : "confirmPassword", anchor: .center)
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle("Create Account")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedField = nil
+                    }
+                    .foregroundColor(Design.Colors.primary)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside text fields
+                focusedField = nil
+            }
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
