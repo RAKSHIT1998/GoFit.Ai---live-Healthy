@@ -179,11 +179,16 @@ struct WeightHeightStep: View {
     
     private func updateHeightFromImperial() {
         let parts = heightText.split(separator: "'")
-        if let feetStr = parts.first, let feet = Double(feetStr),
-           parts.count > 1, let inchesStr = String(parts[1].dropLast()), let inches = Double(inchesStr) {
-            // Convert feet and inches to cm
-            let totalInches = (feet * 12) + inches
-            viewModel.heightCm = totalInches * 2.54
+        if parts.count >= 2,
+           let feetStr = parts.first,
+           let feet = Double(String(feetStr)),
+           let inchesStr = parts.dropFirst().first {
+            let inchesString = String(inchesStr).dropLast()
+            if let inches = Double(String(inchesString)) {
+                // Convert feet and inches to cm
+                let totalInches = (feet * 12) + inches
+                viewModel.heightCm = totalInches * 2.54
+            }
         }
     }
 }
