@@ -42,7 +42,9 @@ class HealthKitService: ObservableObject {
     }
     
     deinit {
-        stopPeriodicSync()
+        // Cancel periodic sync task (can be done from any context)
+        periodicSyncTask?.cancel()
+        periodicSyncTask = nil
         NotificationCenter.default.removeObserver(self)
     }
     
