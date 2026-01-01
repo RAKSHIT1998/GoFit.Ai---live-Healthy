@@ -611,9 +611,12 @@ struct WorkoutSuggestionsView: View {
                 }
             }
         } catch {
+            print("❌ Error loading recommendations: \(error)")
             await MainActor.run {
                 if let nsError = error as NSError? {
                     let errorMessageText = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                    print("❌ Error details: \(errorMessageText)")
+                    print("❌ Error code: \(nsError.code), domain: \(nsError.domain)")
                     
                     // Check for specific error types
                     if errorMessageText.contains("GEMINI_API_KEY") || 

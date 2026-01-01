@@ -152,6 +152,11 @@ struct OnboardingScreens: View {
                     // Clear any test/default names from saved state
                     auth.clearTestData()
                     
+                    // Clear "rakshit" from viewModel.name if present
+                    if viewModel.name.lowercased() == "rakshit" {
+                        viewModel.name = ""
+                    }
+                    
                     // Debug: Log the name state when signup view appears
                     print("📱 OnboardingSignupView appeared")
                     print("📱 viewModel.name: '\(viewModel.name)'")
@@ -926,6 +931,7 @@ struct OnboardingSignupView: View {
     @FocusState private var focusedField: SignupField?
     
     enum SignupField: Hashable {
+        case name
         case email
         case password
         case confirmPassword
@@ -961,29 +967,33 @@ struct OnboardingSignupView: View {
                             // Form Card
                             ModernCard {
                                 VStack(spacing: Design.Spacing.md) {
-                                    // Name (pre-filled from onboarding)
+                                    // Name (editable - user can change it)
                                     CustomTextField(
                                         placeholder: "Full Name",
                                         text: Binding(
                                             get: { 
-                                                // Prioritize viewModel.name from onboarding
-                                                // Only use auth.name if viewModel.name is empty and auth.name is not "rakshit"
-                                                if !viewModel.name.isEmpty {
-                                                    return viewModel.name
-                                                } else if !auth.name.isEmpty && auth.name.lowercased() != "rakshit" {
-                                                    return auth.name
-                                                } else if let onboardingName = auth.onboardingData?.name, !onboardingName.isEmpty {
-                                                    return onboardingName
-                                                } else {
-                                                    return "" // Show empty instead of "User" or "rakshit"
-                                                }
+                                                // Use viewModel.name if available, otherwise empty
+                                                // Clear any "rakshit" default
+                                                let name = viewModel.name.isEmpty ? "" : viewModel.name
+                                                return name.lowercased() == "rakshit" ? "" : name
                                             },
-                                            set: { viewModel.name = $0 }
+                                            set: { 
+                                                // Update viewModel.name when user types
+                                                viewModel.name = $0
+                                            }
                                         ),
                                         icon: "person.fill"
                                     )
-                                    .disabled(true) // Name from onboarding, can't change
-                                    .opacity(0.7)
+                                    .focused($focusedField, equals: .name)
+                                    .submitLabel(.next)
+                                    .onSubmit {
+                                        focusedField = .email
+                                        withAnimation {
+                                            proxy.scrollTo("email", anchor: .center)
+                                        }
+                                    }
+                                    .id("name")
+                                    .autocapitalization(.words)
                                     
                                     CustomTextField(
                                         placeholder: "Email",
@@ -1093,6 +1103,21 @@ struct OnboardingSignupView: View {
             .onTapGesture {
                 // Dismiss keyboard when tapping outside text fields
                 focusedField = nil
+            }
+            .onAppear {
+                // Clear any test/default names from saved state
+                auth.clearTestData()
+                
+                // Clear "rakshit" from viewModel.name if present
+                if viewModel.name.lowercased() == "rakshit" {
+                    viewModel.name = ""
+                }
+                
+                // Debug: Log the name state when signup view appears
+                print("📱 OnboardingSignupView appeared")
+                print("📱 viewModel.name: '\(viewModel.name)'")
+                print("📱 auth.name: '\(auth.name)'")
+                print("📱 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
             }
         }
         .sheet(isPresented: $showingPaywall) {
