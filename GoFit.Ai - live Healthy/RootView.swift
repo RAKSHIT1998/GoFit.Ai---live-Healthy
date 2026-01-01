@@ -30,13 +30,18 @@ struct RootView: View {
             }
             
             // Sync HealthKit if authorized and logged in
-            if auth.isLoggedIn && healthKit.isAuthorized {
-                Task {
-                    do {
-                        try await healthKit.syncToBackend()
-                        print("✅ HealthKit synced on app launch")
-                    } catch {
-                        print("⚠️ HealthKit sync on launch failed: \(error.localizedDescription)")
+            if auth.isLoggedIn {
+                // Refresh authorization status first
+                healthKit.checkAuthorizationStatus()
+                
+                if healthKit.isAuthorized {
+                    Task {
+                        do {
+                            try await healthKit.syncToBackend()
+                            print("✅ HealthKit synced on app launch")
+                        } catch {
+                            print("⚠️ HealthKit sync on launch failed: \(error.localizedDescription)")
+                        }
                     }
                 }
             }
@@ -49,7 +54,9 @@ struct RootView: View {
                     await purchases.updateSubscriptionStatus()
                     await purchases.checkSubscriptionStatus()
                     
-                    // Sync HealthKit if authorized
+                    // Refresh authorization status and sync HealthKit if authorized
+                    healthKit.checkAuthorizationStatus()
+                    
                     if healthKit.isAuthorized {
                         do {
                             try await healthKit.syncToBackend()

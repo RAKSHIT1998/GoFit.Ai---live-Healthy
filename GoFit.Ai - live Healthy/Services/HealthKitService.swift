@@ -14,6 +14,9 @@ class HealthKitService: ObservableObject {
     @Published var restingHeartRate: Double = 0
     @Published var averageHeartRate: Double = 0
     
+    // Periodic sync task
+    private var periodicSyncTask: Task<Void, Never>?
+    
     private init() {
         checkAuthorizationStatus()
         
@@ -25,11 +28,42 @@ class HealthKitService: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             self?.checkAuthorizationStatus()
+            // Sync when app comes to foreground if authorized
+            if let self = self, self.isAuthorized {
+                Task {
+                    try? await self.syncToBackend()
+                }
+            }
         }
+        
+        // Start periodic syncing
+        startPeriodicSync()
     }
     
     deinit {
+        periodicSyncTask?.cancel()
         NotificationCenter.default.removeObserver(self)
+    }
+    
+    // Start automatic periodic syncing (every 15 minutes)
+    private func startPeriodicSync() {
+        periodicSyncTask?.cancel()
+        periodicSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                // Wait 15 minutes
+                try? await Task.sleep(nanoseconds: 15 * 60 * 1_000_000_000)
+                
+                // Sync if authorized
+                if let self = self, self.isAuthorized {
+                    do {
+                        try await self.syncToBackend()
+                        print("✅ Periodic HealthKit sync completed")
+                    } catch {
+                        print("⚠️ Periodic HealthKit sync failed: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
     }
     
     // Request authorization
