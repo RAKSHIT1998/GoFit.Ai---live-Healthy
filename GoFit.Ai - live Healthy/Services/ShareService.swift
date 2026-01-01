@@ -74,7 +74,8 @@ class ShareService {
             text += "❤️ Heart Rate: \(Int(heartRate)) bpm\n"
         }
         
-        text += "\n#GoFitAi #Fitness #Health #Wellness"
+        text += "\n📱 Tracked with GoFit.Ai\n"
+        text += "#GoFitAi #Fitness #Health #Wellness"
         
         return text
     }
@@ -190,8 +191,8 @@ class ShareService {
                 )
             }
             
-            // Footer
-            let footerText = "#GoFitAi #Fitness #Health"
+            // Footer with app name
+            let footerText = "GoFit.Ai - #GoFitAi #Fitness #Health"
             let footerAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 32, weight: .medium),
                 .foregroundColor: UIColor.secondaryLabel

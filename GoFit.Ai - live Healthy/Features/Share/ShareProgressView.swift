@@ -142,7 +142,7 @@ struct ShareProgressView: View {
                 if let image = shareImage {
                     ShareSheet(activityItems: [
                         image,
-                        "Check out my fitness progress with GoFit.Ai! 💪 #GoFitAi #Fitness #Health"
+                        "Check out my fitness progress with GoFit.Ai! 💪\n\nTrack your health and fitness with GoFit.Ai - Your AI-powered health companion.\n\n#GoFitAi #Fitness #Health #Wellness"
                     ])
                 } else {
                     ShareSheet(activityItems: [
@@ -201,7 +201,8 @@ struct ShareProgressView: View {
             text += "❤️ Heart Rate: \(Int(heartRate)) bpm\n"
         }
         
-        text += "\n#GoFitAi #Fitness #Health #Wellness"
+        text += "\n📱 Tracked with GoFit.Ai - Your AI-powered health companion\n"
+        text += "#GoFitAi #Fitness #Health #Wellness"
         
         return text
     }
