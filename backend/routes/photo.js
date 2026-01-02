@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import AWS from 'aws-sdk';
-import axios from 'axios';
+import OpenAI from 'openai';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { Queue } from 'bullmq';
 import { getRedis, isRedisEnabled } from '../config/redis.js';
@@ -14,17 +14,17 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-// Initialize LogMeal API
-// Get your API key at: https://logmeal.com/api
-const LOGMEAL_API_KEY = (process.env.LOGMEAL_API_KEY || '').trim();
-const LOGMEAL_API_URL = 'https://api.logmeal.com/v2/image/segmentation/complete';
+// Initialize OpenAI API for GPT-4o Vision
+// Get your API key at: https://platform.openai.com/api-keys
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
-// Log LogMeal status on module load
-if (LOGMEAL_API_KEY) {
-  console.log(`✅ LOGMEAL_API_KEY loaded (length: ${LOGMEAL_API_KEY.length}, starts with: ${LOGMEAL_API_KEY.substring(0, 10)}...)`);
+// Log OpenAI status on module load
+if (OPENAI_API_KEY) {
+  console.log(`✅ OPENAI_API_KEY loaded (length: ${OPENAI_API_KEY.length}, starts with: ${OPENAI_API_KEY.substring(0, 10)}...)`);
 } else {
-  console.error('❌ LOGMEAL_API_KEY is missing or empty. Food recognition will not work.');
-  console.error('   Set LOGMEAL_API_KEY in Render environment variables: https://logmeal.com/api');
+  console.error('❌ OPENAI_API_KEY is missing or empty. Food recognition will not work.');
+  console.error('   Set OPENAI_API_KEY in Render environment variables: https://platform.openai.com/api-keys');
 }
 
 // Initialize S3 client
@@ -87,127 +87,148 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       console.log('ℹ️ S3 not configured, skipping image storage. Photo will be analyzed but not saved.');
     }
 
-    // Check if LogMeal API key is configured
-    if (!LOGMEAL_API_KEY || LOGMEAL_API_KEY.length === 0) {
-      console.error('❌ LOGMEAL_API_KEY is not set or empty');
+    // Check if OpenAI API key is configured
+    if (!OPENAI_API_KEY || OPENAI_API_KEY.length === 0) {
+      console.error('❌ OPENAI_API_KEY is not set or empty');
       console.error('   Environment check:', {
-        hasEnvVar: !!process.env.LOGMEAL_API_KEY,
-        envVarLength: process.env.LOGMEAL_API_KEY?.length || 0,
-        trimmedLength: LOGMEAL_API_KEY.length
+        hasEnvVar: !!process.env.OPENAI_API_KEY,
+        envVarLength: process.env.OPENAI_API_KEY?.length || 0,
+        trimmedLength: OPENAI_API_KEY.length
       });
       return res.status(500).json({ 
-        message: 'Food recognition service is not configured. Please set LOGMEAL_API_KEY environment variable in Render. Get your API key at https://logmeal.com/api',
-        error: 'LogMeal API key missing',
-        hint: 'Go to Render Dashboard → Your Service → Environment → Add LOGMEAL_API_KEY'
+        message: 'Food recognition service is not configured. Please set OPENAI_API_KEY environment variable in Render. Get your API key at https://platform.openai.com/api-keys',
+        error: 'OpenAI API key missing',
+        hint: 'Go to Render Dashboard → Your Service → Environment → Add OPENAI_API_KEY'
+      });
+    }
+    
+    if (!openai) {
+      console.error('❌ Failed to initialize OpenAI');
+      return res.status(500).json({ 
+        message: 'Food recognition service initialization failed. Please check OPENAI_API_KEY configuration.',
+        error: 'OpenAI initialization failed'
       });
     }
 
-    // Analyze with LogMeal API
+    // Analyze with OpenAI GPT-4o Vision
     try {
-      console.log('🤖 Starting LogMeal analysis for user:', userId);
-      console.log('📝 LOGMEAL_API_KEY status:', LOGMEAL_API_KEY ? `Set (${LOGMEAL_API_KEY.substring(0, 10)}...)` : 'NOT SET');
+      console.log('🤖 Starting OpenAI GPT-4o Vision analysis for user:', userId);
+      console.log('📝 OPENAI_API_KEY status:', OPENAI_API_KEY ? `Set (${OPENAI_API_KEY.substring(0, 10)}...)` : 'NOT SET');
       
-      // Set timeout for LogMeal API call (30 seconds)
+      // Convert image to base64
+      const base64Image = file.buffer.toString('base64');
+      
+      // Set timeout for OpenAI API call (45 seconds)
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 30000);
+        setTimeout(() => reject(new Error('Request timeout')), 45000);
       });
       
-      // Prepare form data for LogMeal API
-      const FormData = (await import('form-data')).default;
-      const formData = new FormData();
-      formData.append('image', file.buffer, {
-        filename: file.originalname || 'photo.jpg',
-        contentType: file.mimetype || 'image/jpeg'
+      const prompt = `You are a nutrition expert analyzing food and drink images. Identify ALL items visible and provide accurate nutritional information.
+
+CRITICAL NAMING RULES:
+- Use proper, recognizable dish names when identifying complete dishes (e.g., "Chicken Biryani", "Caesar Salad", "Margherita Pizza", "Pad Thai", "Burger with Fries")
+- For individual ingredients in a mixed dish, use descriptive names (e.g., "Grilled Chicken Breast", "Steamed Rice", "Mixed Vegetables")
+- For beverages, use brand names when visible (e.g., "Coca Cola", "Pepsi", "Starbucks Coffee") or generic names (e.g., "Orange Juice", "Red Wine", "Green Tea")
+- Use common, well-known food names that users would recognize
+- If you see a complete dish, name it as the dish (e.g., "Spaghetti Carbonara" not "pasta, eggs, bacon")
+- Capitalize food names properly (e.g., "Chicken Tikka Masala" not "chicken tikka masala")
+
+Return a JSON array where each item has:
+- name: string (proper dish/food name - use recognizable names like "Chicken Curry", "Caesar Salad", "Orange Juice", "Coca Cola")
+- calories: number (estimated calories for the portion shown)
+- protein: number (grams of protein)
+- carbs: number (grams of carbohydrates)
+- fat: number (grams of fat)
+- sugar: number (grams of sugar - IMPORTANT: include this field, especially for drinks)
+- portionSize: string (estimated portion, e.g., "200g", "1 cup", "250ml", "1 can", "1 serving")
+- confidence: number (0-1, how confident you are in the identification)
+
+IMPORTANT:
+- If this is a drink/beverage, include calories and sugar content
+- For complete dishes, use the dish name rather than listing ingredients separately
+- If multiple separate items are visible, list each with its proper name
+- Estimate portion sizes based on common serving sizes and what's visible in the image
+- Include sugar content for all items (even if 0 for items like plain chicken or water)
+- Use proper capitalization and spelling for all food names
+
+Return ONLY valid JSON array, no markdown, no code blocks, no explanations, just the raw JSON array. Example format:
+[{"name": "Chicken Biryani", "calories": 450, "protein": 25, "carbs": 55, "fat": 12, "sugar": 2, "portionSize": "1 serving", "confidence": 0.9}]`;
+
+      // Call OpenAI GPT-4o Vision API
+      const openaiPromise = openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${file.mimetype || 'image/jpeg'};base64,${base64Image}`
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 2000,
+        temperature: 0.3 // Lower temperature for more accurate nutrition data
       });
       
-      // Call LogMeal API
-      const logmealPromise = axios.post(LOGMEAL_API_URL, formData, {
-        headers: {
-          'Authorization': `Bearer ${LOGMEAL_API_KEY}`,
-          ...formData.getHeaders()
-        },
-        timeout: 30000
-      });
+      // Race between OpenAI call and timeout
+      const completion = await Promise.race([openaiPromise, timeoutPromise]);
       
-      // Race between LogMeal call and timeout
-      const logmealResponse = await Promise.race([logmealPromise, timeoutPromise]);
+      const content = completion.choices[0]?.message?.content || '';
       
-      console.log('✅ LogMeal analysis completed');
-      console.log('📝 Response status:', logmealResponse.status);
-      console.log('📝 Response data keys:', Object.keys(logmealResponse.data || {}));
-      console.log('📝 Response preview:', JSON.stringify(logmealResponse.data).substring(0, 500));
+      console.log('✅ OpenAI GPT-4o Vision analysis completed');
+      console.log('📝 Response length:', content.length, 'characters');
       
-      // Parse LogMeal response and convert to our format
+      // Parse JSON from response
       let items = [];
       
-      // Parse LogMeal response and convert to our format
-      const responseData = logmealResponse.data;
-      
-      // LogMeal API can return different response formats
-      // Check for segmentation array (multiple food items)
-      if (responseData.segmentation && Array.isArray(responseData.segmentation)) {
-        items = responseData.segmentation.map((seg, index) => {
-          const foodItem = seg.food_item || seg;
-          const nutrition = foodItem.nutrition || foodItem.nutrition_info || {};
-          
-          return {
-            name: foodItem.name || foodItem.food_name || `Food Item ${index + 1}`,
-            calories: Math.round(nutrition.calories || nutrition.cal || 0),
-            protein: Math.round((nutrition.protein || 0) * 100) / 100,
-            carbs: Math.round((nutrition.carbs || nutrition.carbohydrates || 0) * 100) / 100,
-            fat: Math.round((nutrition.fat || 0) * 100) / 100,
-            sugar: Math.round((nutrition.sugar || 0) * 100) / 100,
-            portionSize: foodItem.portion_size || foodItem.portion || '1 serving',
-            confidence: seg.confidence || 0.8
-          };
-        });
+      try {
+        // Try to extract JSON array from response (handle markdown code blocks)
+        let jsonString = content.trim();
         
-        console.log(`✅ Parsed ${items.length} food items from LogMeal segmentation`);
-      } 
-      // Check for single food item response
-      else if (responseData.food_item || responseData.food) {
-        const foodItem = responseData.food_item || responseData.food;
-        const nutrition = foodItem.nutrition || foodItem.nutrition_info || {};
+        // Remove markdown code blocks if present
+        jsonString = jsonString.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
         
-        items = [{
-          name: foodItem.name || foodItem.food_name || 'Food Item',
-          calories: Math.round(nutrition.calories || nutrition.cal || 0),
-          protein: Math.round((nutrition.protein || 0) * 100) / 100,
-          carbs: Math.round((nutrition.carbs || nutrition.carbohydrates || 0) * 100) / 100,
-          fat: Math.round((nutrition.fat || 0) * 100) / 100,
-          sugar: Math.round((nutrition.sugar || 0) * 100) / 100,
-          portionSize: foodItem.portion_size || foodItem.portion || '1 serving',
-          confidence: 0.9
-        }];
+        // Try to find JSON array in the response
+        const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          items = JSON.parse(jsonMatch[0]);
+        } else {
+          // Try parsing the entire content
+          items = JSON.parse(jsonString);
+        }
         
-        console.log(`✅ Parsed 1 food item from LogMeal response`);
-      } 
-      // Check for array of food items directly
-      else if (Array.isArray(responseData) && responseData.length > 0) {
-        items = responseData.map((foodItem, index) => {
-          const nutrition = foodItem.nutrition || foodItem.nutrition_info || {};
-          
-          return {
-            name: foodItem.name || foodItem.food_name || `Food Item ${index + 1}`,
-            calories: Math.round(nutrition.calories || nutrition.cal || 0),
-            protein: Math.round((nutrition.protein || 0) * 100) / 100,
-            carbs: Math.round((nutrition.carbs || nutrition.carbohydrates || 0) * 100) / 100,
-            fat: Math.round((nutrition.fat || 0) * 100) / 100,
-            sugar: Math.round((nutrition.sugar || 0) * 100) / 100,
-            portionSize: foodItem.portion_size || foodItem.portion || '1 serving',
-            confidence: foodItem.confidence || 0.8
-          };
-        });
+        console.log(`✅ Parsed ${items.length} food items from OpenAI response`);
+      } catch (parseError) {
+        console.error('❌ Failed to parse OpenAI response:', parseError);
+        console.error('📝 OpenAI Response content (first 500 chars):', content.substring(0, 500));
+        console.error('📝 Full response length:', content.length);
         
-        console.log(`✅ Parsed ${items.length} food items from LogMeal array response`);
-      } else {
-        console.error('❌ LogMeal API returned unexpected response format:', JSON.stringify(responseData).substring(0, 500));
-        throw new Error('LogMeal API returned unexpected response format');
-    }
+        // Try to extract any useful information from the response
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          try {
+            items = JSON.parse(jsonMatch[0]);
+            console.log('✅ Successfully parsed JSON after retry');
+          } catch (retryError) {
+            console.error('❌ Retry parse also failed:', retryError);
+            throw new Error(`Failed to parse OpenAI response: ${parseError.message}. Response preview: ${content.substring(0, 200)}`);
+          }
+        } else {
+          throw new Error(`Failed to parse OpenAI response: ${parseError.message}. No JSON array found in response.`);
+        }
+      }
 
       // Validate items array
       if (!Array.isArray(items) || items.length === 0) {
-        throw new Error('LogMeal analysis returned invalid or empty results');
+        throw new Error('OpenAI analysis returned invalid or empty results');
       }
 
     // Calculate totals
@@ -219,8 +240,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       sugar: acc.sugar + (item.sugar || 0)
     }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
 
-    // Get the API name that was actually used
-    const modelName = 'logmeal-api';
+    // Get the model name that was actually used
+    const modelName = 'gpt-4o-vision';
 
     res.json({
       items,
@@ -234,18 +255,18 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       aiVersion: modelName,
       s3Configured: s3Configured || false
     });
-    } catch (logmealError) {
-      console.error('❌ LogMeal API error:', logmealError);
+    } catch (openaiError) {
+      console.error('❌ OpenAI GPT-4o Vision API error:', openaiError);
       console.error('❌ Error details:', {
-        message: logmealError.message,
-        status: logmealError.response?.status,
-        statusCode: logmealError.response?.status,
-        code: logmealError.code,
-        responseData: logmealError.response?.data
+        message: openaiError.message,
+        status: openaiError.status,
+        statusCode: openaiError.status,
+        code: openaiError.code,
+        type: openaiError.type
       });
       
       // Check if it's a timeout
-      if (logmealError.message?.includes('timeout') || logmealError.message === 'Request timeout' || logmealError.code === 'ECONNABORTED') {
+      if (openaiError.message?.includes('timeout') || openaiError.message === 'Request timeout') {
         return res.status(504).json({ 
           message: 'Food analysis timed out. Please try again with a clearer photo.',
           error: 'Request timeout'
@@ -253,28 +274,29 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       }
       
       // Check for API key issues
-      if (logmealError.message?.includes('API key') || 
-          logmealError.message?.includes('API_KEY') ||
-          logmealError.response?.status === 401 || 
-          logmealError.response?.status === 403) {
+      if (openaiError.message?.includes('API key') || 
+          openaiError.message?.includes('API_KEY') ||
+          openaiError.status === 401 ||
+          openaiError.code === 'invalid_api_key') {
         return res.status(401).json({ 
-          message: 'Food recognition service authentication failed. Please verify LOGMEAL_API_KEY is correctly set in Render environment variables.',
-          error: 'LogMeal API key issue',
-          hint: 'Check Render dashboard → Environment → LOGMEAL_API_KEY'
+          message: 'Food recognition service authentication failed. Please verify OPENAI_API_KEY is correctly set in Render environment variables.',
+          error: 'OpenAI API key issue',
+          hint: 'Check Render dashboard → Environment → OPENAI_API_KEY'
         });
       }
       
-      // Check for not found errors
-      if (logmealError.message?.includes('not found') || 
-          logmealError.response?.status === 404) {
+      // Check for model not found errors
+      if (openaiError.message?.includes('model') && openaiError.message?.includes('not found') || 
+          openaiError.status === 404 ||
+          openaiError.code === 'model_not_found') {
         return res.status(404).json({ 
-          message: 'LogMeal API endpoint not found. Please check the API endpoint configuration.',
-          error: 'Endpoint not found'
+          message: 'OpenAI model not available. Please check the model name or API access.',
+          error: 'Model not found'
         });
       }
       
       // Check for rate limiting
-      if (logmealError.response?.status === 429) {
+      if (openaiError.status === 429 || openaiError.code === 'rate_limit_exceeded') {
         return res.status(429).json({ 
           message: 'Food recognition service is currently busy. Please try again in a moment.',
           error: 'Rate limit exceeded'
@@ -282,18 +304,18 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       }
       
       // Check for bad request
-      if (logmealError.response?.status === 400) {
+      if (openaiError.status === 400 || openaiError.code === 'invalid_request_error') {
         return res.status(400).json({ 
           message: 'Invalid image format or request. Please try with a different photo.',
           error: 'Bad request',
-          details: logmealError.response?.data?.message || logmealError.message
+          details: openaiError.message
         });
       }
       
-      // Generic LogMeal error - return instead of throwing
+      // Generic OpenAI error - return instead of throwing
       return res.status(500).json({ 
-        message: `Food recognition error: ${logmealError.message || 'Unknown error'}. Please check backend logs for details.`,
-        error: logmealError.message || 'Unknown LogMeal API error',
+        message: `Food recognition error: ${openaiError.message || 'Unknown error'}. Please check backend logs for details.`,
+        error: openaiError.message || 'Unknown OpenAI API error',
         hint: 'Check Render logs for detailed error information'
       });
     }
@@ -310,8 +332,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     } else if (error.message?.includes('bucket')) {
       errorMessage = 'S3 storage not configured. Photo will be analyzed but not saved.';
       statusCode = 500;
-    } else if (error.message?.includes('LogMeal') || error.message?.includes('API key')) {
-      errorMessage = 'Food recognition service unavailable. Please check LOGMEAL_API_KEY configuration.';
+    } else if (error.message?.includes('OpenAI') || error.message?.includes('API key')) {
+      errorMessage = 'Food recognition service unavailable. Please check OPENAI_API_KEY configuration.';
       statusCode = 503;
     } else if (error.message) {
       errorMessage = error.message;
@@ -325,4 +347,5 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
 });
 
 export default router;
+
 

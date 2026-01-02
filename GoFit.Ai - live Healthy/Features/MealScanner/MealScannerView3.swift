@@ -1,5 +1,33 @@
 import SwiftUI
 
+// Nutrition Metric Card Component
+struct NutritionMetricCard: View {
+    let value: String
+    let label: String
+    let color: Color
+    let icon: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.primary)
+            
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(color.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
 struct MealScannerView3: View {
     @EnvironmentObject var authVM: AuthViewModel
 
@@ -126,119 +154,125 @@ struct MealScannerView3: View {
                     .background(Design.Colors.background)
                 }
 
-                // Results Section - Show dish names and nutrition prominently
-                if let resp = uploadResult {
+                // Results Section - Beautiful, aesthetic display with log/dismiss options
+                if let resp = uploadResult, let items = resp.parsedItems, !items.isEmpty {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Prominent dish names header
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Detected Food")
-                                    .font(Design.Typography.title)
-                                    .fontWeight(.bold)
+                        VStack(spacing: 24) {
+                            // Header with success animation
+                            VStack(spacing: 12) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(Design.Colors.primary)
+                                    .symbolEffect(.bounce, value: uploadResult != nil)
                                 
-                                if let items = resp.parsedItems, !items.isEmpty {
-                                    // Show all dish names clearly at the top
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        ForEach(items, id: \.name) { item in
-                                            HStack(spacing: 12) {
-                                                Image(systemName: "fork.knife.circle.fill")
-                                                    .foregroundColor(Design.Colors.primary)
-                                                    .font(.title3)
-                                                Text(item.name)
-                                                    .font(Design.Typography.title3)
-                                                    .fontWeight(.semibold)
-                                            }
-                                            .padding(.vertical, 4)
-                                        }
-                                    }
-                                }
+                                Text("Meal Detected!")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("\(items.count) item\(items.count == 1 ? "" : "s") found")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                             }
-                            .padding(.horizontal)
-                            .padding(.top)
+                            .padding(.top, 20)
                             
-                            Divider()
-                                .padding(.horizontal)
-                            
-                            // Detailed nutrition for each item
-                            if let items = resp.parsedItems, !items.isEmpty {
-                                ForEach(items, id: \.name) { it in
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text(it.name)
-                                            .font(Design.Typography.headline)
-                                            .fontWeight(.bold)
+                            // Beautiful meal cards with nutrition
+                            ForEach(Array(items.enumerated()), id: \.element.name) { index, item in
+                                VStack(spacing: 0) {
+                                    // Meal name header with gradient
+                                    HStack {
+                                        Image(systemName: "fork.knife.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(.white)
                                         
-                                        HStack(spacing: 16) {
-                                            if let cal = it.calories {
-                                                VStack {
-                                                    Text("\(Int(cal))")
-                                                        .font(Design.Typography.headline)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(Design.Colors.calories)
-                                                    Text("Cal")
-                                                        .font(Design.Typography.caption)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                            if let prot = it.protein {
-                                                VStack {
-                                                    Text("\(Int(prot))g")
-                                                        .font(Design.Typography.headline)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(Design.Colors.protein)
-                                                    Text("Protein")
-                                                        .font(Design.Typography.caption)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                            if let carbs = it.carbs {
-                                                VStack {
-                                                    Text("\(Int(carbs))g")
-                                                        .font(Design.Typography.headline)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(Design.Colors.carbs)
-                                                    Text("Carbs")
-                                                        .font(Design.Typography.caption)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                            if let fat = it.fat {
-                                                VStack {
-                                                    Text("\(Int(fat))g")
-                                                        .font(Design.Typography.headline)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(Design.Colors.fat)
-                                                    Text("Fat")
-                                                        .font(Design.Typography.caption)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
-                                            if let sugar = it.sugar {
-                                                VStack {
-                                                    Text("\(Int(sugar))g")
-                                                        .font(Design.Typography.headline)
-                                                        .fontWeight(.bold)
-                                                        .foregroundColor(Design.Colors.sugar)
-                                                    Text("Sugar")
-                                                        .font(Design.Typography.caption)
-                                                        .foregroundColor(.secondary)
-                                                }
-                                            }
+                                        Text(item.name)
+                                            .font(.system(size: 22, weight: .bold))
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                    }
+                                    .padding(20)
+                                    .background(
+                                        LinearGradient(
+                                            colors: [Design.Colors.primary, Design.Colors.primary.opacity(0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    
+                                    // Nutrition grid - aesthetic layout
+                                    VStack(spacing: 16) {
+                                        // Main nutrition metrics in a grid
+                                        LazyVGrid(columns: [
+                                            GridItem(.flexible()),
+                                            GridItem(.flexible()),
+                                            GridItem(.flexible())
+                                        ], spacing: 16) {
+                                            // Calories - prominent
+                                            NutritionMetricCard(
+                                                value: item.calories.map { "\(Int($0))" } ?? "—",
+                                                label: "Calories",
+                                                color: Design.Colors.calories,
+                                                icon: "flame.fill"
+                                            )
+                                            
+                                            // Protein
+                                            NutritionMetricCard(
+                                                value: item.protein.map { "\(Int($0))g" } ?? "—",
+                                                label: "Protein",
+                                                color: Design.Colors.protein,
+                                                icon: "figure.strengthtraining.traditional"
+                                            )
+                                            
+                                            // Carbs
+                                            NutritionMetricCard(
+                                                value: item.carbs.map { "\(Int($0))g" } ?? "—",
+                                                label: "Carbs",
+                                                color: Design.Colors.carbs,
+                                                icon: "leaf.fill"
+                                            )
                                         }
                                         
-                                        if let portion = it.portionSize {
-                                            Text("Portion: \(portion)")
-                                                .font(Design.Typography.caption)
-                                                .foregroundColor(.secondary)
+                                        // Secondary metrics
+                                        HStack(spacing: 16) {
+                                            NutritionMetricCard(
+                                                value: item.fat.map { "\(Int($0))g" } ?? "—",
+                                                label: "Fat",
+                                                color: Design.Colors.fat,
+                                                icon: "drop.fill"
+                                            )
+                                            
+                                            NutritionMetricCard(
+                                                value: item.sugar.map { "\(Int($0))g" } ?? "—",
+                                                label: "Sugar",
+                                                color: Design.Colors.sugar,
+                                                icon: "sparkles"
+                                            )
+                                        }
+                                        
+                                        // Portion size
+                                        if let portion = item.portionSize {
+                                            HStack {
+                                                Image(systemName: "ruler.fill")
+                                                    .foregroundColor(.secondary)
+                                                Text("Portion: \(portion)")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(.top, 8)
                                         }
                                     }
-                                    .padding()
+                                    .padding(20)
                                     .background(Design.Colors.cardBackground)
-                                    .cornerRadius(12)
-                                    .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                                 }
+                                .cornerRadius(20)
+                                .shadow(color: Color.black.opacity(0.1), radius: 15, x: 0, y: 5)
                                 .padding(.horizontal)
-                                
-                                Button("Edit & Save Meal") {
+                            }
+                            
+                            // Action buttons - Log or Dismiss
+                            VStack(spacing: 12) {
+                                // Log Meal Button
+                                Button {
                                     let items = resp.parsedItems ?? []
                                     editableItems = items.map { item in
                                         EditableParsedItem(
@@ -252,20 +286,59 @@ struct MealScannerView3: View {
                                         )
                                     }
                                     showEditScreen = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.title3)
+                                        Text("Log This Meal")
+                                            .font(.system(size: 18, weight: .semibold))
+                                        Spacer()
+                                        Image(systemName: "arrow.right")
+                                            .font(.title3)
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(18)
+                                    .background(
+                                        LinearGradient(
+                                            colors: [Design.Colors.primary, Design.Colors.primary.opacity(0.8)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .cornerRadius(16)
+                                    .shadow(color: Design.Colors.primary.opacity(0.3), radius: 10, x: 0, y: 5)
                                 }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Design.Colors.primary)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                                .font(Design.Typography.headline)
-                                .padding(.horizontal)
-                                .padding(.top)
+                                
+                                // Dismiss Button
+                                Button {
+                                    // Reset to allow new scan
+                                    uploadResult = nil
+                                    capturedImage = nil
+                                    isCapturing = false
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.title3)
+                                        Text("Scan Another Meal")
+                                            .font(.system(size: 18, weight: .medium))
+                                    }
+                                    .foregroundColor(.primary)
+                                    .padding(18)
+                                    .background(Design.Colors.cardBackground)
+                                    .cornerRadius(16)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
                             }
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                            .padding(.bottom, 20)
                         }
-                        .padding(.vertical)
                     }
                     .background(Design.Colors.background)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 
                 if let err = errorMsg {

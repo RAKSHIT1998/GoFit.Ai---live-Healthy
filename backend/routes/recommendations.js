@@ -266,7 +266,7 @@ You are an expert nutritionist and certified personal trainer with years of expe
 Ensure all recommendations are safe, achievable, and aligned with the user's profile.`;
 
   try {
-    // Use OpenAI GPT-4 for recommendations (high quality and reliable)
+    // Use OpenAI GPT-4o for recommendations (high quality and reliable)
     const modelPreference = process.env.OPENAI_MODEL || 'gpt-4o';
     
     console.log(`✅ Using OpenAI model: ${modelPreference} for recommendations`);

@@ -21,47 +21,52 @@ struct CameraView: UIViewRepresentable {
         }
 
         func setup() {
-            session.beginConfiguration()
-            // Use photo preset optimized for still image capture
-            session.sessionPreset = .photo
-            
-            // Configure session for fastest possible startup
-            if session.canSetSessionPreset(.photo) {
-                session.sessionPreset = .photo
-            }
-            
-            // Camera device
-            guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                  let input = try? AVCaptureDeviceInput(device: captureDevice),
-                  session.canAddInput(input) else {
-                session.commitConfiguration()
-                return
-            }
-            self.device = captureDevice
-            
-            // Configure device for faster autofocus
-            do {
-                try captureDevice.lockForConfiguration()
-                if captureDevice.isFocusModeSupported(.continuousAutoFocus) {
-                    captureDevice.focusMode = .continuousAutoFocus
-                }
-                if captureDevice.isExposureModeSupported(.continuousAutoExposure) {
-                    captureDevice.exposureMode = .continuousAutoExposure
-                }
-                captureDevice.unlockForConfiguration()
-            } catch {
-                print("⚠️ Could not configure camera device: \(error)")
-            }
-            
-            session.addInput(input)
-            if session.canAddOutput(output) {
-                session.addOutput(output)
-            }
-            
-            session.commitConfiguration()
-            // Start session immediately on background queue for faster camera opening
+            // Start camera setup on high priority queue for instant opening
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.session.startRunning()
+                guard let self = self else { return }
+                
+                self.session.beginConfiguration()
+                
+                // Use low resolution preset for fastest startup
+                // We can still capture high quality photos, but preview starts faster
+                if self.session.canSetSessionPreset(.medium) {
+                    self.session.sessionPreset = .medium // Faster than .photo
+                } else if self.session.canSetSessionPreset(.photo) {
+                    self.session.sessionPreset = .photo
+                }
+                
+                // Camera device - use default for fastest access
+                guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                      let input = try? AVCaptureDeviceInput(device: captureDevice),
+                      self.session.canAddInput(input) else {
+                    self.session.commitConfiguration()
+                    return
+                }
+                self.device = captureDevice
+                
+                // Minimal device configuration for speed
+                do {
+                    try captureDevice.lockForConfiguration()
+                    // Use fastest autofocus mode
+                    if captureDevice.isFocusModeSupported(.continuousAutoFocus) {
+                        captureDevice.focusMode = .continuousAutoFocus
+                    }
+                    // Skip exposure configuration to save time
+                    captureDevice.unlockForConfiguration()
+                } catch {
+                    // Continue even if configuration fails
+                    print("⚠️ Could not configure camera device: \(error)")
+                }
+                
+                self.session.addInput(input)
+                if self.session.canAddOutput(self.output) {
+                    self.session.addOutput(self.output)
+                }
+                
+                self.session.commitConfiguration()
+                
+                // Start session immediately - no delay
+                self.session.startRunning()
             }
         }
 
@@ -142,15 +147,21 @@ struct CameraView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
+        view.backgroundColor = .black // Show black immediately while camera loads
+        
+        // Setup preview layer immediately
         context.coordinator.previewLayer = AVCaptureVideoPreviewLayer(session: context.coordinator.session)
         context.coordinator.previewLayer?.videoGravity = .resizeAspectFill
         context.coordinator.previewLayer?.frame = view.bounds
         if let pl = context.coordinator.previewLayer {
             view.layer.addSublayer(pl)
         }
+        
         context.coordinator.lastCaptureTrigger = captureTrigger
-        // Camera should already be starting in setup(), but ensure it starts
-            context.coordinator.start()
+        
+        // Ensure camera starts - setup() already starts it, but this is a backup
+        context.coordinator.start()
+        
         return view
     }
 
