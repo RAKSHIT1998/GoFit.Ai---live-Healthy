@@ -54,17 +54,7 @@ const limiter = rateLimit({
   }
 });
 
-// Very lenient rate limiter specifically for registration (most critical during onboarding)
-const registrationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Allow 200 registration attempts per 15 minutes per IP (very lenient for onboarding)
-  message: 'Too many registration attempts, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful registrations
-});
-
-// More lenient rate limiter for other authentication routes (login, etc.)
+// Rate limiter for authentication routes (login, etc.) - NO rate limit on registration
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Allow 100 login/other auth attempts per 15 minutes per IP
@@ -73,16 +63,13 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
   skip: (req) => {
-    // Skip rate limiting for registration endpoint (handled by registrationLimiter)
-    // This prevents registration from being counted against both limiters
+    // Skip rate limiting for registration endpoint (no rate limit on signup)
+    // This allows unlimited registration attempts during onboarding
     return req.path === '/register' || req.path.startsWith('/api/auth/register');
   }
 });
 
-// Apply registration limiter specifically to registration endpoint
-app.use('/api/auth/register', registrationLimiter);
-
-// Apply auth limiter to other auth routes (login, me, etc.)
+// Apply auth limiter to auth routes (registration is excluded via skip function)
 app.use('/api/auth', authLimiter);
 
 // Apply general limiter to all other API routes
