@@ -163,17 +163,23 @@ final class AuthService {
             // Try to decode error message from backend
             var errorMessage = "Registration failed"
             
-            // Try to decode as JSON
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                if let message = json["message"] as? String {
-                    errorMessage = message
-                } else if let error = json["error"] as? String {
-                    errorMessage = error
-                }
-            } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
-                errorMessage = errorString
+            // Check for rate limiting (429 status code)
+            if http.statusCode == 429 {
+                errorMessage = "Too many requests. Please wait a few minutes and try again."
+                print("❌ Rate limit exceeded (429)")
             } else {
-                errorMessage = "Registration failed with status code \(http.statusCode)"
+                // Try to decode as JSON
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let message = json["message"] as? String {
+                        errorMessage = message
+                    } else if let error = json["error"] as? String {
+                        errorMessage = error
+                    }
+                } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
+                    errorMessage = errorString
+                } else {
+                    errorMessage = "Registration failed with status code \(http.statusCode)"
+                }
             }
             
             // Log for debugging

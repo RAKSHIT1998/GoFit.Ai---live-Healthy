@@ -1173,6 +1173,12 @@ struct OnboardingSignupView: View {
     }
     
     private func handleSignup() {
+        // Prevent duplicate signup attempts
+        guard !isLoading else {
+            print("⚠️ Signup already in progress, ignoring duplicate request")
+            return
+        }
+        
         errorMessage = nil
         
         guard isFormValid else {
@@ -1260,7 +1266,13 @@ struct OnboardingSignupView: View {
                     isLoading = false
                     if let nsError = error as NSError? {
                         let errorMsg = nsError.localizedDescription
-                        errorMessage = errorMsg.isEmpty ? "Failed to create account. Please check your connection and try again." : errorMsg
+                        
+                        // Check for rate limiting errors
+                        if nsError.code == 429 || errorMsg.contains("too many") || errorMsg.contains("Too many") || errorMsg.contains("rate limit") {
+                            errorMessage = "Too many requests. Please wait a few minutes and try again."
+                        } else {
+                            errorMessage = errorMsg.isEmpty ? "Failed to create account. Please check your connection and try again." : errorMsg
+                        }
                         print("❌ Error details: code=\(nsError.code), domain=\(nsError.domain), userInfo=\(nsError.userInfo)")
                     } else if let urlError = error as? URLError {
                         switch urlError.code {
@@ -1274,7 +1286,12 @@ struct OnboardingSignupView: View {
                             errorMessage = "Network error: \(urlError.localizedDescription)"
                         }
                     } else {
-                        errorMessage = "Failed to create account: \(error.localizedDescription)"
+                        let errorDesc = error.localizedDescription
+                        if errorDesc.contains("too many") || errorDesc.contains("Too many") || errorDesc.contains("rate limit") {
+                            errorMessage = "Too many requests. Please wait a few minutes and try again."
+                        } else {
+                            errorMessage = "Failed to create account: \(errorDesc)"
+                        }
                     }
                 }
             }

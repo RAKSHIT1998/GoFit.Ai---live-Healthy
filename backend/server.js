@@ -40,11 +40,33 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
+// Rate limiting - General API routes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
+
+// More lenient rate limiter for authentication routes (especially registration)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Allow 50 registration/login attempts per 15 minutes per IP (increased for onboarding flow)
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful requests
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health' || req.path === '/';
+  }
+});
+
+// Apply auth limiter to auth routes
+app.use('/api/auth', authLimiter);
+
+// Apply general limiter to all other API routes
 app.use('/api/', limiter);
 
 // Body parsing

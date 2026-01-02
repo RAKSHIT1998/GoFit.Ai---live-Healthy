@@ -221,11 +221,22 @@ class PurchaseManager: ObservableObject {
 
                             // Check if in trial period - look at transaction purchase date vs current date
                             // If purchase was within last 3 days and has intro offer, likely in trial
+                            // Note: transaction.purchaseDate is non-optional in StoreKit 2's Transaction type
+                            // The compiler enforces this (verified by compilation error fix), so no optional binding is needed
+                            // However, we're already inside a verified transaction block, so purchaseDate is guaranteed to exist
                             let purchaseDate = transaction.purchaseDate
-                            let daysSincePurchase = Calendar.current.dateComponents([.day], from: purchaseDate, to: Date()).day ?? 0
-                            if daysSincePurchase < 3 && product.subscription?.introductoryOffer != nil {
-                                highestStatus = .trial
-                                isInTrial = true
+                            
+                            // Defensive check: Ensure purchaseDate is valid (though compiler guarantees it's non-optional)
+                            // This is extra safety in case of any edge cases or future API changes
+                            // If purchase date is in the future (shouldn't happen), skip trial check but continue processing
+                            if purchaseDate <= Date() {
+                                let daysSincePurchase = Calendar.current.dateComponents([.day], from: purchaseDate, to: Date()).day ?? 0
+                                if daysSincePurchase < 3 && product.subscription?.introductoryOffer != nil {
+                                    highestStatus = .trial
+                                    isInTrial = true
+                                }
+                            } else {
+                                print("⚠️ Warning: Transaction purchase date is in the future: \(purchaseDate), skipping trial check")
                             }
                         }
                     }
