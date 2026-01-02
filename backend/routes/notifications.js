@@ -305,7 +305,6 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
     const content = completion.choices[0]?.message?.content || '';
     console.log(`✅ OpenAI workout reminder response received: ${content.length} characters`);
     
-    const content = completion.choices[0]?.message?.content || '';
     let jsonContent;
     
     try {
