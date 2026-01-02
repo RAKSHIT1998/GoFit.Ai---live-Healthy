@@ -341,6 +341,8 @@ struct ProfileView: View {
                 } else {
                     UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                 }
+                // Persist the notification preference to UserDefaults
+                notifications.saveSettings()
             }
             
             if notifications.notificationsEnabled {

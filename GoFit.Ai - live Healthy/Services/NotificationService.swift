@@ -57,6 +57,8 @@ class NotificationService: ObservableObject {
         UserDefaults.standard.set(mealRemindersEnabled, forKey: "mealRemindersEnabled")
         UserDefaults.standard.set(waterRemindersEnabled, forKey: "waterRemindersEnabled")
         UserDefaults.standard.set(workoutRemindersEnabled, forKey: "workoutRemindersEnabled")
+        // Synchronize to ensure immediate persistence
+        UserDefaults.standard.synchronize()
     }
     
     // MARK: - Schedule Notifications
