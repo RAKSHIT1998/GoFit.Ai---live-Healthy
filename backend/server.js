@@ -40,30 +40,49 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting - General API routes
+// Rate limiting - General API routes (excludes auth routes which have their own limiters)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for auth routes (handled by separate auth limiters)
+    // This prevents auth routes from being counted against both limiters
+    return req.path.startsWith('/api/auth');
+  }
 });
 
-// More lenient rate limiter for authentication routes (especially registration)
+// Very lenient rate limiter specifically for registration (most critical during onboarding)
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Allow 200 registration attempts per 15 minutes per IP (very lenient for onboarding)
+  message: 'Too many registration attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful registrations
+});
+
+// More lenient rate limiter for other authentication routes (login, etc.)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Allow 50 registration/login attempts per 15 minutes per IP (increased for onboarding flow)
+  max: 100, // Allow 100 login/other auth attempts per 15 minutes per IP
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
   skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/health' || req.path === '/';
+    // Skip rate limiting for registration endpoint (handled by registrationLimiter)
+    // This prevents registration from being counted against both limiters
+    return req.path === '/register' || req.path.startsWith('/api/auth/register');
   }
 });
 
-// Apply auth limiter to auth routes
+// Apply registration limiter specifically to registration endpoint
+app.use('/api/auth/register', registrationLimiter);
+
+// Apply auth limiter to other auth routes (login, me, etc.)
 app.use('/api/auth', authLimiter);
 
 // Apply general limiter to all other API routes

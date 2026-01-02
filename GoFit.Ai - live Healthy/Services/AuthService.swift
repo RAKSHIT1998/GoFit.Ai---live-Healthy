@@ -70,8 +70,44 @@ final class AuthService {
         }
     }
 
-    // Signup
+    // Signup with retry logic for rate limiting
     func signup(name: String, email: String, password: String, onboardingData: OnboardingData? = nil) async throws -> AuthToken {
+        let maxRetries = 3
+        var lastError: Error?
+        
+        for attempt in 0..<maxRetries {
+            do {
+                return try await performSignup(name: name, email: email, password: password, onboardingData: onboardingData)
+            } catch {
+                lastError = error
+                
+                // Check if it's a rate limit error (429)
+                if let nsError = error as NSError?,
+                   nsError.code == 429 {
+                    // Calculate exponential backoff: 2^attempt seconds
+                    let delaySeconds = pow(2.0, Double(attempt))
+                    
+                    if attempt < maxRetries - 1 {
+                        print("⏳ Rate limit hit, retrying in \(delaySeconds) seconds (attempt \(attempt + 1)/\(maxRetries))...")
+                        try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                        continue
+                    } else {
+                        print("❌ Max retries reached for rate limit")
+                        throw error
+                    }
+                } else {
+                    // Not a rate limit error, throw immediately
+                    throw error
+                }
+            }
+        }
+        
+        // Should never reach here, but just in case
+        throw lastError ?? NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Registration failed after retries"])
+    }
+    
+    // Internal signup method (actual implementation)
+    private func performSignup(name: String, email: String, password: String, onboardingData: OnboardingData? = nil) async throws -> AuthToken {
         let url = baseURL.appendingPathComponent("auth/register")
         
         // Debug logging
