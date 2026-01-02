@@ -1193,7 +1193,9 @@ struct OnboardingSignupView: View {
                     signupName = viewModel.name
                 } else if !auth.name.isEmpty && auth.name.lowercased() != "rakshit" {
                     signupName = auth.name
-                } else if let onboardingName = auth.onboardingData?.name, !onboardingName.isEmpty {
+                } else if let onboardingName = auth.onboardingData?.name, 
+                          !onboardingName.isEmpty && 
+                          onboardingName.lowercased() != "rakshit" {
                     signupName = onboardingName
                 } else {
                     signupName = "User"
@@ -1216,6 +1218,7 @@ struct OnboardingSignupView: View {
                 
                 // Mark onboarding as complete and show paywall
                 await MainActor.run {
+                    isLoading = false // Reset loading state after successful signup
                     auth.didFinishOnboarding = true
                     auth.saveLocalState()
                     

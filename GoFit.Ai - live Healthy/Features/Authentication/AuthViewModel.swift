@@ -363,10 +363,47 @@ final class AuthViewModel: ObservableObject {
     
     // Clear any test/default names
     func clearTestData() {
+        var cleared = false
+        
+        // Clear test name from main name field
         if self.name.lowercased() == "rakshit" || self.name == "User" || self.name == "Dev User" {
             self.name = ""
+            cleared = true
+        }
+        
+        // Clear test name from onboardingData if present
+        if var onboarding = self.onboardingData {
+            if onboarding.name.lowercased() == "rakshit" || onboarding.name == "User" || onboarding.name == "Dev User" {
+                // Create new OnboardingData with cleared name
+                self.onboardingData = OnboardingData(
+                    name: "",
+                    weightKg: onboarding.weightKg,
+                    heightCm: onboarding.heightCm,
+                    goal: onboarding.goal,
+                    activityLevel: onboarding.activityLevel,
+                    dietaryPreferences: onboarding.dietaryPreferences,
+                    allergies: onboarding.allergies,
+                    fastingPreference: onboarding.fastingPreference,
+                    workoutPreferences: onboarding.workoutPreferences,
+                    favoriteCuisines: onboarding.favoriteCuisines,
+                    foodPreferences: onboarding.foodPreferences,
+                    workoutTimeAvailability: onboarding.workoutTimeAvailability,
+                    lifestyleFactors: onboarding.lifestyleFactors,
+                    favoriteFoods: onboarding.favoriteFoods,
+                    mealTimingPreference: onboarding.mealTimingPreference,
+                    cookingSkill: onboarding.cookingSkill,
+                    budgetPreference: onboarding.budgetPreference,
+                    motivationLevel: onboarding.motivationLevel,
+                    drinkingFrequency: onboarding.drinkingFrequency,
+                    smokingStatus: onboarding.smokingStatus
+                )
+                cleared = true
+            }
+        }
+        
+        if cleared {
             saveLocalState()
-            print("🧹 Cleared test name from saved state")
+            print("🧹 Cleared test name from saved state and onboardingData")
         }
     }
 }
