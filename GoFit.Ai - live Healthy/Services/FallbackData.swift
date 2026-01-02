@@ -5,12 +5,19 @@ import Foundation
 struct FallbackDataService {
     static let shared = FallbackDataService()
     
-    // MARK: - Get Random Meals (50+ options)
+    // MARK: - Get Daily Rotating Meals (50+ options, changes every day)
     func getRandomMeals(goal: String = "maintain", count: Int = 4) -> MealPlan {
         let allMeals = getAllMeals(goal: goal)
         
-        // Shuffle and pick random meals
-        let shuffled = allMeals.shuffled()
+        // Use day of year as seed for consistent daily rotation
+        let calendar = Calendar.current
+        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        
+        // Create seeded random number generator for consistent daily selection
+        var generator = SeededRandomNumberGenerator(seed: UInt64(dayOfYear))
+        
+        // Shuffle using seeded generator (same seed = same order for the day)
+        let shuffled = allMeals.shuffled(using: &generator)
         
         return MealPlan(
             breakfast: Array(shuffled.filter { $0.category == "breakfast" }.prefix(2).map { $0.toMealItem() }),
@@ -20,10 +27,19 @@ struct FallbackDataService {
         )
     }
     
-    // MARK: - Get Random Workouts (50+ options)
+    // MARK: - Get Daily Rotating Workouts (50+ options, changes every day)
     func getRandomWorkouts(activityLevel: String = "moderate", count: Int = 4) -> WorkoutPlan {
         let allWorkouts = getAllWorkouts(activityLevel: activityLevel)
-        let shuffled = allWorkouts.shuffled()
+        
+        // Use day of year as seed for consistent daily rotation
+        let calendar = Calendar.current
+        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        
+        // Create seeded random number generator for consistent daily selection
+        var generator = SeededRandomNumberGenerator(seed: UInt64(dayOfYear))
+        
+        // Shuffle using seeded generator (same seed = same order for the day)
+        let shuffled = allWorkouts.shuffled(using: &generator)
         return WorkoutPlan(exercises: Array(shuffled.prefix(count)))
     }
     
@@ -769,5 +785,33 @@ struct ParsedMealItem {
     let fat: Double
     let sugar: Double
     let portionSize: String
+}
+
+// MARK: - Seeded Random Number Generator for Daily Rotation
+// Ensures the same seed produces the same sequence, so daily rotation is consistent
+struct SeededRandomNumberGenerator: RandomNumberGenerator {
+    private var state: UInt64
+    
+    init(seed: UInt64) {
+        self.state = seed
+    }
+    
+    mutating func next() -> UInt64 {
+        // Linear congruential generator for deterministic randomness
+        state = state &* 1103515245 &+ 12345
+        return state
+    }
+}
+
+// MARK: - Array Extension for Seeded Shuffling
+extension Array {
+    func shuffled(using generator: inout SeededRandomNumberGenerator) -> [Element] {
+        var result = self
+        for i in stride(from: result.count - 1, through: 1, by: -1) {
+            let j = Int(generator.next() % UInt64(i + 1))
+            result.swapAt(i, j)
+        }
+        return result
+    }
 }
 

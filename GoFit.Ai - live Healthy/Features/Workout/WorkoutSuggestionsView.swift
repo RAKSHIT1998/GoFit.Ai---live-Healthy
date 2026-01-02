@@ -58,39 +58,34 @@ struct WorkoutSuggestionsView: View {
     @State private var selectedTab = 0 // 0: Workouts, 1: Meals
     @State private var expandedMeal: String?
     @State private var expandedExercise: String?
+    @State private var isUsingFallback = true // Start with built-in data by default
+    @State private var isRefreshing = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                // Adaptive background for dark mode
                 Design.Colors.background
                     .ignoresSafeArea()
                 
-                if isLoading {
+                if isLoading && recommendation == nil {
                     VStack(spacing: Design.Spacing.md) {
                         ProgressView()
                             .scaleEffect(1.2)
-                        Text("Generating AI recommendations...")
+                        Text("Loading recommendations...")
                             .font(Design.Typography.body)
                             .foregroundColor(.secondary)
                     }
-                } else if let error = errorMessage {
-                    EmptyStateView(
-                        icon: "exclamationmark.triangle.fill",
-                        title: "Oops!",
-                        message: error,
-                        action: {
-                            Task { await loadRecommendations(forceRefresh: true) }
-                        },
-                        actionTitle: "Try Again"
-                    )
                 } else if let rec = recommendation {
                     ScrollView {
                         VStack(spacing: Design.Spacing.lg) {
+                            // Header Banner
+                            headerBanner
+                                .padding(.horizontal, Design.Spacing.md)
+                                .padding(.top, Design.Spacing.md)
+                            
                             // Tab Selector
                             tabSelector
                                 .padding(.horizontal, Design.Spacing.md)
-                                .padding(.top, Design.Spacing.md)
                             
                             // Content based on selected tab
                             if selectedTab == 0 {
@@ -102,32 +97,32 @@ struct WorkoutSuggestionsView: View {
                             // Insights Card
                             if !rec.insights.isEmpty {
                                 insightsCard(rec.insights)
+                                    .padding(.horizontal, Design.Spacing.md)
                             }
                         }
                         .padding(.bottom, Design.Spacing.xl)
                     }
                     .refreshable {
-                        isRefreshing = true
-                        await loadRecommendations(forceRefresh: true)
+                        await refreshRecommendations()
                     }
                 } else {
                     EmptyStateView(
                         icon: "sparkles",
                         title: "No Recommendations",
-                        message: "Tap refresh to generate AI-powered meal and workout recommendations",
+                        message: "Tap refresh to load meal and workout recommendations",
                         action: {
-                            Task { await loadRecommendations(forceRefresh: true) }
+                            Task { await loadRecommendations() }
                         },
-                        actionTitle: "Generate"
+                        actionTitle: "Load Recommendations"
                     )
                 }
             }
-            .navigationTitle("AI Recommendations")
+            .navigationTitle("Recommendations")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        Task { await loadRecommendations(forceRefresh: true) }
+                        Task { await refreshRecommendations() }
                     }) {
                         if isRefreshing {
                             ProgressView()
@@ -135,10 +130,9 @@ struct WorkoutSuggestionsView: View {
                         } else {
                             Image(systemName: "arrow.clockwise")
                                 .foregroundColor(Design.Colors.primary)
-                                .font(Design.Typography.headline)
                         }
                     }
-                    .disabled(isRefreshing)
+                    .disabled(isRefreshing || isLoading)
                 }
             }
             .task {
@@ -147,23 +141,41 @@ struct WorkoutSuggestionsView: View {
         }
     }
     
+    // MARK: - Header Banner
+    private var headerBanner: some View {
+        VStack(spacing: Design.Spacing.sm) {
+            HStack {
+                Image(systemName: isUsingFallback ? "book.fill" : "sparkles")
+                    .foregroundColor(Design.Colors.primary)
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isUsingFallback ? "Built-in Recipes & Workouts" : "AI Recommendations")
+                        .font(Design.Typography.headline)
+                    if isUsingFallback {
+                        Text("Rotates daily • Complete instructions included")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+            }
+        }
+        .padding(Design.Spacing.md)
+        .background(Design.Colors.primary.opacity(0.1))
+        .cornerRadius(Design.Radius.medium)
+    }
+    
     // MARK: - Tab Selector
     private var tabSelector: some View {
         HStack(spacing: 0) {
             tabButton(title: "Workouts", icon: "figure.run", isSelected: selectedTab == 0) {
-                withAnimation(Design.Animation.spring) {
-                    selectedTab = 0
-                }
+                selectedTab = 0
             }
-            
             tabButton(title: "Meals", icon: "fork.knife", isSelected: selectedTab == 1) {
-                withAnimation(Design.Animation.spring) {
-                    selectedTab = 1
-                }
+                selectedTab = 1
             }
         }
-        .padding(Design.Spacing.xs)
-        .background(Design.Colors.secondaryBackground)
+        .background(Color.gray.opacity(0.1))
         .cornerRadius(Design.Radius.medium)
     }
     
@@ -171,43 +183,27 @@ struct WorkoutSuggestionsView: View {
         Button(action: action) {
             HStack(spacing: Design.Spacing.sm) {
                 Image(systemName: icon)
-                    .font(Design.Typography.subheadline)
-                    .fontWeight(.semibold)
                 Text(title)
-                    .font(Design.Typography.subheadline)
-                    .fontWeight(.semibold)
             }
+            .font(Design.Typography.subheadline)
+            .fontWeight(isSelected ? .semibold : .regular)
             .foregroundColor(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, Design.Spacing.md)
-            .background(
-                Group {
-                    if isSelected {
-                        Design.Colors.primary
-                    } else {
-                        Color.clear
-                    }
-                }
-            )
-            .cornerRadius(Design.Radius.small)
+            .padding(.vertical, Design.Spacing.sm)
+            .background(isSelected ? Design.Colors.primary : Color.clear)
+            .cornerRadius(Design.Radius.medium)
         }
     }
     
     // MARK: - Workout Section
     private func workoutSection(_ plan: WorkoutPlan) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.lg) {
-            HStack {
-                Image(systemName: "sparkles")
-                    .foregroundColor(Design.Colors.primary)
-                Text("AI-Generated Workouts")
-                    .font(Design.Typography.title2)
-            }
-            
             if plan.exercises.isEmpty {
                 emptyWorkoutState
             } else {
                 ForEach(Array(plan.exercises.enumerated()), id: \.offset) { index, exercise in
                     workoutCard(exercise, index: index)
+                        .padding(.horizontal, Design.Spacing.md)
                 }
             }
         }
@@ -217,7 +213,6 @@ struct WorkoutSuggestionsView: View {
         VStack(alignment: .leading, spacing: Design.Spacing.md) {
             // Header
             HStack {
-                // Exercise number badge
                 ZStack {
                     Circle()
                         .fill(Design.Colors.primaryGradient)
@@ -269,9 +264,7 @@ struct WorkoutSuggestionsView: View {
                     detailBadge(icon: "timer", text: "\(rest)s rest")
                 }
                 
-                if let type = exercise.type.capitalized as String? {
-                    detailBadge(icon: "figure.walk", text: type)
-                }
+                detailBadge(icon: "figure.walk", text: exercise.type.capitalized)
             }
             
             // Muscle groups
@@ -303,7 +296,7 @@ struct WorkoutSuggestionsView: View {
                 }
             }
             
-            // Instructions
+            // Instructions - How to Perform
             if let instructions = exercise.instructions, !instructions.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -339,13 +332,6 @@ struct WorkoutSuggestionsView: View {
     // MARK: - Meal Section
     private func mealSection(_ plan: MealPlan) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.lg) {
-            HStack {
-                Image(systemName: "sparkles")
-                    .foregroundColor(Design.Colors.primary)
-                Text("AI Meal Recommendations")
-                    .font(Design.Typography.title2)
-            }
-            
             mealCategory(title: "Breakfast", icon: "sunrise.fill", meals: plan.breakfast, color: .orange)
             mealCategory(title: "Lunch", icon: "sun.max.fill", meals: plan.lunch, color: .yellow)
             mealCategory(title: "Dinner", icon: "moon.fill", meals: plan.dinner, color: .blue)
@@ -366,6 +352,7 @@ struct WorkoutSuggestionsView: View {
                 
                 ForEach(meals, id: \.name) { meal in
                     mealCard(meal)
+                        .padding(.horizontal, Design.Spacing.md)
                 }
             }
         }
@@ -440,7 +427,7 @@ struct WorkoutSuggestionsView: View {
                 .tint(Design.Colors.primary)
             }
             
-            // Instructions
+            // Instructions - How to Make
             if let instructions = meal.instructions, !instructions.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -458,7 +445,7 @@ struct WorkoutSuggestionsView: View {
                     },
                     label: {
                         HStack {
-                            Image(systemName: "book.fill")
+                            Image(systemName: "list.number")
                                 .foregroundColor(Design.Colors.primary)
                             Text("How to Make")
                                 .font(Design.Typography.subheadline)
@@ -470,37 +457,7 @@ struct WorkoutSuggestionsView: View {
             }
         }
         .padding(Design.Spacing.lg)
-        .background(Design.Colors.cardBackground)
-        .cornerRadius(Design.Radius.large)
-        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
-    }
-    
-    // MARK: - Insights Card
-    private func insightsCard(_ insights: [String]) -> some View {
-        VStack(alignment: .leading, spacing: Design.Spacing.md) {
-            HStack {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundColor(Design.Colors.accent)
-                Text("AI Insights")
-                    .font(Design.Typography.headline)
-            }
-            
-            ForEach(insights, id: \.self) { insight in
-                HStack(alignment: .top, spacing: Design.Spacing.sm) {
-                    Image(systemName: "sparkle")
-                        .font(.caption)
-                        .foregroundColor(Design.Colors.primary)
-                        .padding(.top, 4)
-                    Text(insight)
-                        .font(Design.Typography.body)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .padding(Design.Spacing.lg)
-        .background(Design.Colors.accent.opacity(0.1))
-        .cornerRadius(Design.Radius.large)
-        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
+        .cardStyle()
     }
     
     // MARK: - Helper Views
@@ -511,10 +468,9 @@ struct WorkoutSuggestionsView: View {
             Text(text)
                 .font(Design.Typography.caption)
         }
-        .foregroundColor(.secondary)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(.systemGray6))
+        .background(Color.gray.opacity(0.1))
         .cornerRadius(Design.Radius.small)
     }
     
@@ -525,33 +481,46 @@ struct WorkoutSuggestionsView: View {
             .foregroundColor(color)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(color.opacity(0.15))
+            .background(color.opacity(0.1))
             .cornerRadius(Design.Radius.small)
     }
     
     private func difficultyColor(_ difficulty: String) -> Color {
         switch difficulty.lowercased() {
-        case "beginner": return .green
-        case "intermediate": return .orange
-        case "advanced": return .red
-        default: return Design.Colors.primary
+        case "beginner":
+            return .green
+        case "intermediate":
+            return .orange
+        case "advanced":
+            return .red
+        default:
+            return .gray
         }
     }
     
-    // MARK: - Empty States
-    private var emptyState: some View {
-        VStack(spacing: Design.Spacing.lg) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 60))
-                .foregroundColor(Design.Colors.primary.opacity(0.5))
-            Text("No recommendations yet")
-                .font(Design.Typography.title2)
-            Text("Tap refresh to generate AI-powered recommendations")
-                .font(Design.Typography.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Design.Spacing.xl)
+    private func insightsCard(_ insights: [String]) -> some View {
+        VStack(alignment: .leading, spacing: Design.Spacing.md) {
+            HStack {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(Design.Colors.primary)
+                Text("Insights")
+                    .font(Design.Typography.headline)
+            }
+            
+            ForEach(insights, id: \.self) { insight in
+                HStack(alignment: .top, spacing: Design.Spacing.sm) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 6))
+                        .foregroundColor(Design.Colors.primary)
+                        .padding(.top, 6)
+                    Text(insight)
+                        .font(Design.Typography.body)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
+        .padding(Design.Spacing.lg)
+        .cardStyle()
     }
     
     private var emptyWorkoutState: some View {
@@ -559,230 +528,99 @@ struct WorkoutSuggestionsView: View {
             Image(systemName: "figure.run")
                 .font(.system(size: 40))
                 .foregroundColor(.secondary.opacity(0.5))
-            Text("No workouts generated yet")
+            Text("No workouts available")
                 .font(Design.Typography.subheadline)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(Design.Spacing.xl)
         .cardStyle()
+        .padding(.horizontal, Design.Spacing.md)
     }
     
-    // MARK: - Network
-    @State private var isRefreshing = false
-    
-    private func loadRecommendations(forceRefresh: Bool = false) async {
-        isLoading = true
-        errorMessage = nil
-        defer { 
-            isLoading = false
-            isRefreshing = false
+    // MARK: - Network Functions
+    private func loadRecommendations() async {
+        // Always start with built-in data for instant display
+        await loadBuiltInRecommendations()
+        
+        // Then try to load AI recommendations in background
+        if !EnvironmentConfig.skipAuthentication {
+            await tryLoadAIRecommendations()
         }
+    }
+    
+    private func refreshRecommendations() async {
+        isRefreshing = true
+        defer { isRefreshing = false }
+        
+        // Try AI first, fallback to built-in if it fails
+        if !EnvironmentConfig.skipAuthentication {
+            await tryLoadAIRecommendations(forceRefresh: true)
+        } else {
+            await loadBuiltInRecommendations()
+        }
+    }
+    
+    private func loadBuiltInRecommendations() async {
+        let goal = auth.goal.isEmpty ? "maintain" : auth.goal
+        let activityLevel = auth.activityLevel.isEmpty ? "moderate" : auth.activityLevel
+        
+        let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4)
+        let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4)
+        
+        let fallbackRecommendation = RecommendationResponse(
+            mealPlan: fallbackMeals,
+            workoutPlan: fallbackWorkouts,
+            hydrationGoal: HydrationGoal(targetLiters: 2.5),
+            insights: [
+                "✨ Daily rotating recipes and workouts",
+                "🍽️ Complete ingredients and cooking instructions included",
+                "💪 Detailed workout instructions with sets, reps, and rest times",
+                "🔄 Content changes every day for variety"
+            ]
+        )
+        
+        await MainActor.run {
+            recommendation = fallbackRecommendation
+            isUsingFallback = true
+            isLoading = false
+            errorMessage = nil
+        }
+    }
+    
+    private func tryLoadAIRecommendations(forceRefresh: Bool = false) async {
+        isLoading = true
+        defer { isLoading = false }
         
         do {
-            // Try to fetch from backend with retry logic
-            if !EnvironmentConfig.skipAuthentication {
-                let endpoint: String
-                let method: String
-                
-                if forceRefresh {
-                    // Force regenerate new recommendations
-                    endpoint = "recommendations/regenerate"
-                    method = "POST"
-                } else {
-                    // Get today's recommendations (may be cached)
-                    endpoint = "recommendations/daily"
-                    method = "GET"
-                }
-                
-                // Retry with exponential backoff - up to 5 attempts
-                let response: RecommendationResponse = try await RetryUtility.shared.retry(maxAttempts: 5) {
-                    try await NetworkManager.shared.request(
-                        endpoint,
-                        method: method,
-                        body: nil
-                    )
-                }
-                
-                await MainActor.run {
-                    recommendation = response
-                    errorMessage = nil
-                }
-            } else {
-                // Mock data for dev mode
-                await MainActor.run {
-                    recommendation = mockRecommendation
-                }
-            }
-        } catch {
-            print("❌ Error loading recommendations after retries: \(error)")
+            let endpoint = forceRefresh ? "recommendations/regenerate" : "recommendations/daily"
+            let method = forceRefresh ? "POST" : "GET"
             
-            // If all retries fail, use fallback data (50+ built-in meals and workouts)
-            print("⚠️ Using built-in fallback recommendations (server unavailable)")
-            
-            // Get user's goal and activity level for personalized fallback
-            let goal = auth.goal.isEmpty ? "maintain" : auth.goal
-            let activityLevel = "moderate" // Default, could be enhanced to get from user profile
-            
-            let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4)
-            let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4)
-            
-            let fallbackRecommendation = RecommendationResponse(
-                mealPlan: fallbackMeals,
-                workoutPlan: fallbackWorkouts,
-                hydrationGoal: HydrationGoal(targetLiters: 2.5),
-                insights: [
-                    "Using built-in recommendations while server is unavailable",
-                    "These are high-quality meal and workout options from our curated database",
-                    "Your personalized AI recommendations will return when the server is back online"
-                ]
+            // Simple request without retry - if it fails, we use built-in data
+            let response: RecommendationResponse = try await NetworkManager.shared.request(
+                endpoint,
+                method: method,
+                body: nil
             )
             
             await MainActor.run {
-                recommendation = fallbackRecommendation
-                errorMessage = nil // Don't show error, just use fallback silently
-                print("✅ Loaded fallback recommendations successfully")
+                recommendation = response
+                isUsingFallback = false
+                errorMessage = nil
+                print("✅ AI recommendations loaded successfully")
+            }
+        } catch {
+            print("⚠️ AI recommendations unavailable, using built-in data: \(error.localizedDescription)")
+            
+            // If AI fails, ensure we have built-in data
+            if recommendation == nil {
+                await loadBuiltInRecommendations()
+            } else {
+                // Keep existing built-in data, just mark it
+                await MainActor.run {
+                    isUsingFallback = true
+                }
             }
         }
-    }
-    
-    // MARK: - Mock Data
-    private var mockRecommendation: RecommendationResponse {
-        RecommendationResponse(
-            mealPlan: MealPlan(
-                breakfast: [
-                    MealItem(
-                        name: "Protein-Packed Oatmeal Bowl",
-                        calories: 350,
-                        protein: 18,
-                        carbs: 55,
-                        fat: 8,
-                        ingredients: [
-                            "1 cup rolled oats",
-                            "1 cup almond milk",
-                            "1 scoop protein powder",
-                            "1/2 banana, sliced",
-                            "1 tbsp almond butter",
-                            "1 tbsp chia seeds",
-                            "1/2 cup blueberries"
-                        ],
-                        instructions: "1. Cook oats with almond milk over medium heat for 5 minutes. 2. Remove from heat and stir in protein powder until smooth. 3. Top with banana, almond butter, chia seeds, and blueberries. 4. Enjoy warm!",
-                        prepTime: 10,
-                        servings: 1
-                    )
-                ],
-                lunch: [
-                    MealItem(
-                        name: "Mediterranean Quinoa Bowl",
-                        calories: 450,
-                        protein: 22,
-                        carbs: 60,
-                        fat: 15,
-                        ingredients: [
-                            "1 cup cooked quinoa",
-                            "150g grilled chicken breast",
-                            "1/2 cup cherry tomatoes",
-                            "1/4 cup cucumber, diced",
-                            "2 tbsp feta cheese",
-                            "2 tbsp olive oil",
-                            "1 tbsp lemon juice",
-                            "Fresh herbs (parsley, mint)"
-                        ],
-                        instructions: "1. Season and grill chicken until cooked through (6-7 min per side). 2. Let rest, then slice. 3. Combine quinoa with tomatoes, cucumber, and feta. 4. Whisk olive oil and lemon juice for dressing. 5. Top quinoa bowl with chicken, drizzle dressing, and garnish with herbs.",
-                        prepTime: 20,
-                        servings: 1
-                    )
-                ],
-                dinner: [
-                    MealItem(
-                        name: "Herb-Crusted Salmon with Roasted Vegetables",
-                        calories: 520,
-                        protein: 38,
-                        carbs: 35,
-                        fat: 22,
-                        ingredients: [
-                            "200g salmon fillet",
-                            "1 cup mixed vegetables (broccoli, bell peppers, zucchini)",
-                            "2 tbsp olive oil",
-                            "1 tbsp fresh dill",
-                            "1 tbsp fresh parsley",
-                            "Lemon wedges",
-                            "Garlic powder",
-                            "Salt and pepper"
-                        ],
-                        instructions: "1. Preheat oven to 400°F. 2. Mix herbs, garlic powder, salt, and pepper. 3. Rub salmon with olive oil and herb mixture. 4. Toss vegetables with remaining olive oil and seasonings. 5. Place salmon and vegetables on baking sheet. 6. Bake for 15-18 minutes until salmon flakes easily. 7. Serve with lemon wedges.",
-                        prepTime: 25,
-                        servings: 1
-                    )
-                ],
-                snacks: [
-                    MealItem(
-                        name: "Greek Yogurt Parfait",
-                        calories: 180,
-                        protein: 16,
-                        carbs: 22,
-                        fat: 4,
-                        ingredients: [
-                            "1 cup Greek yogurt",
-                            "1/2 cup mixed berries",
-                            "1 tbsp honey",
-                            "2 tbsp granola"
-                        ],
-                        instructions: "1. Layer half the yogurt in a glass. 2. Add berries and drizzle with honey. 3. Top with remaining yogurt and granola. 4. Serve immediately.",
-                        prepTime: 5,
-                        servings: 1
-                    )
-                ]
-            ),
-            workoutPlan: WorkoutPlan(
-                exercises: [
-                    Exercise(
-                        name: "Full Body HIIT Circuit",
-                        duration: 25,
-                        calories: 280,
-                        type: "hiit",
-                        instructions: "1. Warm-up: 5 minutes of light jogging in place and dynamic stretches. 2. Circuit (repeat 3 times): - Jump squats: 45 seconds, rest 15 seconds - Push-ups: 45 seconds, rest 15 seconds - Mountain climbers: 45 seconds, rest 15 seconds - Burpees: 45 seconds, rest 15 seconds - Plank hold: 45 seconds, rest 15 seconds. 3. Cool-down: 5 minutes of walking and static stretches. Focus on proper form over speed. Modify exercises as needed.",
-                        sets: 3,
-                        reps: "45 seconds on, 15 seconds off",
-                        restTime: 15,
-                        difficulty: "intermediate",
-                        muscleGroups: ["full body", "core", "cardio"],
-                        equipment: ["none"]
-                    ),
-                    Exercise(
-                        name: "Upper Body Strength Training",
-                        duration: 30,
-                        calories: 200,
-                        type: "strength",
-                        instructions: "1. Warm-up: 5 minutes arm circles and light stretching. 2. Perform each exercise for 3 sets: - Push-ups: 10-12 reps, rest 60 seconds - Dumbbell rows: 10-12 reps each arm, rest 60 seconds - Shoulder presses: 10-12 reps, rest 60 seconds - Tricep dips: 10-12 reps, rest 60 seconds - Bicep curls: 10-12 reps, rest 60 seconds. 3. Focus on controlled movements and full range of motion. 4. Cool-down with 5 minutes of stretching.",
-                        sets: 3,
-                        reps: "10-12",
-                        restTime: 60,
-                        difficulty: "intermediate",
-                        muscleGroups: ["chest", "back", "shoulders", "arms"],
-                        equipment: ["dumbbells", "mat"]
-                    ),
-                    Exercise(
-                        name: "Core Strengthening Flow",
-                        duration: 15,
-                        calories: 120,
-                        type: "strength",
-                        instructions: "1. Start with a 2-minute warm-up of cat-cow stretches. 2. Perform each exercise for 45 seconds, rest 15 seconds: - Plank hold - Russian twists - Dead bugs - Bicycle crunches - Leg raises - Side plank (each side). 3. Repeat the circuit once. 4. Finish with 2 minutes of gentle stretching. Keep your core engaged throughout and breathe steadily.",
-                        sets: 2,
-                        reps: "45 seconds",
-                        restTime: 15,
-                        difficulty: "beginner",
-                        muscleGroups: ["core", "abs"],
-                        equipment: ["mat"]
-                    )
-                ]
-            ),
-            hydrationGoal: HydrationGoal(targetLiters: 2.5),
-            insights: [
-                "Stay hydrated by drinking water before, during, and after your workouts",
-                "Your meal plan is designed to support your fitness goals with balanced macros",
-                "Remember to warm up before workouts and cool down afterward to prevent injury"
-            ]
-        )
     }
 }
