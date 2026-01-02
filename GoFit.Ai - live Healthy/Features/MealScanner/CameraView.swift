@@ -21,7 +21,7 @@ struct CameraView: UIViewRepresentable {
         }
 
         // Use a serial queue to prevent race conditions with session configuration
-        private let sessionQueue = DispatchQueue(label: "com.gofit.camera.session")
+        let sessionQueue = DispatchQueue(label: "com.gofit.camera.session")
         private var isConfigured = false
         
         func setup() {
@@ -70,9 +70,17 @@ struct CameraView: UIViewRepresentable {
                 self.session.commitConfiguration()
                 self.isConfigured = true
                 
+                // Check camera permission before starting
+                let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+                guard authStatus == .authorized else {
+                    print("⚠️ Camera permission not granted, cannot start session (status: \(authStatus.rawValue))")
+                    return
+                }
+                
                 // Start session after configuration is complete
                 if !self.session.isRunning {
                     self.session.startRunning()
+                    print("✅ Camera session started after configuration")
                 }
             }
         }
@@ -80,14 +88,43 @@ struct CameraView: UIViewRepresentable {
         func start() { 
             // Use the same serial queue to prevent conflicts
             sessionQueue.async { [weak self] in
-                guard let self = self, self.isConfigured, !self.session.isRunning else { return }
+                guard let self = self else { return }
+                
+                // Check camera permission
+                let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+                guard authStatus == .authorized else {
+                    print("⚠️ Cannot start camera: permission not granted (status: \(authStatus.rawValue))")
+                    return
+                }
+                
+                guard self.isConfigured else {
+                    print("⚠️ Cannot start camera: not configured yet")
+                    return
+                }
+                
+                guard !self.session.isRunning else {
+                    return
+                }
+                
                 self.session.startRunning()
+                print("✅ Camera session started")
             }
         }
         func stop() { if session.isRunning { session.stopRunning() } }
 
         func capture() {
-            guard session.isRunning else { return }
+            // Ensure we're on the session queue
+            guard session.isRunning else {
+                print("⚠️ Cannot capture: session is not running")
+                return
+            }
+            
+            // Check if output is ready
+            guard output.isCapturingPhoto == false else {
+                print("⚠️ Already capturing photo, skipping")
+                return
+            }
+            
             // Use fastest capture settings for instant photo
             // Prioritize speed over maximum resolution for one-tap capture
             let settings: AVCapturePhotoSettings
@@ -156,10 +193,22 @@ struct CameraView: UIViewRepresentable {
         let view = UIView(frame: .zero)
         view.backgroundColor = .black // Show black immediately while camera loads
         
+        // Check camera permission before setup
+        let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        guard authStatus == .authorized else {
+            print("⚠️ Camera permission not granted, status: \(authStatus.rawValue)")
+            return view
+        }
+        
         // Setup preview layer immediately
         context.coordinator.previewLayer = AVCaptureVideoPreviewLayer(session: context.coordinator.session)
         context.coordinator.previewLayer?.videoGravity = .resizeAspectFill
-        context.coordinator.previewLayer?.frame = view.bounds
+        
+        // Set frame after a small delay to ensure view has proper bounds
+        DispatchQueue.main.async {
+            context.coordinator.previewLayer?.frame = view.bounds
+        }
+        
         if let pl = context.coordinator.previewLayer {
             view.layer.addSublayer(pl)
         }
@@ -173,8 +222,10 @@ struct CameraView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        // Only update the preview layer frame - no state modifications here
-        context.coordinator.previewLayer?.frame = uiView.bounds
+        // Update preview layer frame when view bounds change
+        DispatchQueue.main.async {
+            context.coordinator.previewLayer?.frame = uiView.bounds
+        }
         
         // Check if capture was requested (trigger changed)
         let newTrigger = captureTrigger
@@ -182,9 +233,10 @@ struct CameraView: UIViewRepresentable {
             // Update the trigger synchronously to prevent race conditions
             context.coordinator.lastCaptureTrigger = newTrigger
             
-            // Capture immediately on the current queue for instant response
-            // This ensures the photo is taken as soon as the button is pressed
-            context.coordinator.capture()
+            // Capture on the session queue to ensure thread safety
+            context.coordinator.sessionQueue.async {
+                context.coordinator.capture()
+            }
         }
     }
 
@@ -196,13 +248,40 @@ struct CameraView: UIViewRepresentable {
 extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         if let error = error {
-            print("Photo capture error: \(error.localizedDescription)")
+            print("❌ Photo capture error: \(error.localizedDescription)")
+            DispatchQueue.main.async { [weak self] in
+                // Set capturedImage to nil to indicate failure
+                self?.parent.capturedImage = nil
+            }
             return
         }
         
-        if let data = photo.fileDataRepresentation(), let uiImage = UIImage(data: data) {
-            DispatchQueue.main.async { [weak self] in
-                self?.parent.capturedImage = uiImage
+        // Process photo data on background queue to avoid blocking
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            // Get photo data representation
+            guard let data = photo.fileDataRepresentation() else {
+                print("❌ Failed to get photo data representation")
+                DispatchQueue.main.async {
+                    self.parent.capturedImage = nil
+                }
+                return
+            }
+            
+            // Create UIImage from data
+            guard let uiImage = UIImage(data: data) else {
+                print("❌ Failed to create UIImage from photo data")
+                DispatchQueue.main.async {
+                    self.parent.capturedImage = nil
+                }
+                return
+            }
+            
+            // Update on main thread
+            DispatchQueue.main.async {
+                print("✅ Photo captured successfully, size: \(uiImage.size)")
+                self.parent.capturedImage = uiImage
             }
         }
     }

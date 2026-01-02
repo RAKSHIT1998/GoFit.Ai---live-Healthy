@@ -359,12 +359,21 @@ struct MealScannerView3: View {
                 }
             }
             .onChange(of: capturedImage) { oldValue, newImage in
-                if let newImage = newImage, newImage != oldValue {
-                    // Automatically upload immediately when photo is captured (Snapchat style)
-                    // No preview needed - instant analysis
-                    Task {
-                        await uploadImage(newImage)
-                    }
+                // Only process if we have a new image and it's different from the old one
+                guard let newImage = newImage, newImage != oldValue else {
+                    return
+                }
+                
+                // Prevent multiple simultaneous uploads
+                guard !isUploading else {
+                    print("⚠️ Already uploading, skipping new image")
+                    return
+                }
+                
+                // Automatically upload immediately when photo is captured (Snapchat style)
+                // No preview needed - instant analysis
+                Task { [weak self] in
+                    await self?.uploadImage(newImage)
                 }
             }
             .sheet(isPresented: $showPicker) {
@@ -394,13 +403,30 @@ struct MealScannerView3: View {
         }
     }
 
-    // Upload image to backend which uses Gemini vision and returns parsed items
+    // Upload image to backend which uses OpenAI vision and returns parsed items
     func uploadImage(_ image: UIImage) async {
+        // Ensure we're on main actor for state updates
+        await MainActor.run {
+            // Prevent multiple simultaneous uploads
+            guard !isUploading else {
+                print("⚠️ Upload already in progress, skipping")
+                return
+            }
+            
+            isUploading = true
+            errorMsg = nil
+            isCapturing = false // Reset capture state
+        }
+        
         // Optimize image for faster upload - use slightly lower quality for speed
         // Still good enough for food recognition
-        guard let data = image.jpegData(compressionQuality: 0.75) else { 
+        // Process image compression on background queue to avoid blocking UI
+        guard let data = await Task.detached(priority: .userInitiated) {
+            return image.jpegData(compressionQuality: 0.75)
+        }.value else {
             await MainActor.run {
                 errorMsg = "Failed to process image"
+                isUploading = false
                 isCapturing = false
             }
             return 
@@ -408,20 +434,23 @@ struct MealScannerView3: View {
         
         // Check if user is logged in and has a valid token
         guard authVM.isLoggedIn else {
-            errorMsg = "Please log in to scan meals"
+            await MainActor.run {
+                errorMsg = "Please log in to scan meals"
+                isUploading = false
+            }
             return
         }
         
         guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
-            errorMsg = "Authentication required. Please log in again."
+            await MainActor.run {
+                errorMsg = "Authentication required. Please log in again."
+                isUploading = false
+            }
             return
         }
         
         await MainActor.run {
-            isUploading = true
-            errorMsg = nil
             uploadResult = nil
-            isCapturing = false // Reset capture state
         }
         
         defer { 
