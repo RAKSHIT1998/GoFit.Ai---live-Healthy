@@ -563,7 +563,8 @@ struct WorkoutSuggestionsView: View {
     
     private func loadBuiltInRecommendations() async {
         let goal = auth.goal.isEmpty ? "maintain" : auth.goal
-        let activityLevel = auth.activityLevel.isEmpty ? "moderate" : auth.activityLevel
+        // Use default activity level since AuthViewModel doesn't have this property
+        let activityLevel = "moderate"
         
         let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4)
         let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4)
