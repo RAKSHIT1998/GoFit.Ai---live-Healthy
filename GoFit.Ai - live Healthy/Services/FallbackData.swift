@@ -37,7 +37,7 @@ struct FallbackDataService {
     private func getAllMeals(goal: String) -> [MealData] {
         var meals: [MealData] = []
         
-        // BREAKFAST (15 meals)
+        // BREAKFAST (20 meals)
         meals.append(contentsOf: [
             MealData(
                 name: "Protein-Packed Oatmeal Bowl",
@@ -118,10 +118,82 @@ struct FallbackDataService {
                 ingredients: ["1 whole wheat tortilla", "2 eggs", "1/4 cup black beans", "1/4 avocado", "Salsa", "Cheese"],
                 instructions: "Scramble eggs. Warm tortilla. Fill with eggs, beans, avocado, salsa, and cheese. Roll and serve.",
                 prepTime: 12, servings: 1
+            ),
+            MealData(
+                name: "Egg White Scramble",
+                category: "breakfast",
+                calories: 250, protein: 28, carbs: 10, fat: 10,
+                ingredients: ["6 egg whites", "1/2 cup spinach", "1/4 cup mushrooms", "1 oz feta cheese", "1 tsp olive oil"],
+                instructions: "Sauté vegetables. Add egg whites and scramble. Top with feta cheese.",
+                prepTime: 8, servings: 1
+            ),
+            MealData(
+                name: "Banana Nut Smoothie",
+                category: "breakfast",
+                calories: 320, protein: 15, carbs: 45, fat: 10,
+                ingredients: ["1 banana", "1 cup almond milk", "1 tbsp almond butter", "1 scoop protein powder", "1/2 tsp cinnamon"],
+                instructions: "Blend all ingredients until smooth. Serve immediately.",
+                prepTime: 3, servings: 1
+            ),
+            MealData(
+                name: "Breakfast Hash",
+                category: "breakfast",
+                calories: 380, protein: 22, carbs: 42, fat: 14,
+                ingredients: ["1 sweet potato", "2 eggs", "1/2 bell pepper", "1/4 onion", "2 tbsp olive oil", "Herbs"],
+                instructions: "Dice and roast sweet potato. Sauté vegetables. Fry eggs. Combine and season.",
+                prepTime: 20, servings: 1
+            ),
+            MealData(
+                name: "Protein Waffles",
+                category: "breakfast",
+                calories: 360, protein: 28, carbs: 38, fat: 10,
+                ingredients: ["1 scoop protein powder", "1/2 cup oats", "1 egg", "1/2 banana", "1/4 cup Greek yogurt"],
+                instructions: "Blend ingredients until smooth. Cook in waffle iron. Top with Greek yogurt and berries.",
+                prepTime: 12, servings: 1
+            ),
+            MealData(
+                name: "Smoked Salmon Toast",
+                category: "breakfast",
+                calories: 340, protein: 24, carbs: 32, fat: 12,
+                ingredients: ["2 slices rye bread", "3 oz smoked salmon", "2 tbsp cream cheese", "Capers", "Red onion", "Dill"],
+                instructions: "Toast bread. Spread cream cheese. Top with salmon, capers, onion, and dill.",
+                prepTime: 5, servings: 1
+            ),
+            MealData(
+                name: "Breakfast Quiche",
+                category: "breakfast",
+                calories: 320, protein: 20, carbs: 18, fat: 18,
+                ingredients: ["4 eggs", "1/2 cup milk", "1/2 cup spinach", "1/4 cup feta", "1/4 cup mushrooms"],
+                instructions: "Whisk eggs and milk. Add vegetables and cheese. Bake at 375°F for 25 minutes.",
+                prepTime: 30, servings: 2
+            ),
+            MealData(
+                name: "Acai Bowl",
+                category: "breakfast",
+                calories: 350, protein: 8, carbs: 58, fat: 12,
+                ingredients: ["1 pack frozen acai", "1 banana", "1/2 cup berries", "2 tbsp granola", "1 tbsp coconut flakes"],
+                instructions: "Blend acai and banana. Pour into bowl. Top with berries, granola, and coconut.",
+                prepTime: 5, servings: 1
+            ),
+            MealData(
+                name: "Breakfast Tacos",
+                category: "breakfast",
+                calories: 400, protein: 26, carbs: 38, fat: 16,
+                ingredients: ["2 corn tortillas", "2 eggs", "1/4 cup black beans", "Salsa", "Avocado", "Cilantro"],
+                instructions: "Scramble eggs. Warm tortillas. Fill with eggs, beans, salsa, avocado, and cilantro.",
+                prepTime: 10, servings: 1
+            ),
+            MealData(
+                name: "French Toast",
+                category: "breakfast",
+                calories: 380, protein: 18, carbs: 52, fat: 12,
+                ingredients: ["2 slices whole grain bread", "2 eggs", "1/4 cup milk", "1 tsp vanilla", "Cinnamon", "Berries"],
+                instructions: "Dip bread in egg mixture. Cook until golden. Top with berries and cinnamon.",
+                prepTime: 12, servings: 1
             )
         ])
         
-        // LUNCH (15 meals)
+        // LUNCH (20 meals)
         meals.append(contentsOf: [
             MealData(
                 name: "Mediterranean Quinoa Bowl",
@@ -202,10 +274,82 @@ struct FallbackDataService {
                 ingredients: ["150g chicken", "Romaine lettuce", "Parmesan cheese", "Caesar dressing", "Croutons"],
                 instructions: "Grill chicken and slice. Toss lettuce with dressing. Top with chicken, parmesan, and croutons.",
                 prepTime: 15, servings: 1
+            ),
+            MealData(
+                name: "Chicken Wrap",
+                category: "lunch",
+                calories: 400, protein: 30, carbs: 40, fat: 14,
+                ingredients: ["1 whole wheat wrap", "150g grilled chicken", "Lettuce", "Tomato", "Cucumber", "Hummus"],
+                instructions: "Warm wrap. Layer chicken, vegetables, and hummus. Roll tightly and serve.",
+                prepTime: 10, servings: 1
+            ),
+            MealData(
+                name: "Quinoa Stuffed Bell Peppers",
+                category: "lunch",
+                calories: 380, protein: 20, carbs: 52, fat: 12,
+                ingredients: ["2 bell peppers", "1 cup cooked quinoa", "1/2 cup black beans", "Corn", "Cheese", "Salsa"],
+                instructions: "Hollow peppers. Mix quinoa, beans, and corn. Stuff peppers. Top with cheese. Bake at 375°F for 25 minutes.",
+                prepTime: 35, servings: 2
+            ),
+            MealData(
+                name: "Beef and Broccoli",
+                category: "lunch",
+                calories: 440, protein: 35, carbs: 42, fat: 14,
+                ingredients: ["150g lean beef", "2 cups broccoli", "1 cup brown rice", "Soy sauce", "Ginger", "Garlic"],
+                instructions: "Stir-fry beef and broccoli. Add soy sauce, ginger, and garlic. Serve over rice.",
+                prepTime: 20, servings: 1
+            ),
+            MealData(
+                name: "Caprese Salad",
+                category: "lunch",
+                calories: 360, protein: 18, carbs: 28, fat: 20,
+                ingredients: ["Fresh mozzarella", "Tomatoes", "Basil", "2 tbsp olive oil", "Balsamic vinegar"],
+                instructions: "Slice mozzarella and tomatoes. Arrange with basil. Drizzle with olive oil and balsamic.",
+                prepTime: 8, servings: 1
+            ),
+            MealData(
+                name: "Chicken Teriyaki Bowl",
+                category: "lunch",
+                calories: 480, protein: 38, carbs: 55, fat: 12,
+                ingredients: ["150g chicken", "1 cup brown rice", "Steamed vegetables", "Teriyaki sauce", "Sesame seeds"],
+                instructions: "Grill chicken with teriyaki sauce. Cook rice. Steam vegetables. Combine and top with sesame seeds.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Mediterranean Wrap",
+                category: "lunch",
+                calories: 420, protein: 22, carbs: 45, fat: 18,
+                ingredients: ["1 whole wheat wrap", "Hummus", "Feta cheese", "Cucumber", "Tomatoes", "Olives", "Lettuce"],
+                instructions: "Spread hummus on wrap. Add vegetables, feta, and olives. Roll and serve.",
+                prepTime: 8, servings: 1
+            ),
+            MealData(
+                name: "Chicken and Rice Bowl",
+                category: "lunch",
+                calories: 460, protein: 40, carbs: 48, fat: 14,
+                ingredients: ["150g chicken", "1 cup brown rice", "Black beans", "Corn", "Salsa", "Avocado"],
+                instructions: "Grill chicken. Cook rice. Combine with beans, corn, salsa, and avocado.",
+                prepTime: 20, servings: 1
+            ),
+            MealData(
+                name: "Greek Salad with Chicken",
+                category: "lunch",
+                calories: 400, protein: 32, carbs: 22, fat: 20,
+                ingredients: ["150g chicken", "Mixed greens", "Feta", "Olives", "Cucumber", "Tomatoes", "Greek dressing"],
+                instructions: "Grill chicken. Toss greens with vegetables, feta, and olives. Top with chicken and dressing.",
+                prepTime: 15, servings: 1
+            ),
+            MealData(
+                name: "Vegetable Soup",
+                category: "lunch",
+                calories: 280, protein: 12, carbs: 45, fat: 8,
+                ingredients: ["Mixed vegetables", "Vegetable broth", "Herbs", "1 cup whole grain bread"],
+                instructions: "Sauté vegetables. Add broth and herbs. Simmer 20 minutes. Serve with bread.",
+                prepTime: 30, servings: 2
             )
         ])
         
-        // DINNER (15 meals)
+        // DINNER (20 meals)
         meals.append(contentsOf: [
             MealData(
                 name: "Herb-Crusted Salmon",
@@ -286,10 +430,82 @@ struct FallbackDataService {
                 ingredients: ["200g chicken thighs", "Roasted vegetables", "Quinoa", "Herbs"],
                 instructions: "Season chicken and roast at 400°F for 30 minutes. Roast vegetables. Cook quinoa. Serve together.",
                 prepTime: 35, servings: 1
+            ),
+            MealData(
+                name: "Grilled Tuna Steak",
+                category: "dinner",
+                calories: 420, protein: 45, carbs: 25, fat: 16,
+                ingredients: ["200g tuna steak", "Quinoa", "Asparagus", "Lemon", "Herbs"],
+                instructions: "Season and grill tuna 3-4 minutes per side. Cook quinoa. Steam asparagus. Serve with lemon.",
+                prepTime: 20, servings: 1
+            ),
+            MealData(
+                name: "Chicken Tikka Masala",
+                category: "dinner",
+                calories: 480, protein: 38, carbs: 48, fat: 16,
+                ingredients: ["200g chicken", "Tikka masala sauce", "1 cup brown rice", "Naan bread"],
+                instructions: "Cook chicken in sauce. Serve over rice with naan bread.",
+                prepTime: 30, servings: 1
+            ),
+            MealData(
+                name: "Beef Stir-Fry",
+                category: "dinner",
+                calories: 460, protein: 40, carbs: 45, fat: 16,
+                ingredients: ["200g lean beef", "Mixed vegetables", "1 cup brown rice", "Soy sauce", "Ginger"],
+                instructions: "Stir-fry beef and vegetables. Add soy sauce and ginger. Serve over rice.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Baked Tilapia",
+                category: "dinner",
+                calories: 380, protein: 35, carbs: 32, fat: 12,
+                ingredients: ["200g tilapia", "Brown rice", "Steamed vegetables", "Lemon", "Herbs"],
+                instructions: "Season fish and bake at 375°F for 15 minutes. Cook rice. Steam vegetables. Serve together.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Chicken Enchiladas",
+                category: "dinner",
+                calories: 500, protein: 38, carbs: 48, fat: 18,
+                ingredients: ["200g chicken", "Whole wheat tortillas", "Enchilada sauce", "Cheese", "Black beans"],
+                instructions: "Shred chicken. Fill tortillas with chicken and beans. Top with sauce and cheese. Bake at 375°F for 20 minutes.",
+                prepTime: 35, servings: 2
+            ),
+            MealData(
+                name: "Lamb Chops",
+                category: "dinner",
+                calories: 520, protein: 42, carbs: 30, fat: 24,
+                ingredients: ["200g lamb chops", "Roasted vegetables", "Quinoa", "Mint sauce"],
+                instructions: "Season and grill lamb chops. Roast vegetables. Cook quinoa. Serve with mint sauce.",
+                prepTime: 30, servings: 1
+            ),
+            MealData(
+                name: "Chicken and Vegetable Skewers",
+                category: "dinner",
+                calories: 440, protein: 40, carbs: 35, fat: 16,
+                ingredients: ["200g chicken", "Bell peppers", "Zucchini", "Onion", "Olive oil", "Herbs"],
+                instructions: "Thread chicken and vegetables on skewers. Grill until cooked. Serve with quinoa.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Baked Ziti",
+                category: "dinner",
+                calories: 480, protein: 32, carbs: 52, fat: 16,
+                ingredients: ["Whole wheat ziti", "Marinara sauce", "Ricotta cheese", "Mozzarella", "Parmesan"],
+                instructions: "Cook pasta. Layer with sauce and cheeses. Bake at 375°F for 25 minutes.",
+                prepTime: 40, servings: 2
+            ),
+            MealData(
+                name: "Grilled Swordfish",
+                category: "dinner",
+                calories: 400, protein: 38, carbs: 30, fat: 16,
+                ingredients: ["200g swordfish", "Brown rice", "Roasted vegetables", "Lemon", "Herbs"],
+                instructions: "Season and grill swordfish. Cook rice. Roast vegetables. Serve together with lemon.",
+                prepTime: 25, servings: 1
             )
         ])
         
-        // SNACKS (10 meals)
+        // SNACKS (15 meals)
         meals.append(contentsOf: [
             MealData(
                 name: "Apple with Almond Butter",
@@ -370,6 +586,38 @@ struct FallbackDataService {
                 ingredients: ["1/2 avocado", "Lime juice", "Salt", "Vegetable sticks"],
                 instructions: "Mash avocado with lime and salt. Serve with vegetable sticks.",
                 prepTime: 5, servings: 1
+            ),
+            MealData(
+                name: "Protein Shake",
+                category: "snack",
+                calories: 200, protein: 30, carbs: 15, fat: 3,
+                ingredients: ["1 scoop protein powder", "1 cup water", "1/2 banana", "Ice"],
+                instructions: "Blend all ingredients until smooth. Serve immediately.",
+                prepTime: 2, servings: 1
+            ),
+            MealData(
+                name: "Almonds and Dried Cranberries",
+                category: "snack",
+                calories: 180, protein: 6, carbs: 20, fat: 10,
+                ingredients: ["1/4 cup almonds", "2 tbsp dried cranberries"],
+                instructions: "Mix almonds and cranberries. Enjoy as a healthy snack.",
+                prepTime: 1, servings: 1
+            ),
+            MealData(
+                name: "Cheese and Crackers",
+                category: "snack",
+                calories: 200, protein: 10, carbs: 22, fat: 8,
+                ingredients: ["2 oz cheese", "6 whole grain crackers", "Apple slices"],
+                instructions: "Serve cheese with crackers and apple slices.",
+                prepTime: 3, servings: 1
+            ),
+            MealData(
+                name: "Edamame",
+                category: "snack",
+                calories: 120, protein: 11, carbs: 10, fat: 5,
+                ingredients: ["1 cup edamame", "Sea salt"],
+                instructions: "Steam edamame. Season with sea salt. Enjoy warm.",
+                prepTime: 5, servings: 1
             )
         ])
         
@@ -380,7 +628,7 @@ struct FallbackDataService {
     private func getAllWorkouts(activityLevel: String) -> [Exercise] {
         var workouts: [Exercise] = []
         
-        // CARDIO (15 workouts)
+        // CARDIO (20 workouts)
         workouts.append(contentsOf: [
             Exercise(name: "Brisk Walking", duration: 30, calories: 150, type: "cardio", instructions: "Walk at a brisk pace, maintaining steady speed. Keep head up and shoulders relaxed. Swing arms naturally.", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["legs", "core"], equipment: ["none"]),
             Exercise(name: "Running", duration: 30, calories: 300, type: "cardio", instructions: "Start with 5-minute warm-up walk. Run at moderate pace for 20 minutes. Cool down with 5-minute walk.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["legs", "cardiovascular"], equipment: ["none"]),
@@ -391,10 +639,19 @@ struct FallbackDataService {
             Exercise(name: "Stair Climbing", duration: 20, calories: 200, type: "cardio", instructions: "Climb stairs at steady pace. Use handrail if needed. Focus on controlled movements.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["legs", "glutes", "cardio"], equipment: ["stairs"]),
             Exercise(name: "Swimming", duration: 30, calories: 350, type: "cardio", instructions: "Swim laps using freestyle stroke. Maintain steady pace. Focus on breathing rhythm.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "cardio"], equipment: ["pool"]),
             Exercise(name: "Rowing", duration: 25, calories: 300, type: "cardio", instructions: "Row at moderate pace. Keep back straight. Drive with legs, pull with arms.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "cardio"], equipment: ["rowing machine"]),
-            Exercise(name: "Dance Cardio", duration: 30, calories: 250, type: "cardio", instructions: "Follow dance routine or freestyle. Keep moving continuously. Have fun and stay active!", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "cardio"], equipment: ["none"])
+            Exercise(name: "Dance Cardio", duration: 30, calories: 250, type: "cardio", instructions: "Follow dance routine or freestyle. Keep moving continuously. Have fun and stay active!", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "cardio"], equipment: ["none"]),
+            Exercise(name: "Interval Running", duration: 25, calories: 320, type: "cardio", instructions: "Warm up 5 minutes. Alternate 2 minutes fast run with 1 minute walk. Repeat 5 times. Cool down 5 minutes.", sets: nil, reps: "2 min fast, 1 min walk", restTime: 60, difficulty: "intermediate", muscleGroups: ["legs", "cardio"], equipment: ["none"]),
+            Exercise(name: "Burpees", duration: 15, calories: 180, type: "cardio", instructions: "Start standing. Drop to squat, jump back to plank, do push-up, jump feet forward, jump up. Repeat continuously.", sets: nil, reps: "30 seconds on, 30 seconds off", restTime: 30, difficulty: "advanced", muscleGroups: ["full body", "cardio"], equipment: ["none"]),
+            Exercise(name: "High Knees", duration: 10, calories: 100, type: "cardio", instructions: "Run in place, bringing knees up high. Pump arms. Keep core engaged. Move quickly.", sets: nil, reps: "30 seconds on, 30 seconds off", restTime: 30, difficulty: "beginner", muscleGroups: ["legs", "cardio"], equipment: ["none"]),
+            Exercise(name: "Jumping Jacks", duration: 10, calories: 80, type: "cardio", instructions: "Jump feet apart while raising arms overhead. Jump back together. Repeat continuously.", sets: nil, reps: "30 seconds on, 30 seconds off", restTime: 30, difficulty: "beginner", muscleGroups: ["full body", "cardio"], equipment: ["none"]),
+            Exercise(name: "Box Jumps", duration: 15, calories: 150, type: "cardio", instructions: "Jump onto box or platform. Step down. Repeat. Start with lower height, progress gradually.", sets: nil, reps: "10-15 reps", restTime: 60, difficulty: "intermediate", muscleGroups: ["legs", "cardio"], equipment: ["box"]),
+            Exercise(name: "Sprint Intervals", duration: 20, calories: 280, type: "cardio", instructions: "Warm up 3 minutes. Sprint 30 seconds, walk 90 seconds. Repeat 8 times. Cool down 3 minutes.", sets: nil, reps: "30 sec sprint, 90 sec walk", restTime: 90, difficulty: "advanced", muscleGroups: ["legs", "cardio"], equipment: ["none"]),
+            Exercise(name: "Kickboxing", duration: 30, calories: 300, type: "cardio", instructions: "Perform kickboxing combinations. Focus on form and power. Keep moving continuously.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "cardio"], equipment: ["none"]),
+            Exercise(name: "Rowing Machine Intervals", duration: 25, calories: 320, type: "cardio", instructions: "Row hard for 1 minute, easy for 1 minute. Repeat 10 times. Focus on form.", sets: nil, reps: "1 min hard, 1 min easy", restTime: 60, difficulty: "intermediate", muscleGroups: ["full body", "cardio"], equipment: ["rowing machine"]),
+            Exercise(name: "StairMaster", duration: 20, calories: 220, type: "cardio", instructions: "Use StairMaster at moderate pace. Maintain steady rhythm. Keep posture upright.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["legs", "glutes", "cardio"], equipment: ["stairmaster"])
         ])
         
-        // STRENGTH (20 workouts)
+        // STRENGTH (25 workouts)
         workouts.append(contentsOf: [
             Exercise(name: "Bodyweight Squats", duration: 10, calories: 50, type: "strength", instructions: "Stand with feet shoulder-width apart. Lower hips back and down as if sitting. Keep chest up. Return to standing.", sets: 3, reps: "12-15", restTime: 60, difficulty: "beginner", muscleGroups: ["legs", "glutes"], equipment: ["none"]),
             Exercise(name: "Push-ups", duration: 10, calories: 50, type: "strength", instructions: "Start in plank position. Lower body until chest nearly touches floor. Push back up. Keep core tight.", sets: 3, reps: "10-12", restTime: 60, difficulty: "beginner", muscleGroups: ["chest", "triceps", "shoulders"], equipment: ["none"]),
@@ -415,10 +672,14 @@ struct FallbackDataService {
             Exercise(name: "Hammer Curls", duration: 10, calories: 40, type: "strength", instructions: "Curl dumbbells with neutral grip. Keep elbows still. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["biceps", "forearms"], equipment: ["dumbbells"]),
             Exercise(name: "Lateral Raises", duration: 10, calories: 35, type: "strength", instructions: "Raise dumbbells to sides. Keep slight bend in elbows. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["shoulders"], equipment: ["dumbbells"]),
             Exercise(name: "Front Raises", duration: 10, calories: 35, type: "strength", instructions: "Raise dumbbells in front. Keep core engaged. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["shoulders"], equipment: ["dumbbells"]),
-            Exercise(name: "Chest Flyes", duration: 12, calories: 60, type: "strength", instructions: "Fly dumbbells out and together. Keep slight bend in elbows. Control the movement.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["chest"], equipment: ["dumbbells", "bench"])
+            Exercise(name: "Chest Flyes", duration: 12, calories: 60, type: "strength", instructions: "Fly dumbbells out and together. Keep slight bend in elbows. Control the movement.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["chest"], equipment: ["dumbbells", "bench"]),
+            Exercise(name: "Goblet Squats", duration: 12, calories: 70, type: "strength", instructions: "Hold dumbbell at chest. Squat down keeping chest up. Drive through heels to stand.", sets: 3, reps: "12-15", restTime: 60, difficulty: "beginner", muscleGroups: ["legs", "glutes"], equipment: ["dumbbell"]),
+            Exercise(name: "Bent-Over Rows", duration: 12, calories: 75, type: "strength", instructions: "Bend forward, pull dumbbells to lower chest. Squeeze shoulder blades. Lower with control.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["back", "biceps"], equipment: ["dumbbells"]),
+            Exercise(name: "Arnold Press", duration: 12, calories: 70, type: "strength", instructions: "Start with palms facing you. Rotate and press overhead. Reverse motion. Control throughout.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["shoulders"], equipment: ["dumbbells"]),
+            Exercise(name: "Sumo Deadlifts", duration: 15, calories: 95, type: "strength", instructions: "Wide stance, toes pointed out. Lower weight between legs. Drive through heels to stand.", sets: 3, reps: "8-10", restTime: 90, difficulty: "advanced", muscleGroups: ["legs", "glutes", "back"], equipment: ["barbell"])
         ])
         
-        // CORE (10 workouts)
+        // CORE (15 workouts)
         workouts.append(contentsOf: [
             Exercise(name: "Russian Twists", duration: 10, calories: 40, type: "strength", instructions: "Sit with knees bent. Lean back slightly. Rotate torso side to side. Keep core engaged.", sets: 3, reps: "20 each side", restTime: 45, difficulty: "beginner", muscleGroups: ["core", "obliques"], equipment: ["mat"]),
             Exercise(name: "Bicycle Crunches", duration: 10, calories: 45, type: "strength", instructions: "Lie on back. Bring opposite elbow to knee. Alternate sides. Keep core engaged.", sets: 3, reps: "20 each side", restTime: 45, difficulty: "beginner", muscleGroups: ["core", "obliques"], equipment: ["mat"]),
@@ -429,7 +690,11 @@ struct FallbackDataService {
             Exercise(name: "Flutter Kicks", duration: 8, calories: 35, type: "strength", instructions: "Lie on back. Alternately kick legs. Keep lower back pressed down. Keep core engaged.", sets: 3, reps: "30 seconds", restTime: 30, difficulty: "beginner", muscleGroups: ["core", "hip flexors"], equipment: ["mat"]),
             Exercise(name: "Hollow Body Hold", duration: 8, calories: 30, type: "strength", instructions: "Lie on back. Raise shoulders and legs. Hold position. Keep core engaged. Breathe steadily.", sets: 3, reps: "30 seconds", restTime: 45, difficulty: "intermediate", muscleGroups: ["core"], equipment: ["mat"]),
             Exercise(name: "Reverse Crunches", duration: 8, calories: 35, type: "strength", instructions: "Lie on back. Bring knees to chest. Lift hips slightly. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["core"], equipment: ["mat"]),
-            Exercise(name: "V-Ups", duration: 10, calories: 45, type: "strength", instructions: "Lie on back. Simultaneously raise torso and legs. Touch toes if possible. Lower with control.", sets: 3, reps: "10-12", restTime: 60, difficulty: "advanced", muscleGroups: ["core"], equipment: ["mat"])
+            Exercise(name: "V-Ups", duration: 10, calories: 45, type: "strength", instructions: "Lie on back. Simultaneously raise torso and legs. Touch toes if possible. Lower with control.", sets: 3, reps: "10-12", restTime: 60, difficulty: "advanced", muscleGroups: ["core"], equipment: ["mat"]),
+            Exercise(name: "Bird Dog", duration: 8, calories: 30, type: "strength", instructions: "Start on hands and knees. Extend opposite arm and leg. Hold, return. Alternate sides.", sets: 3, reps: "10 each side", restTime: 30, difficulty: "beginner", muscleGroups: ["core", "back"], equipment: ["mat"]),
+            Exercise(name: "Crunches", duration: 10, calories: 40, type: "strength", instructions: "Lie on back, knees bent. Lift shoulders toward knees. Lower with control. Don't pull neck.", sets: 3, reps: "15-20", restTime: 45, difficulty: "beginner", muscleGroups: ["core"], equipment: ["mat"]),
+            Exercise(name: "Superman", duration: 8, calories: 30, type: "strength", instructions: "Lie face down. Lift arms and legs simultaneously. Hold briefly. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["core", "back"], equipment: ["mat"]),
+            Exercise(name: "Woodchoppers", duration: 10, calories: 45, type: "strength", instructions: "Hold weight with both hands. Rotate torso diagonally from high to low. Alternate sides.", sets: 3, reps: "12 each side", restTime: 45, difficulty: "intermediate", muscleGroups: ["core", "obliques"], equipment: ["dumbbell"])
         ])
         
         // FLEXIBILITY/YOGA (5 workouts)

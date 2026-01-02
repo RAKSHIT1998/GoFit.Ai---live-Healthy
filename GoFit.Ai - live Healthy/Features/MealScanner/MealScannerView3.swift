@@ -541,41 +541,48 @@ struct MealScannerView3: View {
         }
 
         do {
-            // Retry with exponential backoff - up to 5 attempts
-            let resp = try await RetryUtility.shared.retry(maxAttempts: 5) {
+            // Retry with exponential backoff - up to 10 attempts to get AI response
+            // Keep retrying until we get a successful AI analysis
+            let resp = try await RetryUtility.shared.retry(maxAttempts: 10) {
                 try await NetworkManager.shared.uploadMealImage(data: data, filename: "meal.jpg", userId: authVM.userId)
             }
             await MainActor.run {
-            uploadResult = resp
+                uploadResult = resp
+                errorMsg = nil // Clear any previous errors
             }
         } catch {
-            // If all retries fail, use fallback data
-            print("⚠️ All retry attempts failed, using fallback meal data")
-            let fallbackMeal = FallbackDataService.shared.getRandomMealForScan()
+            // All retries failed - show error message to user
+            // Do NOT use fallback data - scan meal MUST use AI only
+            print("❌ All retry attempts failed for meal scanning")
             
-            // Convert fallback to ServerMealResponse format
-            let fallbackResponse = ServerMealResponse(
-                mealId: nil,
-                parsedItems: [ParsedItem(
-                    name: fallbackMeal.name,
-                    calories: fallbackMeal.calories,
-                    protein: fallbackMeal.protein,
-                    carbs: fallbackMeal.carbs,
-                    fat: fallbackMeal.fat,
-                    sugar: fallbackMeal.sugar,
-                    portionSize: fallbackMeal.portionSize,
-                    confidence: 0.85
-                )],
-                recommendations: "Using built-in meal data while server is unavailable. This is a high-quality meal option from our curated database."
-            )
-            
-                    await MainActor.run {
-                uploadResult = fallbackResponse
-                // Show a subtle message that fallback data is being used
-                print("✅ Using built-in meal data (server unavailable)")
+            await MainActor.run {
+                isUploading = false
+                isCapturing = false
+                
+                // Parse error to show user-friendly message
+                if let nsError = error as NSError? {
+                    let errorCode = nsError.code
+                    let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                    
+                    // Check for "no food detected" error (from backend)
+                    if errorCode == 400 && errorMessage.contains("NO_FOOD_DETECTED") {
+                        errorMsg = "🍽️ No food detected in this image.\n\nPlease take a photo of food or beverages to scan."
+                    } else if errorCode == 504 || errorMessage.contains("timeout") {
+                        errorMsg = "⏱️ Analysis timed out. Please try again with a clearer photo."
+                    } else if errorCode == 429 || errorMessage.contains("rate limit") {
+                        errorMsg = "🚦 Service is busy. Please wait a moment and try again."
+                    } else if errorCode == 401 {
+                        errorMsg = "🔐 Authentication failed. Please log in again."
+                        authVM.logout()
+                    } else {
+                        errorMsg = "❌ Failed to analyze photo after multiple attempts.\n\nError: \(errorMessage)\n\nPlease try again or take a clearer photo."
+                    }
+                } else {
+                    errorMsg = "❌ Failed to analyze photo. Please try again with a clearer image."
+                }
+                
+                uploadResult = nil // Clear any partial results
             }
-            // Note: We use fallback data instead of showing errors when retries fail
-            // This provides a better user experience - they still get meal data even if server is down
         }
     }
 

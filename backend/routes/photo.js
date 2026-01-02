@@ -144,7 +144,7 @@ Return a JSON array where each item has:
 - carbs: number (grams of carbohydrates)
 - fat: number (grams of fat)
 - sugar: number (grams of sugar - IMPORTANT: include this field, especially for drinks)
-- portionSize: string (estimated portion, e.g., "200g", "1 cup", "250ml", "1 can", "1 serving")
+- portionSize: string (estimated weight/portion size, e.g., "200g", "150g", "1 cup (240ml)", "250ml", "1 can (330ml)", "1 serving (300g)") - MUST include estimated weight in grams when possible
 - confidence: number (0-1, how confident you are in the identification)
 
 IMPORTANT:
@@ -152,9 +152,11 @@ IMPORTANT:
 - If this is a drink/beverage, include calories and sugar content
 - For complete dishes, use the dish name rather than listing ingredients separately
 - If multiple separate items are visible, list each with its proper name
-- Estimate portion sizes based on common serving sizes and what's visible in the image
+- Estimate portion sizes and WEIGHT based on common serving sizes and what's visible in the image
+- ALWAYS include estimated weight in grams in portionSize (e.g., "200g", "150g chicken", "1 cup (240ml)", "250ml drink")
 - Include sugar content for all items (even if 0 for items like plain chicken or water)
 - Use proper capitalization and spelling for all food names
+- The portionSize field should contain both the estimated weight (in grams) and serving description when applicable
 
 Return ONLY valid JSON array, no markdown, no code blocks, no explanations, just the raw JSON array. Example format:
 [{"name": "Chicken Biryani", "calories": 450, "protein": 25, "carbs": 55, "fat": 12, "sugar": 2, "portionSize": "1 serving", "confidence": 0.9}]
