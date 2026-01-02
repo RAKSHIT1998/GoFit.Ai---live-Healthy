@@ -27,6 +27,10 @@ struct GoFitAiApp: App {
         WindowGroup {
             RootView()
                 .preferredColorScheme(colorScheme)
+                .onAppear {
+                    // Initialize notification service
+                    _ = NotificationService.shared
+                }
         }
         .modelContainer(sharedModelContainer)
     }

@@ -5,6 +5,7 @@ struct ProfileView: View {
     @EnvironmentObject var auth: AuthViewModel
     @EnvironmentObject var purchases: PurchaseManager
     @StateObject private var healthKit = HealthKitService.shared
+    @StateObject private var notifications = NotificationService.shared
 
     @State private var showingEditProfile = false
     @State private var showingPaywall = false
@@ -327,11 +328,69 @@ struct ProfileView: View {
                 SettingsRow(
                     icon: "bell.fill",
                     iconColor: .orange,
-                    title: "Notifications"
+                    title: "Notifications",
+                    subtitle: notifications.notificationsEnabled ? "Enabled" : "Disabled"
                 )
                 Spacer()
-                Toggle("", isOn: $notificationsEnabled)
+                Toggle("", isOn: $notifications.notificationsEnabled)
                     .labelsHidden()
+            }
+            .onChange(of: notifications.notificationsEnabled) { oldValue, newValue in
+                if newValue {
+                    notifications.requestAuthorization()
+                } else {
+                    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+                }
+            }
+            
+            if notifications.notificationsEnabled {
+                VStack(spacing: 12) {
+                    HStack {
+                        SettingsRow(
+                            icon: "fork.knife",
+                            iconColor: .green,
+                            title: "Meal Reminders",
+                            subtitle: "Breakfast, lunch, dinner"
+                        )
+                        Spacer()
+                        Toggle("", isOn: $notifications.mealRemindersEnabled)
+                            .labelsHidden()
+                    }
+                    .onChange(of: notifications.mealRemindersEnabled) { oldValue, newValue in
+                        notifications.updateMealReminders(newValue)
+                    }
+                    
+                    HStack {
+                        SettingsRow(
+                            icon: "drop.fill",
+                            iconColor: .blue,
+                            title: "Water Reminders",
+                            subtitle: "Stay hydrated"
+                        )
+                        Spacer()
+                        Toggle("", isOn: $notifications.waterRemindersEnabled)
+                            .labelsHidden()
+                    }
+                    .onChange(of: notifications.waterRemindersEnabled) { oldValue, newValue in
+                        notifications.updateWaterReminders(newValue)
+                    }
+                    
+                    HStack {
+                        SettingsRow(
+                            icon: "figure.run",
+                            iconColor: .purple,
+                            title: "Workout Reminders",
+                            subtitle: "Stay active"
+                        )
+                        Spacer()
+                        Toggle("", isOn: $notifications.workoutRemindersEnabled)
+                            .labelsHidden()
+                    }
+                    .onChange(of: notifications.workoutRemindersEnabled) { oldValue, newValue in
+                        notifications.updateWorkoutReminders(newValue)
+                    }
+                }
+                .padding(.leading, 20)
             }
         }
     }

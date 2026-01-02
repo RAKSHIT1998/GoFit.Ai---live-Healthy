@@ -174,13 +174,25 @@ async function generateRecommendation(user) {
   // Generate meal plan with OpenAI - Enhanced prompt with ML insights
   const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
-USER PROFILE:
+USER PROFILE (COMPREHENSIVE):
+- Name: ${user.name}
 - Goals: ${context.user.goals}
 - Activity Level: ${context.user.activityLevel}
 - Dietary Preferences: ${context.user.dietaryPreferences.join(', ') || 'None specified'}
 - Allergies/Restrictions: ${context.user.allergies.join(', ') || 'None'}
 - Target Daily Calories: ${context.user.targetCalories} kcal
+- Target Protein: ${user.metrics?.targetProtein || 150}g
+- Target Carbs: ${user.metrics?.targetCarbs || 200}g
+- Target Fat: ${user.metrics?.targetFat || 65}g
+- Current Weight: ${context.user.weightKg} kg
+- Height: ${context.user.heightCm} cm
 - Fasting Preference: ${context.user.fastingPreference}
+- Workout Preferences: ${context.user.workoutPreferences.join(', ') || 'General fitness'}
+- Favorite Cuisines: ${context.user.favoriteCuisines.join(', ') || 'Varied'}
+- Food Preferences: ${context.user.foodPreferences.join(', ') || 'Balanced'}
+- Meal Timing Preference: ${context.user.mealTimingPreference || 'Regular'}
+- Drinking Frequency: ${context.user.drinkingFrequency || 'Never'}
+- Smoking Status: ${context.user.smokingStatus || 'Never'}
 
 MACHINE LEARNING INSIGHTS (learned from user behavior):
 - User Type: ${context.user.userType}

@@ -23,6 +23,7 @@ import barcodeRoutes from './routes/barcode.js';
 import educationRoutes from './routes/education.js';
 import analyticsRoutes from './routes/analytics.js';
 import onboardingRoutes from './routes/onboarding.js';
+import notificationRoutes from './routes/notifications.js';
 
 dotenv.config();
 
@@ -76,7 +77,8 @@ app.get('/', (req, res) => {
       barcode: '/api/barcode',
       education: '/api/education',
       analytics: '/api/analytics',
-      onboarding: '/api/onboarding'
+      onboarding: '/api/onboarding',
+      notifications: '/api/notifications'
     }
   });
 });
@@ -105,6 +107,7 @@ app.use('/api/barcode', barcodeRoutes);
 app.use('/api/education', educationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -163,13 +166,13 @@ async function startServer() {
       console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✅ Required environment variables loaded`);
       
-      // Log Gemini API key status (without exposing the key)
-      if (process.env.GEMINI_API_KEY) {
-        const keyPreview = process.env.GEMINI_API_KEY.substring(0, 10) + '...';
-        console.log(`✅ GEMINI_API_KEY is configured (${keyPreview})`);
+      // Log OpenAI API key status (without exposing the key)
+      if (process.env.OPENAI_API_KEY) {
+        const keyPreview = process.env.OPENAI_API_KEY.substring(0, 10) + '...';
+        console.log(`✅ OPENAI_API_KEY is configured (${keyPreview})`);
       } else {
-        console.log(`⚠️  GEMINI_API_KEY is NOT configured - Food recognition will not work`);
-        console.log(`   Get your free API key at: https://aistudio.google.com/app/apikey`);
+        console.log(`⚠️  OPENAI_API_KEY is NOT configured - AI features will not work`);
+        console.log(`   Get your API key at: https://platform.openai.com/api-keys`);
       }
     });
   } catch (error) {
