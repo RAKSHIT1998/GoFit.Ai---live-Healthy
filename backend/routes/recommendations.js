@@ -251,7 +251,13 @@ IMPORTANT REQUIREMENTS:
 - Include variety to prevent boredom and ensure nutritional completeness
 - Consider meal timing based on fasting preference: ${context.user.fastingPreference}
 
-Return ONLY valid JSON, no markdown, no code blocks, no explanations outside the JSON structure. The response must be parseable JSON.
+CRITICAL JSON FORMAT REQUIREMENTS:
+- Return ONLY valid JSON object, no markdown, no code blocks, no explanations
+- workoutPlan.exercises MUST be an array of objects, NOT a string
+- Each exercise object must have: name, duration, calories, type, instructions, sets (or null), reps, restTime (or null), difficulty, muscleGroups (array), equipment (array)
+- mealPlan arrays (breakfast, lunch, dinner, snacks) must be arrays of objects
+- Do NOT return exercises as a string representation of an array
+- The JSON must be valid and parseable
 
 You are an expert nutritionist and certified personal trainer with years of experience. 
         Your recommendations are evidence-based, personalized, and practical. 
@@ -271,7 +277,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       messages: [
         {
           role: 'system',
-          content: 'You are an expert nutritionist and certified personal trainer with years of experience. Your recommendations are evidence-based, personalized, and practical. Always return valid JSON only, no markdown, no code blocks, no explanations outside the JSON structure.'
+          content: 'You are an expert nutritionist and certified personal trainer. You MUST return ONLY valid JSON. workoutPlan.exercises must be an array of objects, NOT a string. mealPlan arrays must be arrays of objects. Return pure JSON with no markdown, no code blocks, no explanations.'
         },
         {
           role: 'user',
@@ -305,7 +311,61 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       recommendationData = JSON.parse(jsonString);
     }
     
-    console.log('✅ Successfully parsed recommendation data');
+    // Validate and fix the structure
+    if (recommendationData.workoutPlan && recommendationData.workoutPlan.exercises) {
+      // Ensure exercises is an array
+      if (typeof recommendationData.workoutPlan.exercises === 'string') {
+        console.log('⚠️ Exercises is a string, attempting to parse...');
+        try {
+          // Try to parse the string as JSON
+          recommendationData.workoutPlan.exercises = JSON.parse(recommendationData.workoutPlan.exercises);
+        } catch (e) {
+          console.error('❌ Failed to parse exercises string:', e);
+          // If parsing fails, set to empty array
+          recommendationData.workoutPlan.exercises = [];
+        }
+      }
+      
+      // Ensure it's an array
+      if (!Array.isArray(recommendationData.workoutPlan.exercises)) {
+        console.error('❌ Exercises is not an array, converting...');
+        recommendationData.workoutPlan.exercises = [];
+      }
+      
+      // Validate each exercise object
+      recommendationData.workoutPlan.exercises = recommendationData.workoutPlan.exercises.map((exercise, index) => {
+        if (typeof exercise === 'string') {
+          console.error(`⚠️ Exercise at index ${index} is a string, skipping...`);
+          return null;
+        }
+        // Ensure all required fields are present
+        return {
+          name: exercise.name || `Exercise ${index + 1}`,
+          duration: exercise.duration || 10,
+          calories: exercise.calories || 0,
+          type: exercise.type || 'cardio',
+          instructions: exercise.instructions || '',
+          sets: exercise.sets ?? null,
+          reps: exercise.reps || '10',
+          restTime: exercise.restTime ?? null,
+          difficulty: exercise.difficulty || 'beginner',
+          muscleGroups: Array.isArray(exercise.muscleGroups) ? exercise.muscleGroups : [],
+          equipment: Array.isArray(exercise.equipment) ? exercise.equipment : ['none']
+        };
+      }).filter(ex => ex !== null); // Remove null entries
+    }
+    
+    // Validate mealPlan structure
+    if (recommendationData.mealPlan) {
+      ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(mealType => {
+        if (recommendationData.mealPlan[mealType] && !Array.isArray(recommendationData.mealPlan[mealType])) {
+          console.error(`⚠️ ${mealType} is not an array, converting...`);
+          recommendationData.mealPlan[mealType] = [];
+        }
+      });
+    }
+    
+    console.log('✅ Successfully parsed and validated recommendation data');
     } catch (parseError) {
       console.error('❌ Failed to parse OpenAI recommendation response:', parseError);
       console.error('📝 Response content (first 500 chars):', content ? content.substring(0, 500) : 'No content');

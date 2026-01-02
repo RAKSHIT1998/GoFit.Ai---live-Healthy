@@ -133,7 +133,9 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       const logmealResponse = await Promise.race([logmealPromise, timeoutPromise]);
       
       console.log('✅ LogMeal analysis completed');
-      console.log('📝 Response:', JSON.stringify(logmealResponse.data).substring(0, 200));
+      console.log('📝 Response status:', logmealResponse.status);
+      console.log('📝 Response data keys:', Object.keys(logmealResponse.data || {}));
+      console.log('📝 Response preview:', JSON.stringify(logmealResponse.data).substring(0, 500));
       
       // Parse LogMeal response and convert to our format
       let items = [];
@@ -217,8 +219,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       sugar: acc.sugar + (item.sugar || 0)
     }), { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0 });
 
-    // Get the model name that was actually used
-    const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    // Get the API name that was actually used
+    const modelName = 'logmeal-api';
 
     res.json({
       items,
@@ -232,17 +234,18 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       aiVersion: modelName,
       s3Configured: s3Configured || false
     });
-    } catch (geminiError) {
-      console.error('❌ Google Gemini API error:', geminiError);
+    } catch (logmealError) {
+      console.error('❌ LogMeal API error:', logmealError);
       console.error('❌ Error details:', {
-        message: geminiError.message,
-        status: geminiError.status,
-        statusCode: geminiError.statusCode,
-        code: geminiError.code
+        message: logmealError.message,
+        status: logmealError.response?.status,
+        statusCode: logmealError.response?.status,
+        code: logmealError.code,
+        responseData: logmealError.response?.data
       });
       
       // Check if it's a timeout
-      if (geminiError.message?.includes('timeout') || geminiError.message === 'Request timeout') {
+      if (logmealError.message?.includes('timeout') || logmealError.message === 'Request timeout' || logmealError.code === 'ECONNABORTED') {
         return res.status(504).json({ 
           message: 'Food analysis timed out. Please try again with a clearer photo.',
           error: 'Request timeout'
@@ -275,6 +278,15 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
         return res.status(429).json({ 
           message: 'Food recognition service is currently busy. Please try again in a moment.',
           error: 'Rate limit exceeded'
+        });
+      }
+      
+      // Check for bad request
+      if (logmealError.response?.status === 400) {
+        return res.status(400).json({ 
+          message: 'Invalid image format or request. Please try with a different photo.',
+          error: 'Bad request',
+          details: logmealError.response?.data?.message || logmealError.message
         });
       }
       

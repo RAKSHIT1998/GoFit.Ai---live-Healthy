@@ -372,7 +372,7 @@ final class AuthViewModel: ObservableObject {
         }
         
         // Clear test name from onboardingData if present
-        if var onboarding = self.onboardingData {
+        if let onboarding = self.onboardingData {
             if onboarding.name.lowercased() == "rakshit" || onboarding.name == "User" || onboarding.name == "Dev User" {
                 // Create new OnboardingData with cleared name
                 self.onboardingData = OnboardingData(

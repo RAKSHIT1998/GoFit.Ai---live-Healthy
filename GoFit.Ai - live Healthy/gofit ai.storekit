@@ -75,7 +75,10 @@
     {
       "id" : "D5FAB19C",
       "localizations" : [
-
+        {
+          "locale" : "en_US",
+          "name" : "Premium"
+        }
       ],
       "name" : "Premium",
       "subscriptions" : [
@@ -86,26 +89,59 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "1.99",
+          "displayPrice" : "9.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "07B734A4",
           "introductoryOffer" : {
-            "displayPrice" : "0.99",
+            "displayPrice" : "0.00",
             "internalID" : "BDFEDA8F",
             "paymentMode" : "free",
             "subscriptionPeriod" : "P3D"
           },
           "localizations" : [
             {
-              "description" : "",
-              "displayName" : "",
+              "description" : "Monthly premium subscription with access to all features including AI meal analysis, personalized workout plans, and health tracking.",
+              "displayName" : "Monthly Premium",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.rakshit.Gofit.ai.GoFit",
+          "productID" : "com.gofitai.premium.monthly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Monthly subscription",
+          "referenceName" : "Monthly Premium",
+          "subscriptionGroupID" : "D5FAB19C",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "79.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "08C845B5",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "internalID" : "CEFEDB9G",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "Yearly premium subscription with access to all features including AI meal analysis, personalized workout plans, and health tracking. Best value!",
+              "displayName" : "Yearly Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.gofitai.premium.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yearly Premium",
           "subscriptionGroupID" : "D5FAB19C",
           "type" : "RecurringSubscription",
           "winbackOffers" : [
