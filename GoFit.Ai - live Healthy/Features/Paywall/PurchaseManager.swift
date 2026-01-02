@@ -221,12 +221,11 @@ class PurchaseManager: ObservableObject {
 
                             // Check if in trial period - look at transaction purchase date vs current date
                             // If purchase was within last 3 days and has intro offer, likely in trial
-                            if let purchaseDate = transaction.purchaseDate {
-                                let daysSincePurchase = Calendar.current.dateComponents([.day], from: purchaseDate, to: Date()).day ?? 0
-                                if daysSincePurchase < 3 && product.subscription?.introductoryOffer != nil {
-                                    highestStatus = .trial
-                                    isInTrial = true
-                                }
+                            let purchaseDate = transaction.purchaseDate
+                            let daysSincePurchase = Calendar.current.dateComponents([.day], from: purchaseDate, to: Date()).day ?? 0
+                            if daysSincePurchase < 3 && product.subscription?.introductoryOffer != nil {
+                                highestStatus = .trial
+                                isInTrial = true
                             }
                         }
                     }
