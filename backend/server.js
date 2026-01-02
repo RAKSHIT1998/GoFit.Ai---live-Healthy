@@ -48,13 +48,15 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for auth routes (handled by separate auth limiters)
+    // Skip rate limiting for auth routes and recommendations (handled by separate limiters)
     // Check both req.path (relative to mount point) and req.originalUrl (full path)
     const path = req.path || '';
     const originalUrl = req.originalUrl || req.url || '';
     // When mounted at /api/, req.path for /api/auth/register is /auth/register
     // originalUrl contains the full path including /api/
-    return path.startsWith('/auth') || originalUrl.includes('/api/auth') || originalUrl.includes('/auth/');
+    const isAuthRoute = path.startsWith('/auth') || originalUrl.includes('/api/auth') || originalUrl.includes('/auth/');
+    const isRecommendationsRoute = path.startsWith('/recommendations') || originalUrl.includes('/api/recommendations');
+    return isAuthRoute || isRecommendationsRoute;
   }
 });
 
@@ -82,8 +84,18 @@ const authLimiter = rateLimit({
   }
 });
 
+// Rate limiter for recommendations (more lenient since it's a core feature)
+const recommendationsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Allow 200 recommendation requests per 15 minutes per IP (users may refresh frequently)
+  message: 'Too many recommendation requests. Please wait a moment and try again.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests (including successful ones)
+});
+
 // IMPORTANT: Apply limiters in order of specificity (most specific first)
-// This ensures registration requests hit registrationLimiter first, not general limiter
+// This ensures requests hit the correct limiter
 
 // Apply registration limiter specifically to registration endpoint (most specific)
 app.use('/api/auth/register', registrationLimiter);
@@ -91,8 +103,11 @@ app.use('/api/auth/register', registrationLimiter);
 // Apply auth limiter to other auth routes (login, me, etc.)
 app.use('/api/auth', authLimiter);
 
+// Apply recommendations limiter to recommendations routes
+app.use('/api/recommendations', recommendationsLimiter);
+
 // Apply general limiter to all other API routes (least specific, applied last)
-// The skip function ensures auth routes are not counted by this limiter
+// The skip function ensures auth and recommendations routes are not counted by this limiter
 app.use('/api/', limiter);
 
 // Body parsing
