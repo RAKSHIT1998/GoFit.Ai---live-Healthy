@@ -120,26 +120,18 @@ struct ProfileView: View {
                 .interactiveDismissDisabled(isLoading)
             }
             .onAppear {
-                // Check current authorization status when view appears
-                // This refreshes status if user granted permissions in Settings
                 healthKit.checkAuthorizationStatus()
                 healthSyncEnabled = healthKit.isAuthorized
                 
-                // If HealthKit is already authorized, start periodic sync
                 if healthKit.isAuthorized {
-                    print("✅ HealthKit already authorized on ProfileView appear - starting periodic sync")
                     healthKit.startPeriodicSync()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                // Refresh authorization status when app comes to foreground
-                // This handles cases where user grants permissions in Settings then returns to app
                 healthKit.checkAuthorizationStatus()
                 healthSyncEnabled = healthKit.isAuthorized
                 
-                // If HealthKit is now authorized, start periodic sync
                 if healthKit.isAuthorized {
-                    print("✅ HealthKit permission detected on foreground - starting periodic sync")
                     healthKit.startPeriodicSync()
                 }
             }

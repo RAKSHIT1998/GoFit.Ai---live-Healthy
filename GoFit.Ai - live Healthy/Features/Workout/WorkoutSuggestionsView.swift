@@ -619,14 +619,22 @@ struct WorkoutSuggestionsView: View {
                     print("❌ Error code: \(nsError.code), domain: \(nsError.domain)")
                     
                     // Check for specific error types
-                    if errorMessageText.contains("GEMINI_API_KEY") || 
+                    if errorMessageText.contains("OPENAI_API_KEY") || 
                        errorMessageText.contains("not configured") ||
                        errorMessageText.contains("AI recommendation service") {
-                        errorMessage = "AI recommendations are not configured. Please set GEMINI_API_KEY in Render environment variables."
+                        errorMessage = "AI recommendations are not configured. Please set OPENAI_API_KEY in Render environment variables."
                     } else if errorMessageText.contains("timeout") {
                         errorMessage = "Request timed out. Please try again."
+                    } else if errorMessageText.contains("rate limit") || errorMessageText.contains("currently busy") {
+                        errorMessage = "AI service is busy. Please try again in a moment."
                     } else {
-                        errorMessage = "Failed to load recommendations: \(errorMessageText)"
+                        // Extract error message from backend response if available
+                        if let errorData = try? JSONSerialization.jsonObject(with: Data(errorMessageText.utf8)) as? [String: Any],
+                           let message = errorData["message"] as? String {
+                            errorMessage = message
+                        } else {
+                            errorMessage = "Failed to load recommendations: \(errorMessageText)"
+                        }
                     }
                 } else {
                     errorMessage = "Failed to load recommendations: \(error.localizedDescription)"

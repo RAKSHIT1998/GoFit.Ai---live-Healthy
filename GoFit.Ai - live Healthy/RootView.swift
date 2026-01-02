@@ -26,10 +26,6 @@ struct RootView: View {
             }
         }
         .onAppear {
-            // Debug: Log current state
-            print("📱 RootView appeared - didFinishOnboarding: \(auth.didFinishOnboarding), isLoggedIn: \(auth.isLoggedIn)")
-        }
-        .onAppear {
             purchases.loadProducts()
             
             // Check subscription and trial status on app launch
@@ -39,67 +35,36 @@ struct RootView: View {
                 await purchases.checkTrialAndSubscriptionStatus()
             }
             
-            // Sync HealthKit if authorized and logged in
+            // Check HealthKit authorization and sync if logged in
             if auth.isLoggedIn {
-                // Refresh authorization status first - this checks if permission is already granted
                 healthKit.checkAuthorizationStatus()
-                
-                print("📊 HealthKit status on app launch: \(healthKit.isAuthorized ? "✅ Authorized" : "❌ Not authorized")")
-                
                 if healthKit.isAuthorized {
-                    // Permission is already granted - start periodic sync immediately
-                    print("✅ HealthKit permission already granted - starting periodic sync")
                     healthKit.startPeriodicSync()
-                    
                     Task {
-                        do {
-                            try await healthKit.syncToBackend()
-                            print("✅ HealthKit synced on app launch")
-                        } catch {
-                            print("⚠️ HealthKit sync on launch failed: \(error.localizedDescription)")
-                        }
+                        await healthKit.readTodayData()
+                        try? await healthKit.syncToBackend()
                     }
-                } else {
-                    print("ℹ️ HealthKit permission not granted yet - will not start sync until user grants permission")
                 }
-            } else {
-                // Stop periodic sync when user is not logged in
-                healthKit.stopPeriodicSync()
             }
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
             if newValue {
-                // When user logs in, sync HealthKit and check subscription
+                // When user logs in, check subscription and HealthKit
                 Task {
-                    // Check subscription and trial status
                     await purchases.updateSubscriptionStatus()
                     await purchases.checkSubscriptionStatus()
                     await purchases.checkTrialAndSubscriptionStatus()
                     
-                    // Refresh authorization status and sync HealthKit if authorized
                     healthKit.checkAuthorizationStatus()
-                    
-                    print("📊 HealthKit status after login: \(healthKit.isAuthorized ? "✅ Authorized" : "❌ Not authorized")")
-                    
                     if healthKit.isAuthorized {
-                        // Permission is already granted - start periodic sync immediately
-                        print("✅ HealthKit permission already granted - starting periodic sync after login")
                         healthKit.startPeriodicSync()
-                        
-                        do {
-                            try await healthKit.syncToBackend()
-                            print("✅ HealthKit synced after login")
-                        } catch {
-                            print("⚠️ HealthKit sync after login failed: \(error.localizedDescription)")
-                        }
-                    } else {
-                        print("ℹ️ HealthKit permission not granted yet - will not start sync until user grants permission")
+                        await healthKit.readTodayData()
+                        try? await healthKit.syncToBackend()
                     }
                 }
             } else {
-                // When user logs out, stop periodic sync
+                // When user logs out, stop HealthKit sync
                 healthKit.stopPeriodicSync()
-                print("🛑 Stopped HealthKit periodic sync - user logged out")
             }
         }
         .onChange(of: purchases.hasActiveSubscription) { oldValue, newValue in

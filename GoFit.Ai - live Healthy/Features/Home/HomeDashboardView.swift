@@ -1,5 +1,4 @@
 import SwiftUI
-import HealthKit
 
 struct HomeDashboardView: View {
 
@@ -49,7 +48,10 @@ struct HomeDashboardView: View {
                     await loadSummary()
                     await loadWaterIntake()
                     await loadHealthData()
-                    await syncHealthData()
+                    if healthKit.isAuthorized {
+                        await healthKit.readTodayData()
+                        try? await healthKit.syncToBackend()
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -711,43 +713,26 @@ struct HomeDashboardView: View {
     }
 
     private func syncHealthData() async {
-        // Check if HealthKit is available
-        guard HKHealthStore.isHealthDataAvailable() else {
-            print("⚠️ HealthKit is not available on this device")
-            return
-        }
-        
-        // Check current authorization status
+        // Use HealthKitService for syncing
         healthKit.checkAuthorizationStatus()
         
-        // Request authorization if not authorized
         if !healthKit.isAuthorized {
             do {
                 print("🔵 Requesting HealthKit authorization...")
                 try await healthKit.requestAuthorization()
-                // Re-check status after requesting
-                healthKit.checkAuthorizationStatus()
             } catch {
                 print("⚠️ HealthKit authorization failed: \(error.localizedDescription)")
                 return
             }
         }
         
-        // Only read data if authorized
         guard healthKit.isAuthorized else {
-            print("⚠️ HealthKit not authorized, skipping sync. Please enable HealthKit access in Settings > Privacy & Security > Health.")
             return
         }
         
-        do {
-            try await healthKit.readTodaySteps()
-            try await healthKit.readTodayActiveCalories()
-            try await healthKit.readHeartRate()
-            try await healthKit.syncToBackend()
-            print("✅ HealthKit data synced")
-        } catch {
-            print("⚠️ HealthKit sync error: \(error.localizedDescription)")
-        }
+        await healthKit.readTodayData()
+        try? await healthKit.syncToBackend()
+        print("✅ HealthKit data synced")
     }
 
     private func addWater() {

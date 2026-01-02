@@ -38,12 +38,22 @@ final class NetworkManager {
         }
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let httpResponse = resp as? HTTPURLResponse, 200...299 ~= httpResponse.statusCode else {
-            // try to decode error message
+            // try to decode error message from JSON response
             let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
-            if let errStr = String(data: data, encoding: .utf8) {
-                throw NSError(domain: "NetworkError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errStr])
+            var errorMessage = "Request failed with status code \(statusCode)"
+            
+            // Try to parse JSON error response
+            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let message = errorJson["message"] as? String {
+                    errorMessage = message
+                } else if let error = errorJson["error"] as? String {
+                    errorMessage = error
+                }
+            } else if let errStr = String(data: data, encoding: .utf8), !errStr.isEmpty {
+                errorMessage = errStr
             }
-            throw URLError(.badServerResponse)
+            
+            throw NSError(domain: "NetworkError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         return try JSONDecoder().decode(T.self, from: data)
     }

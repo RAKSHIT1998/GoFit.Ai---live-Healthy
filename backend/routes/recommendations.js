@@ -35,24 +35,42 @@ router.get('/daily', authMiddleware, async (req, res) => {
 
     if (!recommendation) {
       // Generate new recommendation
+      console.log('📝 No recommendation found for today, generating new one...');
       recommendation = await generateRecommendation(req.user);
+      console.log('✅ New recommendation generated successfully');
+    } else {
+      console.log('✅ Found existing recommendation for today');
     }
 
     res.json(recommendation);
   } catch (error) {
-    console.error('Get recommendations error:', error);
-    res.status(500).json({ message: 'Failed to get recommendations', error: error.message });
+    console.error('❌ Get recommendations error:', error);
+    console.error('❌ Error stack:', error.stack);
+    const errorMessage = error.message || 'Unknown error occurred';
+    res.status(500).json({ 
+      message: 'Failed to get recommendations', 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
 // Generate new recommendation
 router.post('/regenerate', authMiddleware, async (req, res) => {
   try {
+    console.log('📝 Regenerating recommendations for user:', req.user._id);
     const recommendation = await generateRecommendation(req.user);
+    console.log('✅ Recommendations regenerated successfully');
     res.json(recommendation);
   } catch (error) {
-    console.error('Regenerate recommendations error:', error);
-    res.status(500).json({ message: 'Failed to regenerate recommendations', error: error.message });
+    console.error('❌ Regenerate recommendations error:', error);
+    console.error('❌ Error stack:', error.stack);
+    const errorMessage = error.message || 'Unknown error occurred';
+    res.status(500).json({ 
+      message: 'Failed to regenerate recommendations', 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -281,11 +299,23 @@ You are an expert nutritionist and certified personal trainer with years of expe
 Ensure all recommendations are safe, achievable, and aligned with the user's profile.`;
 
   try {
+    // Check OpenAI API key first
+    if (!OPENAI_API_KEY || OPENAI_API_KEY.trim() === '') {
+      console.error('❌ OPENAI_API_KEY is not set or empty');
+      throw new Error('AI recommendation service is not configured. Please set OPENAI_API_KEY environment variable.');
+    }
+    
+    if (!openai) {
+      console.error('❌ OpenAI client not initialized');
+      throw new Error('AI recommendation service initialization failed.');
+    }
+    
     // Use OpenAI GPT-4o for recommendations (high quality and reliable)
     const modelPreference = process.env.OPENAI_MODEL || 'gpt-4o';
     
     console.log(`✅ Using OpenAI model: ${modelPreference} for recommendations`);
     console.log(`🤖 Making OpenAI API request for recommendations (user: ${user._id})...`);
+    console.log(`📊 User context: goals=${user.goals}, activityLevel=${user.activityLevel}, targetCalories=${user.metrics?.targetCalories || 2000}`);
     
     // Generate content with OpenAI
     const completion = await openai.chat.completions.create({

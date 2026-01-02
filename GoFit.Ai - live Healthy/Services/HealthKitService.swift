@@ -14,536 +14,208 @@ class HealthKitService: ObservableObject {
     @Published var restingHeartRate: Double = 0
     @Published var averageHeartRate: Double = 0
     
-    // Periodic sync task - thread-safe access via serial queue
-    // Using nonisolated(unsafe) with a serial queue to synchronize access
-    // from both @MainActor methods and deinit (which can run on any thread)
-    nonisolated(unsafe) private var periodicSyncTask: Task<Void, Never>?
-    // nonisolated queue to allow access from deinit (any thread) and @MainActor methods
-    nonisolated private let periodicSyncQueue = DispatchQueue(label: "com.gofit.healthkit.periodicSync")
+    private var periodicSyncTask: Task<Void, Never>?
     
     private init() {
         checkAuthorizationStatus()
         
         // Refresh authorization status when app comes to foreground
-        // This handles cases where user grants permissions in Settings
         NotificationCenter.default.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                guard let self = self else { return }
-                let wasAuthorized = self.isAuthorized
-                self.checkAuthorizationStatus()
-                
-                // If permission was just granted (was false, now true), start periodic sync
-                if !wasAuthorized && self.isAuthorized {
-                    print("✅ HealthKit permission granted! Starting periodic sync...")
-                    if AuthService.shared.readToken() != nil {
-                        self.startPeriodicSync()
-                        try? await self.syncToBackend()
-                    }
-                } else if self.isAuthorized, AuthService.shared.readToken() != nil {
-                    // Already authorized - just sync
-                    try? await self.syncToBackend()
-                }
+                self?.checkAuthorizationStatus()
             }
         }
-        
-        // Don't start periodic sync automatically - it will be started when user logs in
-        // This prevents syncing when user is not logged in
     }
     
     deinit {
-        // Cancel periodic sync task safely from any thread
-        // Use serial queue to ensure exclusive access
-        periodicSyncQueue.sync {
-            periodicSyncTask?.cancel()
-            periodicSyncTask = nil
-        }
+        stopPeriodicSync()
         NotificationCenter.default.removeObserver(self)
     }
     
-    // Start automatic periodic syncing (every 15 minutes)
-    // Should only be called when user is logged in
-    func startPeriodicSync() {
-        // Cancel any existing sync task
-        stopPeriodicSync()
-        
-        // Create new task and store it safely
-        let newTask = Task { [weak self] in
-            while !Task.isCancelled {
-                // Wait 15 minutes
-                try? await Task.sleep(nanoseconds: 15 * 60 * 1_000_000_000)
-                
-                // Check if user is still logged in before syncing
-                guard let self = self,
-                      self.isAuthorized,
-                      AuthService.shared.readToken() != nil else {
-                    // User logged out or not authorized, stop periodic sync
-                    print("⚠️ Stopping periodic sync - user not logged in or not authorized")
-                    return
-                }
-                
-                do {
-                    try await self.syncToBackend()
-                    print("✅ Periodic HealthKit sync completed")
-                } catch {
-                    print("⚠️ Periodic HealthKit sync failed: \(error.localizedDescription)")
-                    // If sync fails due to auth, stop periodic sync
-                    let nsError = error as NSError
-                    if nsError.domain == "AuthError" || nsError.code == 401 {
-                        print("⚠️ Auth error detected, stopping periodic sync")
-                        return
-                    }
-                }
-            }
-        }
-        
-        // Store the task safely using serial queue to ensure exclusive write access
-        periodicSyncQueue.sync {
-            periodicSyncTask = newTask
-        }
-    }
+    // MARK: - Authorization
     
-    // Stop automatic periodic syncing
-    func stopPeriodicSync() {
-        // Use serial queue to ensure exclusive access when canceling and clearing
-        periodicSyncQueue.sync {
-            periodicSyncTask?.cancel()
-            periodicSyncTask = nil
-        }
-    }
-    
-    // Request authorization
-    func requestAuthorization() async throws {
-        guard HKHealthStore.isHealthDataAvailable() else {
-            print("⚠️ HealthKit is not available on this device")
-            throw HealthKitError.notAvailable
-        }
-        
-        // Check if already authorized before requesting
-        checkAuthorizationStatus()
-        if isAuthorized {
-            print("✅ HealthKit already authorized, skipping request")
-            return
-        }
-        
-        // Check if HealthKit entitlement is available
-        // If not, fail gracefully without crashing
-        do {
-            let typesToRead: Set<HKObjectType> = [
-                HKObjectType.quantityType(forIdentifier: .stepCount)!,
-                HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-                HKObjectType.quantityType(forIdentifier: .heartRate)!,
-                HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
-                HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-                HKObjectType.quantityType(forIdentifier: .height)!
-            ]
-            
-            let typesToWrite: Set<HKSampleType> = [
-                HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-                HKObjectType.quantityType(forIdentifier: .dietaryWater)!
-            ]
-            
-            print("🔵 Requesting HealthKit authorization...")
-            try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
-            
-            // Wait a moment for authorization to be processed
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            
-            // Re-check authorization status after requesting
-            checkAuthorizationStatus()
-            print("📊 HealthKit authorization status after request: \(isAuthorized ? "✅ Authorized" : "❌ Not authorized")")
-            
-            // If authorized, immediately try to read data to show HealthKit we're using it
-            // This helps HealthKit show the app as "collecting data" in Settings
-            if isAuthorized {
-                print("📖 Reading HealthKit data immediately after authorization to register usage...")
-                do {
-                    try await readTodaySteps()
-                    try await readTodayActiveCalories()
-                    print("✅ Successfully read HealthKit data - app should now show as collecting data in Settings")
-                    
-                    // Start periodic sync immediately if user is logged in
-                    if AuthService.shared.readToken() != nil {
-                        print("🔄 Starting HealthKit periodic sync immediately after authorization...")
-                        startPeriodicSync()
-                        
-                        // Also sync to backend immediately
-                        Task {
-                            do {
-                                try await syncToBackend()
-                                print("✅ HealthKit synced to backend immediately after authorization")
-                            } catch {
-                                print("⚠️ HealthKit sync to backend failed: \(error.localizedDescription)")
-                            }
-                        }
-                    } else {
-                        print("ℹ️ User not logged in - periodic sync will start after login")
-                    }
-                } catch {
-                    print("⚠️ Failed to read HealthKit data immediately after authorization: \(error.localizedDescription)")
-                    // Don't throw - authorization was successful, reading can fail for other reasons
-                    // Still start periodic sync if user is logged in
-                    if AuthService.shared.readToken() != nil {
-                        print("🔄 Starting HealthKit periodic sync despite read error...")
-                        startPeriodicSync()
-                    }
-                }
-            }
-        } catch {
-            print("⚠️ HealthKit authorization error: \(error.localizedDescription)")
-            // If entitlement is missing, log but don't crash
-            if (error as NSError).domain == "com.apple.healthkit" && (error as NSError).code == 4 {
-                print("⚠️ HealthKit entitlement is missing. Please enable HealthKit capability in Xcode.")
-            }
-            // Re-check status even on error
-            checkAuthorizationStatus()
-            throw error
-        }
-    }
-    
-    // Check authorization status
     func checkAuthorizationStatus() {
         guard HKHealthStore.isHealthDataAvailable() else {
-            print("⚠️ HealthKit not available on this device")
-            // Direct assignment is safe since class is @MainActor
             isAuthorized = false
             return
         }
         
-        // Check authorization for primary types (steps and active calories)
-        // These types should always be available in HealthKit
-        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount),
-              let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
-            print("⚠️ HealthKit types not available")
-            // Direct assignment is safe since class is @MainActor
-            isAuthorized = false
-            return
-        }
+        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
         
-        // Check authorization status for primary types
         let stepStatus = healthStore.authorizationStatus(for: stepType)
         let caloriesStatus = healthStore.authorizationStatus(for: caloriesType)
         
-        // For read types, authorization status can be:
-        // .notDetermined - user hasn't been asked yet
-        // .sharingDenied - user explicitly denied
-        // .sharingAuthorized - user granted read access
-        // Note: For read-only types, .sharingAuthorized means we can read data
-        let isStepAuthorized = stepStatus == .sharingAuthorized
-        let isCaloriesAuthorized = caloriesStatus == .sharingAuthorized
-        
-        // App is authorized if at least one primary type is explicitly authorized
-        // We only consider it authorized if status is .sharingAuthorized (not just not denied)
-        let newAuthorizedStatus = isStepAuthorized || isCaloriesAuthorized
-        
-        // Check heart rate for logging (optional type, doesn't affect isAuthorized)
-        var heartRateAuthorized = false
-        if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
-            let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
-            heartRateAuthorized = heartRateStatus == .sharingAuthorized
-        }
-        
-        // Log detailed status for debugging
-        let stepStatusString = statusString(for: stepStatus)
-        let caloriesStatusString = statusString(for: caloriesStatus)
-        
-        print("📊 HealthKit Authorization Status Check:")
-        print("   Steps: \(isStepAuthorized ? "✅ Authorized" : "❌ Not authorized") - Status: \(stepStatusString) (\(stepStatus.rawValue))")
-        print("   Active Calories: \(isCaloriesAuthorized ? "✅ Authorized" : "❌ Not authorized") - Status: \(caloriesStatusString) (\(caloriesStatus.rawValue))")
-        if let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
-            let heartRateStatus = healthStore.authorizationStatus(for: heartRateType)
-            let heartRateStatusString = statusString(for: heartRateStatus)
-            print("   Heart Rate: \(heartRateAuthorized ? "✅ Authorized" : "❌ Not authorized") - Status: \(heartRateStatusString) (\(heartRateStatus.rawValue)) [Optional]")
-        }
-        print("   Overall: \(newAuthorizedStatus ? "✅ Authorized" : "❌ Not authorized")")
-        if newAuthorizedStatus && (!isStepAuthorized || !isCaloriesAuthorized) {
-            print("   ⚠️ Partial authorization: Some primary types are not authorized")
-        }
-        
-        // Direct assignment is safe since class is @MainActor-annotated
-        // No need for async task dispatch - avoids race conditions
-        isAuthorized = newAuthorizedStatus
+        isAuthorized = (stepStatus == .sharingAuthorized) && (caloriesStatus == .sharingAuthorized)
     }
     
-    // Force refresh authorization status (useful after user changes settings)
-    func refreshAuthorizationStatus() {
+    func requestAuthorization() async throws {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw HealthKitError.notAvailable
+        }
+        
+        let typesToRead: Set<HKObjectType> = [
+            HKQuantityType.quantityType(forIdentifier: .stepCount)!,
+            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        ]
+        
+        let typesToWrite: Set<HKSampleType> = [
+            HKQuantityType.quantityType(forIdentifier: .stepCount)!,
+            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+        ]
+        
+        try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
+        
         checkAuthorizationStatus()
-    }
-    
-    // Helper to convert authorization status to readable string
-    private func statusString(for status: HKAuthorizationStatus) -> String {
-        switch status {
-        case .notDetermined:
-            return "Not Determined"
-        case .sharingDenied:
-            return "Denied"
-        case .sharingAuthorized:
-            return "Authorized"
-        @unknown default:
-            return "Unknown"
-        }
-    }
-    
-    // Read today's steps
-    func readTodaySteps() async throws {
-        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else {
-            throw HealthKitError.invalidType
-        }
         
-        // Check authorization status before reading
-        let authStatus = healthStore.authorizationStatus(for: stepType)
-        guard authStatus == .sharingAuthorized else {
-            if authStatus == .notDetermined {
-                throw HealthKitError.authorizationNotDetermined
-            }
-            // If denied, silently fail (user has explicitly denied)
-            return
+        // Read data immediately after authorization
+        if isAuthorized {
+            await readTodayData()
         }
+    }
+    
+    // MARK: - Data Reading
+    
+    func readTodayData() async {
+        await readTodaySteps()
+        await readTodayActiveCalories()
+        await readHeartRate()
+    }
+    
+    private func readTodaySteps() async {
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
         
         let calendar = Calendar.current
         let now = Date()
         let startOfDay = calendar.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-                if let error = error {
-                    print("Error reading steps: \(error)")
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                guard let self = self, let result = result, let sum = result.sumQuantity() else {
-                    continuation.resume(returning: ())
-                    return
-                }
-                
-                Task { @MainActor in
-                    self.todaySteps = Int(sum.doubleValue(for: HKUnit.count()))
-                }
-                continuation.resume(returning: ())
+        let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
+            guard let self = self, let result = result, let sum = result.sumQuantity() else {
+                return
             }
             
-            healthStore.execute(query)
-        }
-    }
-    
-    // Read today's active calories
-    func readTodayActiveCalories() async throws {
-        guard let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
-            throw HealthKitError.invalidType
+            Task { @MainActor in
+                self.todaySteps = Int(sum.doubleValue(for: HKUnit.count()))
+            }
         }
         
-        // Check authorization status before reading
-        let authStatus = healthStore.authorizationStatus(for: energyType)
-        guard authStatus == .sharingAuthorized else {
-            if authStatus == .notDetermined {
-                throw HealthKitError.authorizationNotDetermined
-            }
-            // If denied, silently fail (user has explicitly denied)
-            return
-        }
+        healthStore.execute(query)
+    }
+    
+    private func readTodayActiveCalories() async {
+        guard let caloriesType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
         
         let calendar = Calendar.current
         let now = Date()
         let startOfDay = calendar.startOfDay(for: now)
         let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
         
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
-                if let error = error {
-                    print("Error reading active calories: \(error)")
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                guard let self = self, let result = result, let sum = result.sumQuantity() else {
-                    continuation.resume(returning: ())
-                    return
-                }
-                
-                Task { @MainActor in
-                    self.todayActiveCalories = sum.doubleValue(for: HKUnit.kilocalorie())
-                }
-                continuation.resume(returning: ())
+        let query = HKStatisticsQuery(quantityType: caloriesType, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, error in
+            guard let self = self, let result = result, let sum = result.sumQuantity() else {
+                return
             }
             
-            healthStore.execute(query)
-        }
-    }
-    
-    // Read heart rate
-    func readHeartRate() async throws {
-        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
-            throw HealthKitError.invalidType
+            Task { @MainActor in
+                self.todayActiveCalories = sum.doubleValue(for: HKUnit.kilocalorie())
+            }
         }
         
-        // Check authorization status before reading
-        let authStatus = healthStore.authorizationStatus(for: heartRateType)
-        guard authStatus == .sharingAuthorized else {
-            if authStatus == .notDetermined {
-                throw HealthKitError.authorizationNotDetermined
-            }
-            // If denied, silently fail (user has explicitly denied)
-            return
-        }
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-            let group = DispatchGroup()
-            var queryError: Error?
-            
-            // Read average heart rate
-            group.enter()
-            let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
-                defer { group.leave() }
-                
-                if let error = error {
-                    queryError = error
-                    return
-                }
-                
-                if let self = self, let sample = samples?.first as? HKQuantitySample {
-                    Task { @MainActor in
-                        self.averageHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-                    }
-                }
-            }
-            
-            healthStore.execute(query)
-            
-            // Read resting heart rate
-            if let restingType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) {
-                group.enter()
-                let restingQuery = HKSampleQuery(sampleType: restingType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
-                    defer { group.leave() }
-                    
-                    if let error = error {
-                        queryError = error
-                        return
-                    }
-                    
-                    if let self = self, let sample = samples?.first as? HKQuantitySample {
-                        Task { @MainActor in
-                            self.restingHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-                        }
-                    }
-                }
-                
-                healthStore.execute(restingQuery)
-            }
-            
-            // Wait for both queries to complete
-            group.notify(queue: .main) {
-                if let error = queryError {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: ())
-                }
-            }
-        }
+        healthStore.execute(query)
     }
     
-    // Sync data to backend
+    private func readHeartRate() async {
+        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
+        
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let query = HKSampleQuery(sampleType: heartRateType, predicate: nil, limit: 1, sortDescriptors: [sortDescriptor]) { [weak self] _, samples, error in
+            guard let self = self,
+                  let sample = samples?.first as? HKQuantitySample else {
+                return
+            }
+            
+            Task { @MainActor in
+                let heartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                self.restingHeartRate = heartRate
+                self.averageHeartRate = heartRate
+            }
+        }
+        
+        healthStore.execute(query)
+    }
+    
+    // MARK: - Backend Sync
+    
     func syncToBackend() async throws {
-        // Check authorization first
         guard isAuthorized else {
-            print("⚠️ HealthKit not authorized, skipping sync")
             throw HealthKitError.notAuthorized
         }
         
-        let today = Date()
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: today)
-        
-        print("🔄 Starting HealthKit sync to backend...")
-        
-        // Read all today's data
-        do {
-            try await readTodaySteps()
-            try await readTodayActiveCalories()
-            try await readHeartRate()
-        } catch {
-            print("❌ Error reading HealthKit data: \(error.localizedDescription)")
-            throw error
+        guard let token = AuthService.shared.readToken()?.accessToken else {
+            throw HealthKitError.notAuthenticated
         }
         
-        // Prepare sync data
-        let syncData: [String: Any] = [
-            "steps": todaySteps,
-            "activeCalories": todayActiveCalories,
-            "heartRate": [
-                "resting": restingHeartRate > 0 ? restingHeartRate : nil,
-                "average": averageHeartRate > 0 ? averageHeartRate : nil
-            ],
-            "date": ISO8601DateFormatter().string(from: startOfDay)
-        ]
-        
-        print("📊 Syncing data: steps=\(todaySteps), calories=\(todayActiveCalories), heartRate=\(averageHeartRate)")
-        
-        // Send to backend
         let url = URL(string: "\(NetworkManager.shared.baseURL)/health/sync")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30.0
-        
-        guard let token = AuthService.shared.readToken()?.accessToken else {
-            print("❌ No auth token found for HealthKit sync")
-            throw HealthKitError.notAuthorized
-        }
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: syncData)
-        } catch {
-            print("❌ Error encoding sync data: \(error.localizedDescription)")
-            throw error
-        }
+        let body: [String: Any] = [
+            "steps": todaySteps,
+            "activeCalories": todayActiveCalories,
+            "heartRate": restingHeartRate > 0 ? restingHeartRate : nil
+        ]
         
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("❌ Invalid response from backend")
-                throw NSError(domain: "HealthKitSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from server"])
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-                print("❌ Backend sync failed with status \(httpResponse.statusCode): \(errorMessage)")
-                throw NSError(domain: "HealthKitSync", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to sync health data: \(errorMessage)"])
-            }
-            
-            print("✅ HealthKit data synced successfully to backend")
-        } catch {
-            print("❌ Network error during HealthKit sync: \(error.localizedDescription)")
-            throw error
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw HealthKitError.syncFailed
         }
     }
     
-    // Write water intake
-    func writeWater(amount: Double) async throws {
-        guard let waterType = HKQuantityType.quantityType(forIdentifier: .dietaryWater) else {
-            throw HealthKitError.invalidType
+    // MARK: - Periodic Sync
+    
+    func startPeriodicSync() {
+        stopPeriodicSync()
+        
+        periodicSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 15 * 60 * 1_000_000_000) // 15 minutes
+                
+                guard let self = self,
+                      self.isAuthorized,
+                      AuthService.shared.readToken() != nil else {
+                    return
+                }
+                
+                await self.readTodayData()
+                try? await self.syncToBackend()
+            }
         }
-        
-        let quantity = HKQuantity(unit: HKUnit.literUnit(with: .milli), doubleValue: amount * 1000) // Convert liters to milliliters
-        let sample = HKQuantitySample(type: waterType, quantity: quantity, start: Date(), end: Date())
-        
-        try await healthStore.save(sample)
+    }
+    
+    func stopPeriodicSync() {
+        periodicSyncTask?.cancel()
+        periodicSyncTask = nil
     }
 }
+
+// MARK: - Errors
 
 enum HealthKitError: LocalizedError {
     case notAvailable
     case notAuthorized
-    case invalidType
-    case authorizationDenied
-    case authorizationNotDetermined
+    case notAuthenticated
+    case syncFailed
     
     var errorDescription: String? {
         switch self {
@@ -551,12 +223,10 @@ enum HealthKitError: LocalizedError {
             return "HealthKit is not available on this device"
         case .notAuthorized:
             return "HealthKit authorization not granted"
-        case .invalidType:
-            return "Invalid HealthKit type"
-        case .authorizationDenied:
-            return "HealthKit authorization denied"
-        case .authorizationNotDetermined:
-            return "HealthKit authorization not determined. Please request authorization first."
+        case .notAuthenticated:
+            return "User not authenticated"
+        case .syncFailed:
+            return "Failed to sync HealthKit data to backend"
         }
     }
 }
