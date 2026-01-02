@@ -186,7 +186,7 @@ struct HomeDashboardView: View {
                     }
                     
                     // Progress bar for calories
-                    if let target = targetCalories, todayCalories != "—", let current = Int(todayCalories) {
+                    if let target = targetCalories, target > 0, todayCalories != "—", let current = Int(todayCalories) {
                         let progress = min(Double(current) / Double(target), 1.0)
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {

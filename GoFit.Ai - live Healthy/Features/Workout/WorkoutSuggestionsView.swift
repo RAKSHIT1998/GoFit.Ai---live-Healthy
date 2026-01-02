@@ -580,7 +580,7 @@ struct WorkoutSuggestionsView: View {
         }
         
         do {
-            // Try to fetch from backend
+            // Try to fetch from backend with retry logic
             if !EnvironmentConfig.skipAuthentication {
                 let endpoint: String
                 let method: String
@@ -595,11 +595,15 @@ struct WorkoutSuggestionsView: View {
                     method = "GET"
                 }
                 
-                let response: RecommendationResponse = try await NetworkManager.shared.request(
-                    endpoint,
-                    method: method,
-                    body: nil
-                )
+                // Retry with exponential backoff - up to 5 attempts
+                let response: RecommendationResponse = try await RetryUtility.shared.retry(maxAttempts: 5) {
+                    try await NetworkManager.shared.request(
+                        endpoint,
+                        method: method,
+                        body: nil
+                    )
+                }
+                
                 await MainActor.run {
                     recommendation = response
                     errorMessage = nil
@@ -611,39 +615,33 @@ struct WorkoutSuggestionsView: View {
                 }
             }
         } catch {
-            print("❌ Error loading recommendations: \(error)")
+            print("❌ Error loading recommendations after retries: \(error)")
+            
+            // If all retries fail, use fallback data (50+ built-in meals and workouts)
+            print("⚠️ Using built-in fallback recommendations (server unavailable)")
+            
+            // Get user's goal and activity level for personalized fallback
+            let goal = auth.goal.isEmpty ? "maintain" : auth.goal
+            let activityLevel = "moderate" // Default, could be enhanced to get from user profile
+            
+            let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4)
+            let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4)
+            
+            let fallbackRecommendation = RecommendationResponse(
+                mealPlan: fallbackMeals,
+                workoutPlan: fallbackWorkouts,
+                hydrationGoal: HydrationGoal(targetLiters: 2.5),
+                insights: [
+                    "Using built-in recommendations while server is unavailable",
+                    "These are high-quality meal and workout options from our curated database",
+                    "Your personalized AI recommendations will return when the server is back online"
+                ]
+            )
+            
             await MainActor.run {
-                if let nsError = error as NSError? {
-                    let errorMessageText = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
-                    print("❌ Error details: \(errorMessageText)")
-                    print("❌ Error code: \(nsError.code), domain: \(nsError.domain)")
-                    
-                    // Check for specific error types
-                    if errorMessageText.contains("OPENAI_API_KEY") || 
-                       errorMessageText.contains("not configured") ||
-                       errorMessageText.contains("AI recommendation service") {
-                        errorMessage = "AI recommendations are not configured. Please set OPENAI_API_KEY in Render environment variables."
-                    } else if errorMessageText.contains("timeout") {
-                        errorMessage = "Request timed out. Please try again."
-                    } else if errorMessageText.contains("rate limit") || errorMessageText.contains("currently busy") {
-                        errorMessage = "AI service is busy. Please try again in a moment."
-                    } else {
-                        // Extract error message from backend response if available
-                        if let errorData = try? JSONSerialization.jsonObject(with: Data(errorMessageText.utf8)) as? [String: Any],
-                           let message = errorData["message"] as? String {
-                            errorMessage = message
-                        } else {
-                            errorMessage = "Failed to load recommendations: \(errorMessageText)"
-                        }
-                    }
-                } else {
-                    errorMessage = "Failed to load recommendations: \(error.localizedDescription)"
-                }
-                
-                // Only use mock data if we have no recommendation at all
-                if recommendation == nil {
-                    recommendation = mockRecommendation
-                }
+                recommendation = fallbackRecommendation
+                errorMessage = nil // Don't show error, just use fallback silently
+                print("✅ Loaded fallback recommendations successfully")
             }
         }
     }
