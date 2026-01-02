@@ -20,7 +20,7 @@ struct RetryUtility {
      * - Throws: Error if all attempts fail
      */
     func retry<T>(
-        maxAttempts: Int = maxRetries,
+        maxAttempts: Int = RetryUtility.maxRetries,
         operation: @escaping () async throws -> T
     ) async throws -> T {
         var lastError: Error?
@@ -42,7 +42,7 @@ struct RetryUtility {
                 }
                 
                 // Calculate exponential backoff delay
-                let delay = baseDelay * pow(2.0, Double(attempt))
+                let delay = RetryUtility.baseDelay * pow(2.0, Double(attempt))
                 
                 #if DEBUG
                 print("🔄 Retry attempt \(attempt + 1)/\(maxAttempts) after \(delay)s delay...")
