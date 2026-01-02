@@ -331,11 +331,47 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       // Ensure exercises is an array
       if (typeof recommendationData.workoutPlan.exercises === 'string') {
         console.log('⚠️ Exercises is a string, attempting to parse...');
+        console.log('📝 Exercises string preview:', recommendationData.workoutPlan.exercises.substring(0, 200));
         try {
-          // Try to parse the string as JSON
-          recommendationData.workoutPlan.exercises = JSON.parse(recommendationData.workoutPlan.exercises);
+          // The string might be a JavaScript code representation with concatenation
+          // Try to clean it up first
+          let exerciseString = recommendationData.workoutPlan.exercises;
+          
+          // Remove JavaScript string concatenation patterns (handle various formats)
+          // Pattern: ' +\n' + '  {' or " +\n" + "  {"
+          exerciseString = exerciseString.replace(/' \+\s*\\n\s*'\s*\+\s*/g, '');
+          exerciseString = exerciseString.replace(/" \+\s*\\n\s*"\s*\+\s*/g, '');
+          exerciseString = exerciseString.replace(/' \+\n\s*'/g, '');
+          exerciseString = exerciseString.replace(/" \+\n\s*"/g, '');
+          
+          // Replace escaped newlines with actual newlines
+          exerciseString = exerciseString.replace(/\\n/g, '\n');
+          exerciseString = exerciseString.replace(/\\'/g, "'");
+          exerciseString = exerciseString.replace(/\\"/g, '"');
+          
+          // Remove any remaining concatenation operators
+          exerciseString = exerciseString.replace(/\s*\+\s*/g, ' ');
+          
+          // Try to extract JSON array from the string (most reliable)
+          const arrayMatch = exerciseString.match(/\[[\s\S]*\]/);
+          if (arrayMatch) {
+            try {
+              recommendationData.workoutPlan.exercises = JSON.parse(arrayMatch[0]);
+              console.log('✅ Successfully parsed exercises from extracted array');
+            } catch (parseError) {
+              // If the extracted array doesn't parse, try the whole string
+              console.log('⚠️ Extracted array failed to parse, trying full string...');
+              recommendationData.workoutPlan.exercises = JSON.parse(exerciseString);
+              console.log('✅ Successfully parsed exercises from cleaned string');
+            }
+          } else {
+            // Try parsing the entire cleaned string
+            recommendationData.workoutPlan.exercises = JSON.parse(exerciseString);
+            console.log('✅ Successfully parsed exercises from cleaned string');
+          }
         } catch (e) {
           console.error('❌ Failed to parse exercises string:', e);
+          console.error('📝 Full exercises string (first 500 chars):', recommendationData.workoutPlan.exercises.substring(0, 500));
           // If parsing fails, set to empty array
           recommendationData.workoutPlan.exercises = [];
         }

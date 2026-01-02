@@ -20,9 +20,13 @@ struct CameraView: UIViewRepresentable {
             setup()
         }
 
+        // Use a serial queue to prevent race conditions with session configuration
+        private let sessionQueue = DispatchQueue(label: "com.gofit.camera.session")
+        private var isConfigured = false
+        
         func setup() {
-            // Start camera setup on high priority queue for instant opening
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            // Start camera setup on serial queue to prevent race conditions
+            sessionQueue.async { [weak self] in
                 guard let self = self else { return }
                 
                 self.session.beginConfiguration()
@@ -64,17 +68,20 @@ struct CameraView: UIViewRepresentable {
                 }
                 
                 self.session.commitConfiguration()
+                self.isConfigured = true
                 
-                // Start session immediately - no delay
-                self.session.startRunning()
+                // Start session after configuration is complete
+                if !self.session.isRunning {
+                    self.session.startRunning()
+                }
             }
         }
 
         func start() { 
-            if !session.isRunning { 
-                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                    self?.session.startRunning()
-                }
+            // Use the same serial queue to prevent conflicts
+            sessionQueue.async { [weak self] in
+                guard let self = self, self.isConfigured, !self.session.isRunning else { return }
+                self.session.startRunning()
             }
         }
         func stop() { if session.isRunning { session.stopRunning() } }

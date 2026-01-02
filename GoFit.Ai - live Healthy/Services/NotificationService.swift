@@ -13,7 +13,8 @@ class NotificationService: ObservableObject {
     
     private init() {
         loadSettings()
-        requestAuthorization()
+        // Check current authorization status first
+        checkAuthorizationStatusAndSchedule()
     }
     
     // MARK: - Authorization
@@ -21,10 +22,13 @@ class NotificationService: ObservableObject {
     func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
             Task { @MainActor in
-                self?.notificationsEnabled = granted
+                guard let self = self else { return }
+                self.notificationsEnabled = granted
+                // Persist the actual authorization result to UserDefaults
+                self.saveSettings()
                 if granted {
                     print("✅ Notification permission granted")
-                    self?.scheduleAllNotifications()
+                    self.scheduleAllNotifications()
                 } else {
                     print("❌ Notification permission denied")
                 }
@@ -39,6 +43,26 @@ class NotificationService: ObservableObject {
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             Task { @MainActor in
                 self?.notificationsEnabled = settings.authorizationStatus == .authorized
+            }
+        }
+    }
+    
+    // Check authorization status and schedule notifications if already authorized
+    private func checkAuthorizationStatusAndSchedule() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            Task { @MainActor in
+                guard let self = self else { return }
+                let wasAuthorized = self.notificationsEnabled
+                self.notificationsEnabled = settings.authorizationStatus == .authorized
+                
+                // If already authorized and notifications are enabled in settings, schedule them
+                if self.notificationsEnabled && (self.mealRemindersEnabled || self.waterRemindersEnabled || self.workoutRemindersEnabled) {
+                    print("✅ Notifications already authorized - scheduling reminders")
+                    self.scheduleAllNotifications()
+                } else if !self.notificationsEnabled && wasAuthorized {
+                    // Permission was revoked, clear notifications
+                    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+                }
             }
         }
     }
