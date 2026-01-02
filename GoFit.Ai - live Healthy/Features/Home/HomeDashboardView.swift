@@ -21,6 +21,9 @@ struct HomeDashboardView: View {
 
     @State private var fastingStatus = "Not fasting"
     @State private var waterIntake: Double = 0
+    
+    // AI-calculated target calories from onboarding
+    @State private var targetCalories: Int? = nil
 
     @State private var isLoading = false
     @State private var animateCards = false
@@ -115,6 +118,7 @@ struct HomeDashboardView: View {
                 }
 
                 Task {
+                    await loadTargetCalories() // Load AI-calculated target calories
                     await loadSummary()
                     await loadWaterIntake()
                     await loadHealthData() // Load from backend first
@@ -154,13 +158,51 @@ struct HomeDashboardView: View {
             // Header with Share Button
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Calories")
-                        .font(Design.Typography.subheadline)
-                        .foregroundColor(.secondary)
-                    Text(todayCalories)
-                        .font(Design.Typography.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                    HStack(spacing: 4) {
+                        Text("Calories")
+                            .font(Design.Typography.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        // AI badge to show this is AI-calculated
+                        if targetCalories != nil {
+                            Image(systemName: "sparkles")
+                                .font(.caption2)
+                                .foregroundColor(Design.Colors.primary)
+                        }
+                    }
+                    
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(todayCalories)
+                            .font(Design.Typography.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        
+                        // Show target calories if available
+                        if let target = targetCalories {
+                            Text("/ \(target)")
+                                .font(Design.Typography.title3)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Progress bar for calories
+                    if let target = targetCalories, todayCalories != "—", let current = Int(todayCalories) {
+                        let progress = min(Double(current) / Double(target), 1.0)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.gray.opacity(0.1))
+                                    .frame(height: 8)
+                                
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(progress >= 1.0 ? Design.Colors.sugar : Design.Colors.primary)
+                                    .frame(width: geo.size.width * min(progress, 1.0), height: 8)
+                                    .animation(Design.Animation.smooth, value: progress)
+                            }
+                        }
+                        .frame(height: 8)
+                        .padding(.top, 4)
+                    }
                 }
                 
                 Spacer()
@@ -544,6 +586,48 @@ struct HomeDashboardView: View {
     }
 
     // MARK: - Data
+    
+    // Load AI-calculated target calories from user profile
+    private func loadTargetCalories() async {
+        guard auth.isLoggedIn else {
+            return
+        }
+        
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            return
+        }
+        
+        do {
+            struct UserProfile: Codable {
+                let id: String
+                let name: String
+                let email: String
+                let metrics: Metrics?
+            }
+            
+            struct Metrics: Codable {
+                let targetCalories: Int?
+            }
+            
+            let profile: UserProfile = try await NetworkManager.shared.request(
+                "auth/me",
+                method: "GET",
+                body: nil
+            )
+            
+            await MainActor.run {
+                targetCalories = profile.metrics?.targetCalories
+                if let target = targetCalories {
+                    print("✅ Loaded AI-calculated target calories: \(target) kcal")
+                } else {
+                    print("⚠️ No target calories found in user profile")
+                }
+            }
+        } catch {
+            print("⚠️ Failed to load target calories: \(error.localizedDescription)")
+        }
+    }
+    
     private func loadSummary() async {
         // Check if user is logged in and has valid token
         guard auth.isLoggedIn else {
