@@ -492,7 +492,7 @@ struct MealScannerView3: View {
         // Automatically compress and optimize image on background queue
         // User never sees this - it happens transparently
         let data = await Task.detached(priority: .userInitiated) {
-            return compressImageAutomatically(image)
+            return await compressImageAutomatically(image)
         }.value
         
         guard let data = data else {

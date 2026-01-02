@@ -43,12 +43,12 @@ app.use(cors({
 // Rate limiting - General API routes (excludes auth routes which have their own limiters)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // Increased to 500 requests per 15 minutes (was 100 - too restrictive for mobile app)
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for auth routes and recommendations (handled by separate limiters)
+    // Skip rate limiting for auth routes, recommendations, and photo analysis (handled by separate limiters)
     // Check both req.path (relative to mount point) and req.originalUrl (full path)
     const path = req.path || '';
     const originalUrl = req.originalUrl || req.url || '';
@@ -56,14 +56,15 @@ const limiter = rateLimit({
     // originalUrl contains the full path including /api/
     const isAuthRoute = path.startsWith('/auth') || originalUrl.includes('/api/auth') || originalUrl.includes('/auth/');
     const isRecommendationsRoute = path.startsWith('/recommendations') || originalUrl.includes('/api/recommendations');
-    return isAuthRoute || isRecommendationsRoute;
+    const isPhotoRoute = path.startsWith('/photo') || originalUrl.includes('/api/photo');
+    return isAuthRoute || isRecommendationsRoute || isPhotoRoute;
   }
 });
 
 // Rate limiter specifically for registration (lenient for onboarding, but prevents abuse)
 const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Allow 100 registration attempts per 15 minutes per IP (increased for onboarding)
+  max: 200, // Increased to 200 registration attempts per 15 minutes per IP (was 100)
   message: 'Too many registration attempts. Please wait a few minutes and try again.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -73,22 +74,34 @@ const registrationLimiter = rateLimit({
 // Rate limiter for other authentication routes (login, me, etc.)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Allow 100 login/other auth attempts per 15 minutes per IP
+  max: 300, // Increased to 300 auth requests per 15 minutes per IP (was 100 - too restrictive)
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
   skip: (req) => {
     // Skip rate limiting for registration endpoint (handled by registrationLimiter)
-    return req.path === '/register' || req.path.startsWith('/api/auth/register');
+    const path = req.path || '';
+    const originalUrl = req.originalUrl || req.url || '';
+    return path === '/register' || path.startsWith('/api/auth/register') || originalUrl.includes('/api/auth/register');
   }
 });
 
 // Rate limiter for recommendations (more lenient since it's a core feature)
 const recommendationsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Allow 200 recommendation requests per 15 minutes per IP (users may refresh frequently)
+  max: 300, // Increased to 300 requests per 15 minutes (was 200)
   message: 'Too many recommendation requests. Please wait a moment and try again.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests (including successful ones)
+});
+
+// Rate limiter for photo analysis (very lenient since it requires multiple retries)
+const photoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // Allow 200 photo analysis requests per 15 minutes per IP (accounts for retries)
+  message: 'Too many photo analysis requests. Please wait a moment and try again.',
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false, // Count all requests (including successful ones)
@@ -106,8 +119,11 @@ app.use('/api/auth', authLimiter);
 // Apply recommendations limiter to recommendations routes
 app.use('/api/recommendations', recommendationsLimiter);
 
+// Apply photo limiter to photo analysis routes (before general limiter)
+app.use('/api/photo', photoLimiter);
+
 // Apply general limiter to all other API routes (least specific, applied last)
-// The skip function ensures auth and recommendations routes are not counted by this limiter
+// The skip function ensures auth, recommendations, and photo routes are not counted by this limiter
 app.use('/api/', limiter);
 
 // Body parsing
