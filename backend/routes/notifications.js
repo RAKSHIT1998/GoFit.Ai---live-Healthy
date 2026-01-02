@@ -78,6 +78,7 @@ async function getUserContext(userId) {
 // Generate AI meal reminder
 router.post('/meal-reminder', authMiddleware, async (req, res) => {
   try {
+    console.log(`🤖 Meal reminder request received for user: ${req.user._id}`);
     const { mealType } = req.body;
     
     if (!openai) {
@@ -137,6 +138,7 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
     });
     
     const content = completion.choices[0]?.message?.content || '';
+    console.log(`✅ OpenAI meal reminder response received: ${content.length} characters`);
     let jsonContent;
     
     try {
@@ -167,6 +169,7 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
 // Generate AI water reminder
 router.post('/water-reminder', authMiddleware, async (req, res) => {
   try {
+    console.log(`🤖 Water reminder request received for user: ${req.user._id}`);
     if (!openai) {
       return res.status(500).json({
         title: "Stay Hydrated! 💧",
@@ -282,6 +285,7 @@ Generate a short, encouraging notification (max 100 characters for body) that:
 
 Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars) fields. No markdown, no explanations.`;
 
+    console.log(`🤖 Making OpenAI API request for workout reminder (user: ${userId})...`);
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -297,6 +301,9 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
       max_tokens: 200,
       temperature: 0.7
     });
+    
+    const content = completion.choices[0]?.message?.content || '';
+    console.log(`✅ OpenAI workout reminder response received: ${content.length} characters`);
     
     const content = completion.choices[0]?.message?.content || '';
     let jsonContent;

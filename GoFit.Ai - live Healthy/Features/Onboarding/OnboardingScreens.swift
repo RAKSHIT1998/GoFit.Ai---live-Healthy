@@ -857,6 +857,26 @@ struct PermissionsView: View {
                     viewModel.appleHealthEnabled = healthPermissionGranted
                     isRequestingHealth = false
                     print("📱 HealthKit permission request completed - authorized: \(healthKit.isAuthorized)")
+                    
+                    // If authorized and user is logged in (or will be after signup), start periodic sync
+                    if healthKit.isAuthorized {
+                        print("🔄 Starting HealthKit periodic sync after permission grant...")
+                        healthKit.startPeriodicSync()
+                        
+                        // Also sync immediately to backend if user is logged in
+                        if AuthService.shared.readToken() != nil {
+                            Task {
+                                do {
+                                    try await healthKit.syncToBackend()
+                                    print("✅ HealthKit synced to backend immediately after permission grant")
+                                } catch {
+                                    print("⚠️ HealthKit sync to backend failed: \(error.localizedDescription)")
+                                }
+                            }
+                        } else {
+                            print("ℹ️ User not logged in yet - sync will start after login")
+                        }
+                    }
                 }
             } catch {
                 print("⚠️ Failed to request HealthKit authorization: \(error.localizedDescription)")

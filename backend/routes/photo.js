@@ -114,6 +114,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
     try {
       console.log('🤖 Starting OpenAI GPT-4o Vision analysis for user:', userId);
       console.log('📝 OPENAI_API_KEY status:', OPENAI_API_KEY ? `Set (${OPENAI_API_KEY.substring(0, 10)}...)` : 'NOT SET');
+      console.log('📸 Image size:', file.size, 'bytes, type:', file.mimetype);
+      console.log('🤖 Making OpenAI API request for photo analysis...');
       
       // Convert image to base64
       const base64Image = file.buffer.toString('base64');
@@ -185,6 +187,7 @@ Return ONLY valid JSON array, no markdown, no code blocks, no explanations, just
       
       console.log('✅ OpenAI GPT-4o Vision analysis completed');
       console.log('📝 Response length:', content.length, 'characters');
+      console.log(`🤖 AI request successful - photo analyzed for user: ${userId}`);
       
       // Parse JSON from response
       let items = [];

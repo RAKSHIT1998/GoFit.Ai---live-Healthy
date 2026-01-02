@@ -164,9 +164,32 @@ class HealthKitService: ObservableObject {
                     try await readTodaySteps()
                     try await readTodayActiveCalories()
                     print("✅ Successfully read HealthKit data - app should now show as collecting data in Settings")
+                    
+                    // Start periodic sync immediately if user is logged in
+                    if AuthService.shared.readToken() != nil {
+                        print("🔄 Starting HealthKit periodic sync immediately after authorization...")
+                        startPeriodicSync()
+                        
+                        // Also sync to backend immediately
+                        Task {
+                            do {
+                                try await syncToBackend()
+                                print("✅ HealthKit synced to backend immediately after authorization")
+                            } catch {
+                                print("⚠️ HealthKit sync to backend failed: \(error.localizedDescription)")
+                            }
+                        }
+                    } else {
+                        print("ℹ️ User not logged in - periodic sync will start after login")
+                    }
                 } catch {
                     print("⚠️ Failed to read HealthKit data immediately after authorization: \(error.localizedDescription)")
                     // Don't throw - authorization was successful, reading can fail for other reasons
+                    // Still start periodic sync if user is logged in
+                    if AuthService.shared.readToken() != nil {
+                        print("🔄 Starting HealthKit periodic sync despite read error...")
+                        startPeriodicSync()
+                    }
                 }
             }
         } catch {

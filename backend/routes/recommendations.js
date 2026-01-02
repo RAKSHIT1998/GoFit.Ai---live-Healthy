@@ -285,6 +285,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     const modelPreference = process.env.OPENAI_MODEL || 'gpt-4o';
     
     console.log(`✅ Using OpenAI model: ${modelPreference} for recommendations`);
+    console.log(`🤖 Making OpenAI API request for recommendations (user: ${user._id})...`);
     
     // Generate content with OpenAI
     const completion = await openai.chat.completions.create({
@@ -292,7 +293,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       messages: [
         {
           role: 'system',
-          content: 'You are an expert nutritionist and certified personal trainer. You MUST return ONLY valid JSON. workoutPlan.exercises must be an array of objects, NOT a string. mealPlan arrays must be arrays of objects. Return pure JSON with no markdown, no code blocks, no explanations.'
+          content: 'You are an expert nutritionist and certified personal trainer. CRITICAL: You MUST return ONLY valid JSON. workoutPlan.exercises MUST be an array of objects (e.g., [{name: "Exercise", duration: 10}]), NEVER a string. mealPlan arrays (breakfast, lunch, dinner, snacks) MUST be arrays of objects. Return pure JSON with no markdown, no code blocks, no explanations, no JavaScript string concatenation. The JSON must be directly parseable by JSON.parse().'
         },
         {
           role: 'user',
@@ -307,6 +308,8 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     const content = completion.choices[0]?.message?.content || '';
     
     console.log('✅ OpenAI recommendation generation completed');
+    console.log(`📊 OpenAI response received: ${content.length} characters`);
+    console.log(`🤖 AI request successful - recommendations generated for user: ${user._id}`);
     console.log('📝 Response length:', content.length, 'characters');
     
   let recommendationData;
@@ -334,46 +337,115 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
         console.log('📝 Exercises string preview:', recommendationData.workoutPlan.exercises.substring(0, 200));
         try {
           // The string might be a JavaScript code representation with concatenation
-          // Try to clean it up first
+          // Example: "[\\n' +\n  '  {\\n' +\n  \"    name: 'Brisk Walking',\\n\"..."
+          // This is a JavaScript string literal that represents code, not JSON
           let exerciseString = recommendationData.workoutPlan.exercises;
           
-          // Remove JavaScript string concatenation patterns (handle various formats)
-          // Pattern: ' +\n' + '  {' or " +\n" + "  {"
-          exerciseString = exerciseString.replace(/' \+\s*\\n\s*'\s*\+\s*/g, '');
-          exerciseString = exerciseString.replace(/" \+\s*\\n\s*"\s*\+\s*/g, '');
-          exerciseString = exerciseString.replace(/' \+\n\s*'/g, '');
-          exerciseString = exerciseString.replace(/" \+\n\s*"/g, '');
+          console.log('📝 Raw exercises string (first 500 chars):', exerciseString.substring(0, 500));
           
-          // Replace escaped newlines with actual newlines
-          exerciseString = exerciseString.replace(/\\n/g, '\n');
-          exerciseString = exerciseString.replace(/\\'/g, "'");
-          exerciseString = exerciseString.replace(/\\"/g, '"');
+          // Strategy: Extract the actual JSON array from the JavaScript string concatenation
+          // The pattern is: "[\\n' +\n  '  {\\n' + ... which means:
+          // - Start with "[
+          // - Then \\n' +\n  ' (JavaScript string concatenation)
+          // - Then the actual content
+          // - End with ]" or ]' or similar
           
-          // Remove any remaining concatenation operators
-          exerciseString = exerciseString.replace(/\s*\+\s*/g, ' ');
+          // Step 1: Find the opening bracket (could be after a quote)
+          let startIdx = exerciseString.indexOf('[');
+          if (startIdx === -1) {
+            throw new Error('No opening bracket found');
+          }
           
-          // Try to extract JSON array from the string (most reliable)
-          const arrayMatch = exerciseString.match(/\[[\s\S]*\]/);
-          if (arrayMatch) {
-            try {
-              recommendationData.workoutPlan.exercises = JSON.parse(arrayMatch[0]);
-              console.log('✅ Successfully parsed exercises from extracted array');
-            } catch (parseError) {
-              // If the extracted array doesn't parse, try the whole string
-              console.log('⚠️ Extracted array failed to parse, trying full string...');
-              recommendationData.workoutPlan.exercises = JSON.parse(exerciseString);
-              console.log('✅ Successfully parsed exercises from cleaned string');
-            }
+          // Step 2: Find the closing bracket (could be before a quote)
+          let endIdx = exerciseString.lastIndexOf(']');
+          if (endIdx === -1 || endIdx <= startIdx) {
+            throw new Error('No closing bracket found or invalid position');
+          }
+          
+          // Step 3: Extract the content between brackets
+          let arrayContent = exerciseString.substring(startIdx + 1, endIdx);
+          
+          // Step 4: Remove JavaScript string concatenation patterns
+          // Pattern: ' +\n  ' or " +\n  " (literal quote, space, plus, newline, space, quote)
+          // Also handle: \\n' +\n  ' (escaped backslash-n, quote, plus, newline, space, quote)
+          arrayContent = arrayContent.replace(/\\n' \+\s*\n\s*'/g, '');
+          arrayContent = arrayContent.replace(/\\n" \+\s*\n\s*"/g, '');
+          arrayContent = arrayContent.replace(/' \+\s*\n\s*'/g, '');
+          arrayContent = arrayContent.replace(/" \+\s*\n\s*"/g, '');
+          arrayContent = arrayContent.replace(/' \+\s*\\n\s*'/g, '');
+          arrayContent = arrayContent.replace(/" \+\s*\\n\s*"/g, '');
+          
+          // Step 5: Replace escaped characters in the content
+          // Note: \\n in the string means literal backslash-n, we need to handle this carefully
+          // First, replace actual escaped newlines (if any were preserved)
+          arrayContent = arrayContent.replace(/\\n/g, '\n');
+          arrayContent = arrayContent.replace(/\\'/g, "'");
+          arrayContent = arrayContent.replace(/\\"/g, '"');
+          arrayContent = arrayContent.replace(/\\t/g, '\t');
+          
+          // Step 6: Remove any remaining concatenation operators
+          arrayContent = arrayContent.replace(/\s*\+\s*/g, ' ');
+          
+          // Step 7: Reconstruct the JSON array
+          const jsonArrayString = '[' + arrayContent + ']';
+          
+          console.log('📝 Reconstructed JSON array (first 500 chars):', jsonArrayString.substring(0, 500));
+          
+          // Step 8: Parse the JSON
+          const parsed = JSON.parse(jsonArrayString);
+          if (Array.isArray(parsed)) {
+            recommendationData.workoutPlan.exercises = parsed;
+            console.log('✅ Successfully parsed exercises from reconstructed array');
           } else {
-            // Try parsing the entire cleaned string
-            recommendationData.workoutPlan.exercises = JSON.parse(exerciseString);
-            console.log('✅ Successfully parsed exercises from cleaned string');
+            throw new Error('Parsed result is not an array');
           }
         } catch (e) {
           console.error('❌ Failed to parse exercises string:', e);
-          console.error('📝 Full exercises string (first 500 chars):', recommendationData.workoutPlan.exercises.substring(0, 500));
-          // If parsing fails, set to empty array
-          recommendationData.workoutPlan.exercises = [];
+          console.error('📝 Full exercises string (first 1000 chars):', recommendationData.workoutPlan.exercises.substring(0, 1000));
+          
+          // Last resort: Try a more aggressive cleaning approach
+          try {
+            console.log('⚠️ Attempting aggressive cleaning as last resort...');
+            let aggressiveClean = recommendationData.workoutPlan.exercises;
+            
+            // Remove all JavaScript string concatenation patterns more aggressively
+            // Remove patterns like: ' +\n  ' or " +\n  " or \\n' +\n  '
+            aggressiveClean = aggressiveClean.replace(/['"]\s*\+\s*\\n\s*['"]/g, '');
+            aggressiveClean = aggressiveClean.replace(/['"]\s*\+\s*\n\s*['"]/g, '');
+            aggressiveClean = aggressiveClean.replace(/\\n['"]\s*\+\s*\n\s*['"]/g, '');
+            aggressiveClean = aggressiveClean.replace(/\\n['"]\s*\+\s*\\n\s*['"]/g, '');
+            
+            // Remove all remaining concatenation operators
+            aggressiveClean = aggressiveClean.replace(/\s*\+\s*/g, ' ');
+            
+            // Remove outer quotes
+            aggressiveClean = aggressiveClean.replace(/^["']|["']$/g, '');
+            
+            // Replace escaped characters
+            aggressiveClean = aggressiveClean.replace(/\\n/g, '\n');
+            aggressiveClean = aggressiveClean.replace(/\\'/g, "'");
+            aggressiveClean = aggressiveClean.replace(/\\"/g, '"');
+            aggressiveClean = aggressiveClean.replace(/\\t/g, '\t');
+            
+            // Try to find and extract the array
+            const arrayMatch = aggressiveClean.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+              const parsed = JSON.parse(arrayMatch[0]);
+              if (Array.isArray(parsed)) {
+                recommendationData.workoutPlan.exercises = parsed;
+                console.log('✅ Successfully parsed exercises using aggressive cleaning');
+              } else {
+                throw new Error('Aggressive cleaning result is not an array');
+              }
+            } else {
+              throw new Error('No array found after aggressive cleaning');
+            }
+          } catch (aggressiveError) {
+            console.error('❌ Aggressive cleaning also failed:', aggressiveError);
+            // If all parsing fails, set to empty array to prevent validation error
+            recommendationData.workoutPlan.exercises = [];
+            console.log('⚠️ Set exercises to empty array due to parsing failure');
+          }
         }
       }
       
@@ -414,6 +486,17 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           recommendationData.mealPlan[mealType] = [];
         }
       });
+    }
+    
+    // Final validation: Ensure exercises is an array before saving
+    if (recommendationData.workoutPlan && recommendationData.workoutPlan.exercises) {
+      if (!Array.isArray(recommendationData.workoutPlan.exercises)) {
+        console.error('❌ CRITICAL: exercises is still not an array after parsing! Type:', typeof recommendationData.workoutPlan.exercises);
+        console.error('📝 Value:', JSON.stringify(recommendationData.workoutPlan.exercises).substring(0, 500));
+        recommendationData.workoutPlan.exercises = [];
+      } else {
+        console.log('✅ Final validation: exercises is an array with', recommendationData.workoutPlan.exercises.length, 'items');
+      }
     }
     
     console.log('✅ Successfully parsed and validated recommendation data');
