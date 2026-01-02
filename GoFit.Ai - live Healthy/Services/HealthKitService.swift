@@ -14,7 +14,8 @@ class HealthKitService: ObservableObject {
     @Published var restingHeartRate: Double = 0
     @Published var averageHeartRate: Double = 0
     
-    private var periodicSyncTask: Task<Void, Never>?
+    // Use nonisolated(unsafe) for Task to allow access from deinit
+    nonisolated(unsafe) private var periodicSyncTask: Task<Void, Never>?
     
     private init() {
         checkAuthorizationStatus()
@@ -32,7 +33,8 @@ class HealthKitService: ObservableObject {
     }
     
     deinit {
-        stopPeriodicSync()
+        // Cancel task directly - Task cancellation is thread-safe
+        periodicSyncTask?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
     
@@ -166,11 +168,15 @@ class HealthKitService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "steps": todaySteps,
-            "activeCalories": todayActiveCalories,
-            "heartRate": restingHeartRate > 0 ? restingHeartRate : nil
+            "activeCalories": todayActiveCalories
         ]
+        
+        // Only include heartRate if it's greater than 0
+        if restingHeartRate > 0 {
+            body["heartRate"] = restingHeartRate
+        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
