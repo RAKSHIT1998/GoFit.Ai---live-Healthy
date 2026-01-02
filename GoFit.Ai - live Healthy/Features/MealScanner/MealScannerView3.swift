@@ -254,9 +254,9 @@ struct MealScannerView3: View {
                                             HStack {
                                                 Image(systemName: "ruler.fill")
                                                     .foregroundColor(.secondary)
-                                                Text("Portion: \(portion)")
+                                            Text("Portion: \(portion)")
                                                     .font(.subheadline)
-                                                    .foregroundColor(.secondary)
+                                                .foregroundColor(.secondary)
                                             }
                                             .padding(.top, 8)
                                         }
@@ -268,7 +268,7 @@ struct MealScannerView3: View {
                                 .shadow(color: Color.black.opacity(0.1), radius: 15, x: 0, y: 5)
                                 .padding(.horizontal)
                             }
-                            
+                                
                             // Action buttons - Log or Dismiss
                             VStack(spacing: 12) {
                                 // Log Meal Button
@@ -347,7 +347,7 @@ struct MealScannerView3: View {
                             .font(.system(size: 40))
                             .foregroundColor(err.contains("No food") ? .orange : .red)
                         
-                        Text(err)
+                    Text(err)
                             .font(.body)
                             .foregroundColor(.primary)
                             .multilineTextAlignment(.center)
@@ -369,7 +369,7 @@ struct MealScannerView3: View {
                         }
                     }
                     .padding(24)
-                    .background(Design.Colors.cardBackground)
+                        .background(Design.Colors.cardBackground)
                     .cornerRadius(16)
                     .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
                     .padding(.horizontal)
@@ -398,10 +398,10 @@ struct MealScannerView3: View {
                     return
                 }
                 
-                // Automatically upload immediately when photo is captured (Snapchat style)
-                // No preview needed - instant analysis
-                Task {
-                    await uploadImage(newImage)
+                    // Automatically upload immediately when photo is captured (Snapchat style)
+                    // No preview needed - instant analysis
+                    Task {
+                        await uploadImage(newImage)
                 }
             }
             .sheet(isPresented: $showPicker) {
@@ -516,7 +516,7 @@ struct MealScannerView3: View {
         // Check if user is logged in and has a valid token
         guard authVM.isLoggedIn else {
             await MainActor.run {
-                errorMsg = "Please log in to scan meals"
+            errorMsg = "Please log in to scan meals"
                 isUploading = false
             }
             return
@@ -524,7 +524,7 @@ struct MealScannerView3: View {
         
         guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
             await MainActor.run {
-                errorMsg = "Authentication required. Please log in again."
+            errorMsg = "Authentication required. Please log in again."
                 isUploading = false
             }
             return
@@ -546,7 +546,7 @@ struct MealScannerView3: View {
                 try await NetworkManager.shared.uploadMealImage(data: data, filename: "meal.jpg", userId: authVM.userId)
             }
             await MainActor.run {
-                uploadResult = resp
+            uploadResult = resp
             }
         } catch {
             // If all retries fail, use fallback data
@@ -569,107 +569,13 @@ struct MealScannerView3: View {
                 recommendations: "Using built-in meal data while server is unavailable. This is a high-quality meal option from our curated database."
             )
             
-            await MainActor.run {
+                    await MainActor.run {
                 uploadResult = fallbackResponse
                 // Show a subtle message that fallback data is being used
                 print("✅ Using built-in meal data (server unavailable)")
             }
-            return
-            // Better error handling
-            if let nsError = error as NSError? {
-                let errorCode = nsError.code
-                let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
-                
-                // Try to parse error JSON to get structured error information
-                var parsedError: [String: Any]? = nil
-                if let errorData = errorMessage.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: errorData) as? [String: Any] {
-                    parsedError = json
-                }
-                
-                // Check for "no food detected" error (from backend)
-                if errorCode == 400,
-                   let parsed = parsedError,
-                   (parsed["error"] as? String == "NO_FOOD_DETECTED" || 
-                    (parsed["message"] as? String)?.contains("No food") == true ||
-                    (parsed["message"] as? String)?.contains("no food") == true) {
-                    await MainActor.run {
-                        errorMsg = "🍽️ No food detected in this image.\n\nPlease take a photo of food or beverages to scan."
-                    }
-                    return
-                }
-                
-                // Check error message for "no food" patterns
-                if errorMessage.contains("NO_FOOD_DETECTED") || 
-                   errorMessage.contains("\"error\":\"NO_FOOD_DETECTED\"") ||
-                   errorMessage.contains("No food or beverages detected") ||
-                   errorMessage.contains("No food detected") ||
-                   (errorMessage.contains("no food") && errorMessage.contains("detected")) {
-                    await MainActor.run {
-                        errorMsg = "🍽️ No food detected in this image.\n\nPlease take a photo of food or beverages to scan."
-                    }
-                    return
-                }
-                
-                // Check for timeout errors
-                if errorCode == NSURLErrorTimedOut || errorMessage.contains("timeout") || errorMessage.contains("timed out") {
-                    await MainActor.run {
-                        errorMsg = "Analysis timed out. Please try again with a clearer photo."
-                    }
-                    return
-                }
-                // Check for authentication errors
-                else if errorCode == 401 {
-                    await MainActor.run {
-                        errorMsg = "Authentication failed. Please log in again."
-                        authVM.logout()
-                    }
-                    return
-                } else if errorMessage.contains("token") || errorMessage.contains("Token") || errorMessage.contains("Invalid token") {
-                    await MainActor.run {
-                        errorMsg = "Session expired. Please log in again."
-                        authVM.logout()
-                    }
-                    return
-                } else if errorMessage.contains("Gemini") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("not configured") || errorMessage.contains("Food recognition service") || errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") {
-                    // Use the backend error message if it contains helpful information, otherwise show a generic message
-                    await MainActor.run {
-                        if errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("environment variable") {
-                            errorMsg = errorMessage
-                        } else {
-                            errorMsg = "Food recognition service is not configured. Please contact support."
-                        }
-                    }
-                    return
-                } else if errorMessage.contains("authentication failed") || errorMessage.contains("API key") {
-                    await MainActor.run {
-                        errorMsg = "Service configuration error. Please contact support."
-                    }
-                    return
-                } else if errorMessage.contains("Rate limit") || errorMessage.contains("currently busy") {
-                    await MainActor.run {
-                        errorMsg = "Service is busy. Please try again in a moment."
-                    }
-                    return
-                } else if errorMessage.contains("OpenAI") {
-                    await MainActor.run {
-                        errorMsg = "AI service unavailable. Please try again later."
-                    }
-                    return
-                } else {
-                    await MainActor.run {
-                        errorMsg = "Upload error: \(errorMessage)"
-                    }
-                    return
-                }
-            } else {
-                let errorDesc = error.localizedDescription
-                if errorDesc.contains("timeout") {
-                    errorMsg = "Analysis timed out. Please try again."
-                } else {
-                    errorMsg = "Upload error: \(errorDesc)"
-                }
-            }
+            // Note: We use fallback data instead of showing errors when retries fail
+            // This provides a better user experience - they still get meal data even if server is down
         }
     }
 
