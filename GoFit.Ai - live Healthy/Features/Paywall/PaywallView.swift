@@ -9,6 +9,7 @@ struct PaywallView: View {
     @State private var loading = false
     @State private var error: String?
     @State private var animateFeatures = false
+    @State private var isBlocking = false // True when trial expired and blocking access
     
     enum PlanType {
         case monthly
@@ -49,16 +50,24 @@ struct PaywallView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .foregroundColor(Design.Colors.primary)
+                // Only show close button if not blocking (trial not expired)
+                if !isBlocking {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Close") { dismiss() }
+                            .foregroundColor(Design.Colors.primary)
+                    }
                 }
             }
             .onAppear {
                 purchases.loadProducts()
+                // Check if this is a blocking paywall (trial expired)
+                isBlocking = purchases.requiresSubscription
                 withAnimation(.spring().delay(0.1)) {
                     animateFeatures = true
                 }
+            }
+            .onChange(of: purchases.requiresSubscription) { oldValue, newValue in
+                isBlocking = newValue
             }
         }
     }
@@ -66,30 +75,41 @@ struct PaywallView: View {
     // MARK: - Header
     private var header: some View {
         VStack(spacing: 12) {
-            Image(systemName: "crown.fill")
+            Image(systemName: isBlocking ? "lock.fill" : "crown.fill")
                 .font(.system(size: 40))
                 .foregroundColor(.white)
                 .padding()
                 .background(Design.Colors.primaryGradient)
                 .clipShape(Circle())
 
-            Text("Start Your Journey")
+            Text(isBlocking ? "Subscription Required" : "Start Your Journey")
                 .font(Design.Typography.largeTitle)
 
             VStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "gift.fill")
-                        .font(.title3)
-                        .foregroundColor(Design.Colors.primary)
-                    Text("3-Day Free Trial")
+                if isBlocking {
+                    Text("Your 3-day free trial has ended")
                         .font(Design.Typography.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(Design.Colors.primary)
+                        .foregroundColor(.primary)
+                    
+                    Text("Subscribe to continue using all premium features")
+                        .font(Design.Typography.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "gift.fill")
+                            .font(.title3)
+                            .foregroundColor(Design.Colors.primary)
+                        Text("3-Day Free Trial")
+                            .font(Design.Typography.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(Design.Colors.primary)
+                    }
+                    
+                    Text("Then continue with premium features")
+                        .font(Design.Typography.subheadline)
+                        .foregroundColor(.secondary)
                 }
-                
-                Text("Then continue with premium features")
-                    .font(Design.Typography.subheadline)
-                    .foregroundColor(.secondary)
             }
         }
         .padding(.top)
@@ -106,22 +126,40 @@ struct PaywallView: View {
         .opacity(animateFeatures ? 1 : 0)
     }
 
-    // MARK: - Plans (Monthly only)
+    // MARK: - Plans
     private var plans: some View {
         VStack(spacing: 16) {
-
-            if let monthly = purchases.products.first(
-                where: { $0.id == PlanType.monthly.id }
-            ) {
-                PlanCard(
-                    product: monthly,
-                    type: .monthly,
-                    isSelected: true
-                ) {
-                    selectedPlan = .monthly
+            if purchases.isLoading {
+                ProgressView("Loading plans…")
+                    .padding()
+                    .foregroundColor(.white)
+            } else if purchases.products.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.title2)
+                        .foregroundColor(.orange)
+                    Text("Products not available")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    Text("Please check your internet connection")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
                 }
+                .padding()
             } else {
-                ProgressView("Loading plan…")
+                // Show both monthly and yearly plans
+                ForEach(purchases.products, id: \.id) { product in
+                    let planType: PlanType = product.id == PlanType.monthly.id ? .monthly : .yearly
+                    let isSelected = selectedPlan == planType
+                    
+                    PlanCard(
+                        product: product,
+                        type: planType,
+                        isSelected: isSelected
+                    ) {
+                        selectedPlan = planType
+                    }
+                }
             }
         }
         .padding(.horizontal)
@@ -219,12 +257,18 @@ struct PaywallView: View {
         Task {
             do {
                 try await purchases.purchase(productId: selectedPlan.id)
-                // Purchase successful - let user choose to close paywall manually
-                // Don't auto-dismiss - user can close it when ready
+                // Purchase successful - update subscription status
+                await purchases.checkTrialAndSubscriptionStatus()
+                
                 await MainActor.run {
                     loading = false
-                    // Show success message or update UI
-                    // User can close paywall using the "Close" button
+                    // If purchase was successful and subscription is now active, dismiss paywall
+                    if purchases.hasActiveSubscription || purchases.subscriptionStatus == .active {
+                        if isBlocking {
+                            // If this was a blocking paywall, dismiss it now
+                            dismiss()
+                        }
+                    }
                 }
             } catch {
                 await MainActor.run {

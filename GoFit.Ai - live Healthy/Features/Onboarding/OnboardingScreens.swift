@@ -54,26 +54,29 @@ struct OnboardingScreens: View {
                     GoalStep(viewModel: viewModel)
                         .tag(3)
                     
-                    ActivityStep(viewModel: viewModel)
+                    TargetWeightStep(viewModel: viewModel)
                         .tag(4)
                     
-                    DietaryPreferencesStep(viewModel: viewModel)
+                    ActivityStep(viewModel: viewModel)
                         .tag(5)
                     
-                    AllergiesStep(viewModel: viewModel)
+                    DietaryPreferencesStep(viewModel: viewModel)
                         .tag(6)
                     
-                    WorkoutPreferencesStep(viewModel: viewModel)
+                    AllergiesStep(viewModel: viewModel)
                         .tag(7)
                     
-                    CuisinesAndFoodPreferencesStep(viewModel: viewModel)
+                    WorkoutPreferencesStep(viewModel: viewModel)
                         .tag(8)
                     
-                    LifestyleAndMotivationStep(viewModel: viewModel)
+                    CuisinesAndFoodPreferencesStep(viewModel: viewModel)
                         .tag(9)
                     
-                    LifestyleHabitsStep(viewModel: viewModel)
+                    LifestyleAndMotivationStep(viewModel: viewModel)
                         .tag(10)
+                    
+                    LifestyleHabitsStep(viewModel: viewModel)
+                        .tag(11)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(), value: viewModel.currentStep)

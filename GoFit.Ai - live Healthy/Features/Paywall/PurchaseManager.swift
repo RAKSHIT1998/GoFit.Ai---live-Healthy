@@ -11,6 +11,9 @@ class PurchaseManager: ObservableObject {
     @Published var products: [Product] = []
     @Published var subscriptionStatus: SubscriptionStatus = .unknown
     @Published var currentSubscription: CurrentSubscriptionInfo?
+    @Published var requiresSubscription = false // Blocks app access if trial expired and no subscription
+    @Published var showPaywall = false // Controls paywall visibility
+    @Published var trialDaysRemaining: Int? = nil
 
     // MARK: - Product IDs
     let monthlyID = "com.gofitai.premium.monthly"
@@ -38,10 +41,79 @@ class PurchaseManager: ObservableObject {
         let renewalInfo: Product.SubscriptionInfo.RenewalInfo?
     }
 
+    // MARK: - UserDefaults Keys
+    private let trialStartDateKey = "trialStartDate"
+    
     // MARK: - Init
     init() {
         updateListenerTask = listenForTransactions()
         startStatusMonitoring()
+        initializeTrialIfNeeded()
+    }
+    
+    // MARK: - Trial Management
+    private func initializeTrialIfNeeded() {
+        // Only set trial start date if it hasn't been set yet
+        if UserDefaults.standard.object(forKey: trialStartDateKey) == nil {
+            UserDefaults.standard.set(Date(), forKey: trialStartDateKey)
+            print("📅 Trial started: \(Date())")
+        }
+    }
+    
+    func getTrialStartDate() -> Date? {
+        return UserDefaults.standard.object(forKey: trialStartDateKey) as? Date
+    }
+    
+    func getTrialEndDate() -> Date? {
+        guard let startDate = getTrialStartDate() else { return nil }
+        return Calendar.current.date(byAdding: .day, value: 3, to: startDate)
+    }
+    
+    func isTrialActive() -> Bool {
+        guard let endDate = getTrialEndDate() else { return false }
+        return Date() < endDate
+    }
+    
+    func getTrialDaysRemaining() -> Int? {
+        guard let endDate = getTrialEndDate() else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: endDate).day ?? 0
+        return max(0, days)
+    }
+    
+    func checkTrialAndSubscriptionStatus() async {
+        // Update subscription status first (but don't call checkTrialAndSubscriptionStatus again to avoid recursion)
+        await updateSubscriptionStatus()
+        await checkSubscriptionStatus()
+        
+        // Check if user has active subscription (including trial from StoreKit)
+        let hasSubscription = hasActiveSubscription || subscriptionStatus == .trial || subscriptionStatus == .active
+        
+        // Check if local 3-day trial is still active
+        let localTrialActive = isTrialActive()
+        
+        // Calculate trial days remaining
+        trialDaysRemaining = getTrialDaysRemaining()
+        
+        // If user has active subscription, they can access the app
+        if hasSubscription {
+            requiresSubscription = false
+            showPaywall = false
+            print("✅ User has active subscription - access granted")
+            return
+        }
+        
+        // If local trial is still active, allow access
+        if localTrialActive {
+            requiresSubscription = false
+            showPaywall = false
+            print("✅ Trial still active (\(trialDaysRemaining ?? 0) days remaining) - access granted")
+            return
+        }
+        
+        // Trial expired and no subscription - block access
+        requiresSubscription = true
+        showPaywall = true
+        print("🚫 Trial expired and no subscription - blocking app access")
     }
 
     deinit {
@@ -95,6 +167,9 @@ class PurchaseManager: ObservableObject {
             await transaction.finish()
 
             hasActiveSubscription = true
+            
+            // Recheck trial and subscription status after purchase
+            await checkTrialAndSubscriptionStatus()
 
         case .userCancelled:
             throw PurchaseError.userCancelled
@@ -117,8 +192,12 @@ class PurchaseManager: ObservableObject {
         await checkSubscriptionStatus()
     }
 
-    // MARK: - Subscription Status (FIXED)
+    // MARK: - Subscription Status
     func updateSubscriptionStatus() async {
+        // If products haven't loaded yet, try to load them first
+        if products.isEmpty {
+            await requestProducts()
+        }
 
         var highestStatus: SubscriptionStatus = .free
         var highestProduct: Product?
@@ -130,9 +209,7 @@ class PurchaseManager: ObservableObject {
             guard let statuses = try? await subscription.status else { continue }
 
             for status in statuses {
-
                 switch status.state {
-
                 case .subscribed:
                     if let transaction = try? checkVerified(status.transaction) {
                         let expiration = transaction.expirationDate ?? .distantFuture
@@ -142,28 +219,40 @@ class PurchaseManager: ObservableObject {
                             highestProduct = product
                             highestExpiration = expiration
 
-                            if product.subscription?.introductoryOffer != nil,
-                               expiration > Date() {
-                                highestStatus = .trial
-                                isInTrial = true
+                            // Check if in trial period - look at transaction purchase date vs current date
+                            // If purchase was within last 3 days and has intro offer, likely in trial
+                            if let purchaseDate = transaction.purchaseDate {
+                                let daysSincePurchase = Calendar.current.dateComponents([.day], from: purchaseDate, to: Date()).day ?? 0
+                                if daysSincePurchase < 3 && product.subscription?.introductoryOffer != nil {
+                                    highestStatus = .trial
+                                    isInTrial = true
+                                }
                             }
                         }
                     }
 
                 case .inGracePeriod:
-                    highestStatus = .active
+                    if highestStatus != .active && highestStatus != .trial {
+                        highestStatus = .active
+                    }
 
                 case .inBillingRetryPeriod:
-                    highestStatus = .active
+                    if highestStatus != .active && highestStatus != .trial {
+                        highestStatus = .active
+                    }
 
                 case .expired:
-                    highestStatus = .expired
+                    if highestStatus == .free {
+                        highestStatus = .expired
+                    }
 
                 case .revoked:
-                    highestStatus = .cancelled
+                    if highestStatus == .free {
+                        highestStatus = .cancelled
+                    }
 
                 default:
-                    highestStatus = .unknown
+                    break
                 }
             }
         }
@@ -202,7 +291,8 @@ class PurchaseManager: ObservableObject {
         statusUpdateTask = Task {
             while !Task.isCancelled {
                 await updateSubscriptionStatus()
-                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                await checkTrialAndSubscriptionStatus() // Also check trial status periodically
+                try? await Task.sleep(nanoseconds: 60_000_000_000) // Check every minute
             }
         }
     }

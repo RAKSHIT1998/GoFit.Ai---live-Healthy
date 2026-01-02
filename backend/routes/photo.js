@@ -127,6 +127,8 @@ router.post('/analyze', authMiddleware, upload.single('photo'), async (req, res)
       
       const prompt = `You are a nutrition expert analyzing food and drink images. Identify ALL items visible and provide accurate nutritional information.
 
+CRITICAL: This image MUST contain food or beverages. If the image does not contain any food, drinks, or edible items, return an empty array [].
+
 CRITICAL NAMING RULES:
 - Use proper, recognizable dish names when identifying complete dishes (e.g., "Chicken Biryani", "Caesar Salad", "Margherita Pizza", "Pad Thai", "Burger with Fries")
 - For individual ingredients in a mixed dish, use descriptive names (e.g., "Grilled Chicken Breast", "Steamed Rice", "Mixed Vegetables")
@@ -146,6 +148,7 @@ Return a JSON array where each item has:
 - confidence: number (0-1, how confident you are in the identification)
 
 IMPORTANT:
+- If the image does NOT contain food or beverages (e.g., contains only objects, people, scenery, text, etc.), return an empty array []
 - If this is a drink/beverage, include calories and sugar content
 - For complete dishes, use the dish name rather than listing ingredients separately
 - If multiple separate items are visible, list each with its proper name
@@ -154,7 +157,9 @@ IMPORTANT:
 - Use proper capitalization and spelling for all food names
 
 Return ONLY valid JSON array, no markdown, no code blocks, no explanations, just the raw JSON array. Example format:
-[{"name": "Chicken Biryani", "calories": 450, "protein": 25, "carbs": 55, "fat": 12, "sugar": 2, "portionSize": "1 serving", "confidence": 0.9}]`;
+[{"name": "Chicken Biryani", "calories": 450, "protein": 25, "carbs": 55, "fat": 12, "sugar": 2, "portionSize": "1 serving", "confidence": 0.9}]
+
+If no food is detected, return: []`;
 
       // Call OpenAI GPT-4o Vision API
       const openaiPromise = openai.chat.completions.create({
@@ -230,8 +235,23 @@ Return ONLY valid JSON array, no markdown, no code blocks, no explanations, just
       }
 
       // Validate items array
-      if (!Array.isArray(items) || items.length === 0) {
-        throw new Error('OpenAI analysis returned invalid or empty results');
+      if (!Array.isArray(items)) {
+        throw new Error('OpenAI analysis returned invalid results - expected an array');
+      }
+      
+      // Check if no food items were detected
+      if (items.length === 0) {
+        console.log('⚠️ No food items detected in the image');
+        return res.status(400).json({
+          error: 'NO_FOOD_DETECTED',
+          message: 'No food or beverages detected in this image. Please take a photo of food or drinks.',
+          items: [],
+          totalCalories: 0,
+          totalProtein: 0,
+          totalCarbs: 0,
+          totalFat: 0,
+          totalSugar: 0
+        });
       }
 
     // Calculate totals

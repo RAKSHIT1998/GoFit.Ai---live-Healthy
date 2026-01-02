@@ -43,6 +43,66 @@ export function calculateCalories(user) {
   };
 }
 
+// Calculate calories based on target weight (for goal-based planning)
+export function calculateCaloriesForTargetWeight(user, targetWeightKg) {
+  const { heightCm, activityLevel, goals, age = 30 } = user.metrics || {};
+  const currentWeight = user.metrics?.weightKg || 70;
+  
+  if (!heightCm || !targetWeightKg) {
+    return null;
+  }
+
+  // Use target weight for BMR calculation
+  const bmr = (10 * targetWeightKg) + (6.25 * heightCm) - (5 * age) + 5;
+
+  // Activity multipliers
+  const activityMultipliers = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    very_active: 1.9
+  };
+
+  const multiplier = activityMultipliers[activityLevel] || 1.55;
+  let tdee = bmr * multiplier;
+
+  // Adjust based on goals - but consider the weight difference
+  const weightDifference = targetWeightKg - currentWeight;
+  let adjustment = 0;
+  
+  if (goals === 'lose' && weightDifference < 0) {
+    // Want to lose weight - create deficit
+    adjustment = -500; // 500 calorie deficit for ~1 lb/week
+  } else if (goals === 'gain' && weightDifference > 0) {
+    // Want to gain weight - create surplus
+    adjustment = 500; // 500 calorie surplus for ~1 lb/week
+  } else if (goals === 'maintain') {
+    // Maintain current weight
+    adjustment = 0;
+  } else {
+    // If goal doesn't match weight difference, adjust accordingly
+    if (weightDifference < 0) {
+      adjustment = -500; // Need to lose
+    } else if (weightDifference > 0) {
+      adjustment = 500; // Need to gain
+    }
+  }
+
+  const recommendedCalories = Math.round(tdee + adjustment);
+
+  return {
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    recommendedCalories,
+    goal: goals || 'maintain',
+    activityLevel: activityLevel || 'moderate',
+    targetWeight: targetWeightKg,
+    currentWeight: currentWeight,
+    weightDifference: Math.round(weightDifference * 10) / 10
+  };
+}
+
 // Calculate recommended macros based on calories and preferences
 export function calculateMacros(calories, dietaryPreferences = []) {
   let proteinPercent = 0.25; // 25% default

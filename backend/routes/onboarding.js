@@ -1,7 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
-import { calculateCalories, calculateMacros } from '../utils/calorieCalculator.js';
+import { calculateCalories, calculateMacros, calculateCaloriesForTargetWeight } from '../utils/calorieCalculator.js';
 
 const router = express.Router();
 
@@ -85,6 +85,59 @@ router.post('/calculate-calories', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Auto-calculate calories error:', error);
+    res.status(500).json({ message: 'Failed to calculate calories', error: error.message });
+  }
+});
+
+// Calculate calories and protein based on target weight (for onboarding)
+router.post('/target-weight-calories', async (req, res) => {
+  try {
+    const { weightKg, heightCm, targetWeightKg, goal, activityLevel, dietaryPreferences = [] } = req.body;
+    
+    if (!weightKg || !heightCm || !targetWeightKg) {
+      return res.status(400).json({ 
+        message: 'Weight, height, and target weight are required' 
+      });
+    }
+
+    // Create a temporary user object for calculation
+    const tempUser = {
+      metrics: {
+        weightKg: parseFloat(weightKg),
+        heightCm: parseFloat(heightCm),
+        goals: goal || 'maintain',
+        activityLevel: activityLevel || 'moderate',
+        age: 30 // Default age, can be made configurable
+      },
+      dietaryPreferences: Array.isArray(dietaryPreferences) ? dietaryPreferences : []
+    };
+
+    const calorieData = calculateCaloriesForTargetWeight(tempUser, parseFloat(targetWeightKg));
+    if (!calorieData) {
+      return res.status(400).json({ 
+        message: 'Failed to calculate calories. Please check your input.' 
+      });
+    }
+
+    const macros = calculateMacros(calorieData.recommendedCalories, tempUser.dietaryPreferences);
+
+    res.json({
+      success: true,
+      calories: calorieData,
+      macros,
+      recommendations: {
+        dailyCalories: calorieData.recommendedCalories,
+        dailyProtein: macros.protein,
+        dailyCarbs: macros.carbs,
+        dailyFat: macros.fat,
+        proteinPercent: macros.proteinPercent,
+        carbsPercent: macros.carbsPercent,
+        fatPercent: macros.fatPercent
+      },
+      message: `Based on your goal to ${goal === 'lose' ? 'lose' : goal === 'gain' ? 'gain' : 'maintain'} weight, here are your personalized recommendations.`
+    });
+  } catch (error) {
+    console.error('❌ Calculate target weight calories error:', error);
     res.status(500).json({ message: 'Failed to calculate calories', error: error.message });
   }
 });

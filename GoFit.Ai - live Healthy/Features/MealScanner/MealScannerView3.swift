@@ -342,11 +342,39 @@ struct MealScannerView3: View {
                 }
                 
                 if let err = errorMsg {
-                    Text(err)
-                        .foregroundColor(.red)
-                        .padding()
-                        .background(Design.Colors.cardBackground)
-                        .cornerRadius(12)
+                    VStack(spacing: 12) {
+                        Image(systemName: err.contains("No food") ? "photo.badge.exclamationmark" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(err.contains("No food") ? .orange : .red)
+                        
+                        Text(err)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Button {
+                            // Clear error and allow retry
+                            errorMsg = nil
+                            capturedImage = nil
+                            isCapturing = false
+                        } label: {
+                            Text("Try Again")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Design.Colors.primary)
+                                .cornerRadius(12)
+                        }
+                    }
+                    .padding(24)
+                    .background(Design.Colors.cardBackground)
+                    .cornerRadius(16)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal)
+                    .padding(.vertical, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .navigationTitle("Scan Food")
@@ -470,39 +498,87 @@ struct MealScannerView3: View {
                 let errorCode = nsError.code
                 let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
                 
+                // Try to parse error JSON to get structured error information
+                var parsedError: [String: Any]? = nil
+                if let errorData = errorMessage.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: errorData) as? [String: Any] {
+                    parsedError = json
+                }
+                
+                // Check for "no food detected" error (from backend)
+                if errorCode == 400,
+                   let parsed = parsedError,
+                   (parsed["error"] as? String == "NO_FOOD_DETECTED" || 
+                    (parsed["message"] as? String)?.contains("No food") == true ||
+                    (parsed["message"] as? String)?.contains("no food") == true) {
+                    await MainActor.run {
+                        errorMsg = "🍽️ No food detected in this image.\n\nPlease take a photo of food or beverages to scan."
+                    }
+                    return
+                }
+                
+                // Check error message for "no food" patterns
+                if errorMessage.contains("NO_FOOD_DETECTED") || 
+                   errorMessage.contains("\"error\":\"NO_FOOD_DETECTED\"") ||
+                   errorMessage.contains("No food or beverages detected") ||
+                   errorMessage.contains("No food detected") ||
+                   (errorMessage.contains("no food") && errorMessage.contains("detected")) {
+                    await MainActor.run {
+                        errorMsg = "🍽️ No food detected in this image.\n\nPlease take a photo of food or beverages to scan."
+                    }
+                    return
+                }
+                
                 // Check for timeout errors
                 if errorCode == NSURLErrorTimedOut || errorMessage.contains("timeout") || errorMessage.contains("timed out") {
-                    errorMsg = "Analysis timed out. Please try again with a clearer photo."
+                    await MainActor.run {
+                        errorMsg = "Analysis timed out. Please try again with a clearer photo."
+                    }
+                    return
                 }
                 // Check for authentication errors
                 else if errorCode == 401 {
-                    errorMsg = "Authentication failed. Please log in again."
-                    // Optionally log out the user
                     await MainActor.run {
+                        errorMsg = "Authentication failed. Please log in again."
                         authVM.logout()
                     }
+                    return
                 } else if errorMessage.contains("token") || errorMessage.contains("Token") || errorMessage.contains("Invalid token") {
-                    errorMsg = "Session expired. Please log in again."
                     await MainActor.run {
+                        errorMsg = "Session expired. Please log in again."
                         authVM.logout()
                     }
-                } else if errorMessage.contains("no food items") || errorMessage.contains("no items") {
-                    errorMsg = "Could not identify food items. Please try a clearer photo."
+                    return
                 } else if errorMessage.contains("Gemini") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("not configured") || errorMessage.contains("Food recognition service") || errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") {
                     // Use the backend error message if it contains helpful information, otherwise show a generic message
-                    if errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("environment variable") {
-                        errorMsg = errorMessage
-                    } else {
-                        errorMsg = "Food recognition service is not configured. Please contact support."
+                    await MainActor.run {
+                        if errorMessage.contains("Food recognition") || errorMessage.contains("recognition service") || errorMessage.contains("GEMINI_API_KEY") || errorMessage.contains("environment variable") {
+                            errorMsg = errorMessage
+                        } else {
+                            errorMsg = "Food recognition service is not configured. Please contact support."
+                        }
                     }
+                    return
                 } else if errorMessage.contains("authentication failed") || errorMessage.contains("API key") {
-                    errorMsg = "Service configuration error. Please contact support."
+                    await MainActor.run {
+                        errorMsg = "Service configuration error. Please contact support."
+                    }
+                    return
                 } else if errorMessage.contains("Rate limit") || errorMessage.contains("currently busy") {
-                    errorMsg = "Service is busy. Please try again in a moment."
+                    await MainActor.run {
+                        errorMsg = "Service is busy. Please try again in a moment."
+                    }
+                    return
                 } else if errorMessage.contains("OpenAI") {
-                    errorMsg = "AI service unavailable. Please try again later."
+                    await MainActor.run {
+                        errorMsg = "AI service unavailable. Please try again later."
+                    }
+                    return
                 } else {
-                    errorMsg = "Upload error: \(errorMessage)"
+                    await MainActor.run {
+                        errorMsg = "Upload error: \(errorMessage)"
+                    }
+                    return
                 }
             } else {
                 let errorDesc = error.localizedDescription

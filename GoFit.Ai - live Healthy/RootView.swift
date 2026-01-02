@@ -14,6 +14,11 @@ struct RootView: View {
                 AuthView()
                     .environmentObject(auth)
                     .environmentObject(purchases)
+            } else if purchases.requiresSubscription {
+                // Trial expired and no subscription - show paywall
+                PaywallView()
+                    .environmentObject(purchases)
+                    .interactiveDismissDisabled() // Prevent dismissing paywall
             } else {
                 MainTabView()
                     .environmentObject(auth)
@@ -27,10 +32,11 @@ struct RootView: View {
         .onAppear {
             purchases.loadProducts()
             
-            // Check subscription status on app launch
+            // Check subscription and trial status on app launch
             Task {
                 await purchases.updateSubscriptionStatus()
                 await purchases.checkSubscriptionStatus()
+                await purchases.checkTrialAndSubscriptionStatus()
             }
             
             // Sync HealthKit if authorized and logged in
@@ -65,9 +71,10 @@ struct RootView: View {
             if newValue {
                 // When user logs in, sync HealthKit and check subscription
                 Task {
-                    // Check subscription status
+                    // Check subscription and trial status
                     await purchases.updateSubscriptionStatus()
                     await purchases.checkSubscriptionStatus()
+                    await purchases.checkTrialAndSubscriptionStatus()
                     
                     // Refresh authorization status and sync HealthKit if authorized
                     healthKit.checkAuthorizationStatus()
@@ -93,6 +100,20 @@ struct RootView: View {
                 // When user logs out, stop periodic sync
                 healthKit.stopPeriodicSync()
                 print("🛑 Stopped HealthKit periodic sync - user logged out")
+            }
+        }
+        .onChange(of: purchases.hasActiveSubscription) { oldValue, newValue in
+            // When subscription becomes active, recheck trial status
+            if newValue {
+                Task {
+                    await purchases.checkTrialAndSubscriptionStatus()
+                }
+            }
+        }
+        .onChange(of: purchases.subscriptionStatus) { oldValue, newValue in
+            // When subscription status changes, recheck trial status
+            Task {
+                await purchases.checkTrialAndSubscriptionStatus()
             }
         }
     }

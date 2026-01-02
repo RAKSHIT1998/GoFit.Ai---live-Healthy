@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 class OnboardingViewModel: ObservableObject {
     @Published var currentStep: Int = 0
-    @Published var totalSteps: Int = 11 // 11 engaging screens (added lifestyle habits)
+    @Published var totalSteps: Int = 12 // 12 engaging screens (added target weight step)
     
     // User data collected during onboarding
     @Published var name: String = ""
@@ -18,6 +18,7 @@ class OnboardingViewModel: ObservableObject {
     // New comprehensive questions
     @Published var weightKg: Double = 70
     @Published var heightCm: Double = 170
+    @Published var targetWeightKg: Double? = nil
     @Published var workoutPreferences: Set<WorkoutType> = []
     @Published var favoriteCuisines: Set<CuisineType> = []
     @Published var foodPreferences: Set<FoodPreference> = []
@@ -429,13 +430,14 @@ class OnboardingViewModel: ObservableObject {
         case 1: return !name.isEmpty // Name required
         case 2: return weightKg > 0 && heightCm > 0 // Weight & Height required
         case 3: return true // Goal selection
-        case 4: return true // Activity level
-        case 5: return true // Dietary preferences (optional)
-        case 6: return true // Allergies (optional)
-        case 7: return true // Workout preferences (optional)
-        case 8: return true // Favorite cuisines & food preferences (optional)
-        case 9: return true // Lifestyle & motivation (optional)
-        case 10: return true // Lifestyle habits - drinking & smoking (optional)
+        case 4: return targetWeightKg != nil && targetWeightKg! > 0 // Target weight required
+        case 5: return true // Activity level
+        case 6: return true // Dietary preferences (optional)
+        case 7: return true // Allergies (optional)
+        case 8: return true // Workout preferences (optional)
+        case 9: return true // Favorite cuisines & food preferences (optional)
+        case 10: return true // Lifestyle & motivation (optional)
+        case 11: return true // Lifestyle habits - drinking & smoking (optional)
         default: return true
         }
     }

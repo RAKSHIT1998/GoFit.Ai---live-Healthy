@@ -875,3 +875,349 @@ struct LifestyleHabitCard: View {
     }
 }
 
+
+// MARK: - Target Weight Step with AI Recommendations
+struct TargetWeightStep: View {
+    @ObservedObject var viewModel: OnboardingViewModel
+    @State private var targetWeightText: String = ""
+    @State private var unitSystem: UnitSystem = .metric
+    @State private var isLoading = false
+    @State private var recommendations: TargetWeightRecommendations? = nil
+    @State private var errorMessage: String? = nil
+    @FocusState private var isFocused: Bool
+    
+    enum UnitSystem {
+        case metric
+        case imperial
+    }
+    
+    struct TargetWeightRecommendations: Codable {
+        let dailyCalories: Int
+        let dailyProtein: Int
+        let dailyCarbs: Int
+        let dailyFat: Int
+        let proteinPercent: Int
+        let carbsPercent: Int
+        let fatPercent: Int
+        let message: String
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer(minLength: 20)
+                
+                VStack(spacing: 16) {
+                    Image(systemName: "target")
+                        .font(.system(size: 60))
+                        .foregroundColor(.white)
+                    
+                    Text("Your Target Weight")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Tell us your goal weight and we'll calculate your ideal calorie and protein intake")
+                        .font(.body)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                
+                VStack(spacing: 24) {
+                    // Target Weight Input
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(unitSystem == .metric ? "Target Weight (kg)" : "Target Weight (lbs)")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        TextField(unitSystem == .metric ? "Enter target weight in kg" : "Enter target weight in lbs", text: $targetWeightText)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.plain)
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(16)
+                            .focused($isFocused)
+                            .onChange(of: targetWeightText) { oldValue, newValue in
+                                if let value = Double(newValue) {
+                                    if unitSystem == .metric {
+                                        viewModel.targetWeightKg = value
+                                    } else {
+                                        viewModel.targetWeightKg = value * 0.453592 // Convert lbs to kg
+                                    }
+                                    // Clear previous recommendations when weight changes
+                                    recommendations = nil
+                                    errorMessage = nil
+                                } else {
+                                    viewModel.targetWeightKg = nil
+                                }
+                            }
+                    }
+                    
+                    // Unit Toggle
+                    HStack {
+                        Button(action: {
+                            unitSystem = .metric
+                            updateWeightForUnit()
+                        }) {
+                            Text("kg")
+                                .font(.headline)
+                                .foregroundColor(unitSystem == .metric ? Design.Colors.primary : .white.opacity(0.6))
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(unitSystem == .metric ? Design.Colors.cardBackground : Color.clear)
+                                .cornerRadius(12)
+                        }
+                        
+                        Button(action: {
+                            unitSystem = .imperial
+                            updateWeightForUnit()
+                        }) {
+                            Text("lbs")
+                                .font(.headline)
+                                .foregroundColor(unitSystem == .imperial ? Design.Colors.primary : .white.opacity(0.6))
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(unitSystem == .imperial ? Design.Colors.cardBackground : Color.clear)
+                                .cornerRadius(12)
+                        }
+                    }
+                    
+                    // Calculate Button
+                    if viewModel.targetWeightKg != nil && viewModel.targetWeightKg! > 0 {
+                        Button(action: {
+                            calculateRecommendations()
+                        }) {
+                            HStack {
+                                if isLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                    Text("Get AI Recommendations")
+                                }
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Design.Colors.primaryGradient)
+                            .cornerRadius(16)
+                        }
+                        .disabled(isLoading)
+                    }
+                    
+                    // Error Message
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                            .padding()
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(12)
+                    }
+                    
+                    // Recommendations Display
+                    if let recs = recommendations {
+                        VStack(spacing: 20) {
+                            Text("Your Personalized Plan")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            
+                            VStack(spacing: 16) {
+                                // Calories Card
+                                RecommendationCard(
+                                    icon: "flame.fill",
+                                    title: "Daily Calories",
+                                    value: "\(recs.dailyCalories)",
+                                    unit: "kcal",
+                                    color: Design.Colors.calories,
+                                    description: "Based on your target weight and activity level"
+                                )
+                                
+                                // Protein Card
+                                RecommendationCard(
+                                    icon: "figure.strengthtraining.traditional",
+                                    title: "Daily Protein",
+                                    value: "\(recs.dailyProtein)",
+                                    unit: "g",
+                                    color: Design.Colors.protein,
+                                    description: "\(recs.proteinPercent)% of your daily calories"
+                                )
+                                
+                                // Carbs Card
+                                RecommendationCard(
+                                    icon: "leaf.fill",
+                                    title: "Daily Carbs",
+                                    value: "\(recs.dailyCarbs)",
+                                    unit: "g",
+                                    color: Design.Colors.carbs,
+                                    description: "\(recs.carbsPercent)% of your daily calories"
+                                )
+                                
+                                // Fat Card
+                                RecommendationCard(
+                                    icon: "drop.fill",
+                                    title: "Daily Fat",
+                                    value: "\(recs.dailyFat)",
+                                    unit: "g",
+                                    color: Design.Colors.fat,
+                                    description: "\(recs.fatPercent)% of your daily calories"
+                                )
+                            }
+                            
+                            Text(recs.message)
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .padding()
+                                .background(Design.Colors.cardBackground.opacity(0.5))
+                                .cornerRadius(12)
+                        }
+                        .padding()
+                        .background(Design.Colors.cardBackground.opacity(0.3))
+                        .cornerRadius(20)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .padding(.horizontal, 24)
+                
+                Spacer(minLength: 20)
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isFocused = false
+                }
+            }
+        }
+    }
+    
+    private func updateWeightForUnit() {
+        guard let targetWeight = viewModel.targetWeightKg else { return }
+        if unitSystem == .metric {
+            targetWeightText = String(format: "%.1f", targetWeight)
+        } else {
+            let lbs = targetWeight / 0.453592
+            targetWeightText = String(format: "%.1f", lbs)
+        }
+    }
+    
+    private func calculateRecommendations() {
+        guard let targetWeight = viewModel.targetWeightKg,
+              targetWeight > 0,
+              viewModel.weightKg > 0,
+              viewModel.heightCm > 0 else {
+            errorMessage = "Please enter your target weight"
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                let url = URL(string: "\(NetworkManager.shared.baseURL)/onboarding/target-weight-calories")!
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                
+                let body: [String: Any] = [
+                    "weightKg": viewModel.weightKg,
+                    "heightCm": viewModel.heightCm,
+                    "targetWeightKg": targetWeight,
+                    "goal": viewModel.goal.rawValue,
+                    "activityLevel": viewModel.activityLevel.rawValue,
+                    "dietaryPreferences": Array(viewModel.dietaryPreferences.map { $0.rawValue })
+                ]
+                
+                request.httpBody = try JSONSerialization.data(withJSONObject: body)
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    throw NSError(domain: "NetworkError", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+                }
+                
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let recsData = json?["recommendations"] as? [String: Any] else {
+                    throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])
+                }
+                
+                await MainActor.run {
+                    recommendations = TargetWeightRecommendations(
+                        dailyCalories: recsData["dailyCalories"] as? Int ?? 0,
+                        dailyProtein: recsData["dailyProtein"] as? Int ?? 0,
+                        dailyCarbs: recsData["dailyCarbs"] as? Int ?? 0,
+                        dailyFat: recsData["dailyFat"] as? Int ?? 0,
+                        proteinPercent: recsData["proteinPercent"] as? Int ?? 0,
+                        carbsPercent: recsData["carbsPercent"] as? Int ?? 0,
+                        fatPercent: recsData["fatPercent"] as? Int ?? 0,
+                        message: json?["message"] as? String ?? "Here are your personalized recommendations."
+                    )
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to calculate recommendations: \(error.localizedDescription)"
+                    isLoading = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Recommendation Card
+struct RecommendationCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    let unit: String
+    let color: Color
+    let description: String
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+                .frame(width: 40)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
+                
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    Text(unit)
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            
+            Spacer()
+            
+            Text(description)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.6))
+                .multilineTextAlignment(.trailing)
+        }
+        .padding()
+        .background(Design.Colors.cardBackground.opacity(0.5))
+        .cornerRadius(16)
+    }
+}

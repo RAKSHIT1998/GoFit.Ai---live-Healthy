@@ -293,7 +293,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       messages: [
         {
           role: 'system',
-          content: 'You are an expert nutritionist and certified personal trainer. CRITICAL: You MUST return ONLY valid JSON. workoutPlan.exercises MUST be an array of objects (e.g., [{name: "Exercise", duration: 10}]), NEVER a string. mealPlan arrays (breakfast, lunch, dinner, snacks) MUST be arrays of objects. Return pure JSON with no markdown, no code blocks, no explanations, no JavaScript string concatenation. The JSON must be directly parseable by JSON.parse().'
+          content: 'You are an expert nutritionist and certified personal trainer. CRITICAL JSON FORMAT REQUIREMENTS:\n1. Return ONLY valid JSON object - no markdown, no code blocks, no explanations\n2. workoutPlan.exercises MUST be a JSON array of objects, NEVER a string or JavaScript code\n3. Each exercise object must have: name, duration, calories, type, instructions, sets (or null), reps, restTime (or null), difficulty, muscleGroups (array), equipment (array)\n4. mealPlan arrays (breakfast, lunch, dinner, snacks) MUST be arrays of objects\n5. DO NOT use JavaScript string concatenation syntax like " + " or "\\n" + "\n6. Return pure, valid JSON that can be directly parsed by JSON.parse()\n7. Example: {"workoutPlan": {"exercises": [{"name": "Running", "duration": 30, "calories": 150, "type": "cardio", "instructions": "Run at moderate pace", "sets": null, "reps": "continuous", "restTime": null, "difficulty": "beginner", "muscleGroups": ["legs"], "equipment": ["none"]}]}}'
         },
         {
           role: 'user',
@@ -350,17 +350,37 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           exerciseString = exerciseString.replace(/^["']|["']$/g, '');
           
           // Step 2: Remove all JavaScript string concatenation patterns
-          // Pattern variations:
-          // - "\\n' +\n  '" (escaped newline, quote, plus, newline, spaces, quote)
-          // - "' +\n  '" (quote, plus, newline, spaces, quote)
-          // - "' +\n'" (quote, plus, newline, quote)
-          // - Any combination with escaped characters
-          exerciseString = exerciseString.replace(/\\n['"]\s*\+\s*\n\s*['"]/g, '');
+          // The actual pattern from OpenAI is: "[\\n' +\n  '  {\\n' +\n  \"    name: '...',\\n\" +..."
+          // Pattern breakdown: "[\\n' +\n  '  {\\n' +\n  \"    name: 'Brisk Walking',\\n\" +..."
+          
+          // Remove the most common pattern: ' +\n  ' (quote, space, plus, newline, spaces, quote)
+          // This handles: ' +\n  ' or " +\n  "
           exerciseString = exerciseString.replace(/['"]\s*\+\s*\n\s*['"]/g, '');
-          exerciseString = exerciseString.replace(/['"]\s*\+\s*\\n\s*['"]/g, '');
-          exerciseString = exerciseString.replace(/\\n\s*\+\s*\n\s*/g, '');
+          
+          // Remove pattern: \\n' +\n  ' (escaped newline, quote, space, plus, newline, spaces, quote)
+          exerciseString = exerciseString.replace(/\\n['"]\s*\+\s*\n\s*['"]/g, '');
+          
+          // Remove pattern: ' +\n' or " +\n" (quote, space, plus, newline, quote) - no spaces
+          exerciseString = exerciseString.replace(/['"]\s*\+\s*\n['"]/g, '');
+          
+          // Remove pattern: \\n' +\n' (escaped newline, quote, space, plus, newline, quote)
+          exerciseString = exerciseString.replace(/\\n['"]\s*\+\s*\n['"]/g, '');
+          
+          // Remove pattern: ' +' or " +" (quote, space, plus, quote) - same line
+          exerciseString = exerciseString.replace(/['"]\s*\+\s*['"]/g, '');
+          
+          // Remove any remaining: ' + or " + (quote, space, plus) at end of line
+          exerciseString = exerciseString.replace(/['"]\s*\+\s*$/gm, '');
+          
+          // Remove standalone concatenation: + with newlines around it
           exerciseString = exerciseString.replace(/\s*\+\s*\n\s*/g, ' ');
+          exerciseString = exerciseString.replace(/\\n\s*\+\s*\n\s*/g, '');
+          
+          // Remove any remaining standalone + operators (with spaces)
           exerciseString = exerciseString.replace(/\s*\+\s*/g, ' ');
+          
+          // Clean up multiple spaces
+          exerciseString = exerciseString.replace(/\s{2,}/g, ' ');
           
           // Step 3: Replace escaped characters with their actual values
           // Handle \\n (literal backslash-n) -> newline
@@ -400,23 +420,20 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           console.error('❌ Failed to parse exercises string:', e);
           console.error('📝 Full exercises string (first 1000 chars):', recommendationData.workoutPlan.exercises.substring(0, 1000));
           
-          // Last resort: Try manual reconstruction of the JavaScript string
+          // Last resort: Try extracting all string literals and joining them
           try {
-            console.log('⚠️ Attempting manual JavaScript string reconstruction as last resort...');
+            console.log('⚠️ Attempting string literal extraction as last resort...');
             let jsString = recommendationData.workoutPlan.exercises;
             
-            // Remove outer quotes
+            // Remove outer quotes if present
             jsString = jsString.replace(/^["']|["']$/g, '');
             
-            // Extract all string parts from the JavaScript concatenation
-            // Pattern: "..." or '...' followed by + followed by "..." or '...'
-            // We need to collect all the string parts and concatenate them
-            const stringParts = [];
-            let currentPos = 0;
-            
-            // Find all quoted strings (handling escaped quotes)
+            // Extract all string literals (both single and double quoted, handling escapes)
+            // Pattern matches: "..." or '...' including escaped quotes
+            const stringLiterals = [];
             const stringPattern = /(["'])((?:(?:\\.)|(?!\1)[^\\])*?)\1/g;
             let match;
+            
             while ((match = stringPattern.exec(jsString)) !== null) {
               const quote = match[1];
               const content = match[2];
@@ -427,32 +444,53 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
                 .replace(/\\"/g, '"')
                 .replace(/\\t/g, '\t')
                 .replace(/\\\\/g, '\\');
-              stringParts.push(unescaped);
+              stringLiterals.push(unescaped);
             }
             
-            // If we found string parts, concatenate them
-            if (stringParts.length > 0) {
-              const reconstructed = stringParts.join('');
-              console.log('📝 Reconstructed string from parts (first 500 chars):', reconstructed.substring(0, 500));
+            if (stringLiterals.length > 0) {
+              // Join all string literals together
+              const reconstructed = stringLiterals.join('');
+              console.log('📝 Reconstructed from string literals (first 500 chars):', reconstructed.substring(0, 500));
               
               // Try to find and parse the JSON array
               const arrayMatch = reconstructed.match(/\[[\s\S]*\]/);
               if (arrayMatch) {
-                const parsed = JSON.parse(arrayMatch[0]);
-                if (Array.isArray(parsed)) {
-                  recommendationData.workoutPlan.exercises = parsed;
-                  console.log('✅ Successfully parsed exercises using manual reconstruction');
-                } else {
-                  throw new Error('Reconstructed result is not an array');
+                try {
+                  const parsed = JSON.parse(arrayMatch[0]);
+                  if (Array.isArray(parsed)) {
+                    recommendationData.workoutPlan.exercises = parsed;
+                    console.log('✅ Successfully parsed exercises using string literal extraction');
+                  } else {
+                    throw new Error('Parsed result is not an array');
+                  }
+                } catch (parseErr) {
+                  console.error('❌ JSON parse failed on extracted array:', parseErr.message);
+                  // Try one more time with additional cleaning
+                  let arrayStr = arrayMatch[0];
+                  // Remove any remaining artifacts
+                  arrayStr = arrayStr.replace(/\s*\+\s*/g, ' ');
+                  arrayStr = arrayStr.replace(/\n\s*\n/g, '\n');
+                  try {
+                    const parsed = JSON.parse(arrayStr);
+                    if (Array.isArray(parsed)) {
+                      recommendationData.workoutPlan.exercises = parsed;
+                      console.log('✅ Successfully parsed exercises after additional cleaning');
+                    } else {
+                      throw new Error('Still not an array after cleaning');
+                    }
+                  } catch (finalErr) {
+                    throw parseErr; // Throw original error
+                  }
                 }
               } else {
                 throw new Error('No array found in reconstructed string');
               }
             } else {
-              throw new Error('No string parts found to reconstruct');
+              throw new Error('No string literals found to extract');
             }
           } catch (reconstructError) {
-            console.error('❌ Manual reconstruction also failed:', reconstructError);
+            console.error('❌ String literal extraction also failed:', reconstructError);
+            console.error('📝 Full exercises string for debugging (first 2000 chars):', recommendationData.workoutPlan.exercises.substring(0, 2000));
             // If all parsing fails, set to empty array to prevent validation error
             recommendationData.workoutPlan.exercises = [];
             console.log('⚠️ Set exercises to empty array due to parsing failure');
