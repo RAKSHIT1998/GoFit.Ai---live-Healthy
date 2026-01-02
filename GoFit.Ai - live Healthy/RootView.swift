@@ -35,11 +35,14 @@ struct RootView: View {
             
             // Sync HealthKit if authorized and logged in
             if auth.isLoggedIn {
-                // Refresh authorization status first
+                // Refresh authorization status first - this checks if permission is already granted
                 healthKit.checkAuthorizationStatus()
                 
+                print("📊 HealthKit status on app launch: \(healthKit.isAuthorized ? "✅ Authorized" : "❌ Not authorized")")
+                
                 if healthKit.isAuthorized {
-                    // Start periodic sync when user is logged in
+                    // Permission is already granted - start periodic sync immediately
+                    print("✅ HealthKit permission already granted - starting periodic sync")
                     healthKit.startPeriodicSync()
                     
                     Task {
@@ -50,6 +53,8 @@ struct RootView: View {
                             print("⚠️ HealthKit sync on launch failed: \(error.localizedDescription)")
                         }
                     }
+                } else {
+                    print("ℹ️ HealthKit permission not granted yet - will not start sync until user grants permission")
                 }
             } else {
                 // Stop periodic sync when user is not logged in
@@ -67,8 +72,11 @@ struct RootView: View {
                     // Refresh authorization status and sync HealthKit if authorized
                     healthKit.checkAuthorizationStatus()
                     
+                    print("📊 HealthKit status after login: \(healthKit.isAuthorized ? "✅ Authorized" : "❌ Not authorized")")
+                    
                     if healthKit.isAuthorized {
-                        // Start periodic sync when user logs in
+                        // Permission is already granted - start periodic sync immediately
+                        print("✅ HealthKit permission already granted - starting periodic sync after login")
                         healthKit.startPeriodicSync()
                         
                         do {
@@ -77,6 +85,8 @@ struct RootView: View {
                         } catch {
                             print("⚠️ HealthKit sync after login failed: \(error.localizedDescription)")
                         }
+                    } else {
+                        print("ℹ️ HealthKit permission not granted yet - will not start sync until user grants permission")
                     }
                 }
             } else {

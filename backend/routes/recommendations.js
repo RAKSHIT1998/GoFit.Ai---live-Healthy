@@ -2,16 +2,24 @@ import express from 'express';
 import Recommendation from '../models/Recommendation.js';
 import Meal from '../models/Meal.js';
 import User from '../models/User.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import mlService from '../services/mlService.js';
 
 const router = express.Router();
 
-// Initialize Google Gemini AI
-// Get your free API key at: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+// Initialize OpenAI API
+// Get your API key at: https://platform.openai.com/api-keys
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
+// Log OpenAI status on module load
+if (OPENAI_API_KEY) {
+  console.log(`✅ OPENAI_API_KEY loaded (length: ${OPENAI_API_KEY.length}, starts with: ${OPENAI_API_KEY.substring(0, 10)}...)`);
+} else {
+  console.error('❌ OPENAI_API_KEY is missing or empty. Recommendations will not work.');
+  console.error('   Set OPENAI_API_KEY in Render environment variables: https://platform.openai.com/api-keys');
+}
 
 // Get daily recommendations
 router.get('/daily', authMiddleware, async (req, res) => {
@@ -152,18 +160,18 @@ async function generateRecommendation(user) {
     }))
   };
 
-  // Check if Gemini API key is configured
-  if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
-    console.error('❌ GEMINI_API_KEY is not set or empty for recommendations');
-    throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable. Get your free API key at https://aistudio.google.com/app/apikey');
+  // Check if OpenAI API key is configured
+  if (!OPENAI_API_KEY || OPENAI_API_KEY.trim() === '') {
+    console.error('❌ OPENAI_API_KEY is not set or empty for recommendations');
+    throw new Error('AI recommendation service is not configured. Please set OPENAI_API_KEY environment variable. Get your API key at https://platform.openai.com/api-keys');
   }
   
-  if (!genAI) {
-    console.error('❌ Failed to initialize GoogleGenerativeAI for recommendations');
-    throw new Error('AI recommendation service initialization failed. Please check GEMINI_API_KEY configuration.');
+  if (!openai) {
+    console.error('❌ Failed to initialize OpenAI for recommendations');
+    throw new Error('AI recommendation service initialization failed. Please check OPENAI_API_KEY configuration.');
   }
 
-  // Generate meal plan with Google Gemini - Enhanced prompt with ML insights
+  // Generate meal plan with OpenAI - Enhanced prompt with ML insights
   const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
 USER PROFILE:
@@ -252,56 +260,32 @@ You are an expert nutritionist and certified personal trainer with years of expe
 Ensure all recommendations are safe, achievable, and aligned with the user's profile.`;
 
   try {
-    // Use Gemini 1.5 Flash for recommendations (faster and more reliable)
-    // Can also use gemini-1.5-pro for better quality
-    const modelPreference = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    // Use OpenAI GPT-4 for recommendations (high quality and reliable)
+    const modelPreference = process.env.OPENAI_MODEL || 'gpt-4o';
     
-    let model;
-    try {
-      model = genAI.getGenerativeModel({ 
-        model: modelPreference,
-        generationConfig: {
-          temperature: 0.7, // Balanced creativity and consistency
-          maxOutputTokens: 4000 // Increased for more detailed meal recipes and workout instructions
-        }
-      });
-      console.log(`✅ Using model: ${modelPreference} for recommendations`);
-    } catch (modelError) {
-      console.error(`❌ Failed to initialize ${modelPreference}, trying fallback:`, modelError.message);
-      // Try fallback models
-      const fallbackModels = ['gemini-1.5-pro', 'gemini-pro'];
-      let modelInitialized = false;
-      
-      for (const fallbackModel of fallbackModels) {
-        if (fallbackModel === modelPreference) continue;
-        
-        try {
-          model = genAI.getGenerativeModel({ 
-            model: fallbackModel,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 4000
-            }
-          });
-          console.log(`✅ Using fallback model: ${fallbackModel}`);
-          modelInitialized = true;
-          break;
-        } catch (e) {
-          console.error(`❌ Failed to initialize ${fallbackModel}:`, e.message);
-        }
-      }
-      
-      if (!modelInitialized) {
-        throw new Error(`Failed to initialize any Gemini model. Last error: ${modelError.message}`);
-      }
-    }
-
-    // Generate content with proper async handling
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const content = response.text();
+    console.log(`✅ Using OpenAI model: ${modelPreference} for recommendations`);
     
-    console.log('✅ Gemini recommendation generation completed');
+    // Generate content with OpenAI
+    const completion = await openai.chat.completions.create({
+      model: modelPreference,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert nutritionist and certified personal trainer with years of experience. Your recommendations are evidence-based, personalized, and practical. Always return valid JSON only, no markdown, no code blocks, no explanations outside the JSON structure.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7, // Balanced creativity and consistency
+      max_tokens: 4000, // Increased for more detailed meal recipes and workout instructions
+      response_format: { type: 'json_object' } // Request JSON format
+    });
+    
+    const content = completion.choices[0]?.message?.content || '';
+    
+    console.log('✅ OpenAI recommendation generation completed');
     console.log('📝 Response length:', content.length, 'characters');
     
   let recommendationData;
@@ -310,7 +294,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     // Try multiple parsing strategies for better reliability
     let jsonString = content.trim();
     
-    // Remove markdown code blocks if present
+    // Remove markdown code blocks if present (OpenAI might still add them sometimes)
     jsonString = jsonString.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '');
     
     // Try to extract JSON object
@@ -323,7 +307,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     
     console.log('✅ Successfully parsed recommendation data');
     } catch (parseError) {
-      console.error('❌ Failed to parse Gemini recommendation response:', parseError);
+      console.error('❌ Failed to parse OpenAI recommendation response:', parseError);
       console.error('📝 Response content (first 500 chars):', content ? content.substring(0, 500) : 'No content');
       console.error('📝 Full response length:', content ? content.length : 0);
     // Fallback recommendation with full details
@@ -403,7 +387,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     workoutPlan: recommendationData.workoutPlan,
     hydrationGoal: recommendationData.hydrationGoal,
     insights: recommendationData.insights || [],
-    aiVersion: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+    aiVersion: process.env.OPENAI_MODEL || 'gpt-4o',
     // Add ML metadata
     mlMetadata: {
       userType: context.user.userType,
@@ -417,39 +401,40 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
   console.log('✅ Recommendation saved with ML insights');
 
   return recommendation;
-  } catch (geminiError) {
-    console.error('❌ Google Gemini API error:', geminiError);
+  } catch (openaiError) {
+    console.error('❌ OpenAI API error:', openaiError);
     console.error('❌ Error details:', {
-      message: geminiError.message,
-      status: geminiError.status,
-      statusCode: geminiError.statusCode,
-      code: geminiError.code
+      message: openaiError.message,
+      status: openaiError.status,
+      statusCode: openaiError.status,
+      code: openaiError.code,
+      type: openaiError.type
     });
     
     // Check for specific error types
-    if (geminiError.message?.includes('API key') || 
-        geminiError.message?.includes('not configured') ||
-        geminiError.status === 401 ||
-        geminiError.statusCode === 401) {
-      throw new Error('AI recommendation service is not configured. Please set GEMINI_API_KEY environment variable. Get your free API key at https://aistudio.google.com/app/apikey');
+    if (openaiError.message?.includes('API key') || 
+        openaiError.message?.includes('not configured') ||
+        openaiError.status === 401 ||
+        openaiError.code === 'invalid_api_key') {
+      throw new Error('AI recommendation service is not configured. Please set OPENAI_API_KEY environment variable. Get your API key at https://platform.openai.com/api-keys');
     }
     
-    if (geminiError.message?.includes('timeout') || geminiError.message === 'Request timeout') {
+    if (openaiError.message?.includes('timeout') || openaiError.code === 'timeout') {
       throw new Error('AI recommendation request timed out. Please try again.');
     }
     
-    if (geminiError.message?.includes('not found') || 
-        geminiError.status === 404 ||
-        geminiError.statusCode === 404) {
-      throw new Error('Gemini model not available. Please check the model name or API access.');
+    if (openaiError.message?.includes('model') && openaiError.message?.includes('not found') || 
+        openaiError.status === 404 ||
+        openaiError.code === 'model_not_found') {
+      throw new Error('OpenAI model not available. Please check the model name or API access.');
     }
     
-    if (geminiError.status === 429 || geminiError.statusCode === 429) {
+    if (openaiError.status === 429 || openaiError.code === 'rate_limit_exceeded') {
       throw new Error('AI recommendation service is currently busy. Please try again in a moment.');
     }
     
     // For other errors, throw to be handled by the route handler
-    throw new Error(`AI recommendation error: ${geminiError.message || 'Unknown error'}. Please check backend logs for details.`);
+    throw new Error(`AI recommendation error: ${openaiError.message || 'Unknown error'}. Please check backend logs for details.`);
   }
 }
 

@@ -21,11 +21,24 @@ struct GoFitAiApp: App {
         }
     }()
 
+    @AppStorage("darkModePreference") private var darkModePreference: String = "system"
+    
     var body: some Scene {
         WindowGroup {
             RootView()
-                // Dark mode is now supported with adaptive colors
+                .preferredColorScheme(colorScheme)
         }
         .modelContainer(sharedModelContainer)
+    }
+    
+    private var colorScheme: ColorScheme? {
+        switch darkModePreference.lowercased() {
+        case "light":
+            return .light
+        case "dark":
+            return .dark
+        default:
+            return nil // System default
+        }
     }
 }

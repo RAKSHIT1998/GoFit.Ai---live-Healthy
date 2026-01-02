@@ -13,7 +13,7 @@ struct ProfileView: View {
     @State private var showingChangePassword = false
     @State private var showingShareProgress = false
 
-    @State private var notificationsEnabled = true
+    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
     @AppStorage("unitsPreference") private var unitsPreference: String = "metric"
     @AppStorage("darkModePreference") private var darkModePreference: String = "system"
@@ -96,17 +96,51 @@ struct ProfileView: View {
             } message: {
                 Text(errorMessage ?? "An error occurred")
             }
+            .sheet(isPresented: $showingExportData) {
+                // Export data loading sheet
+                VStack(spacing: 20) {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Exporting your data...")
+                            .font(.headline)
+                        Text("Please wait")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
+                        Text("Data exported successfully!")
+                            .font(.headline)
+                    }
+                }
+                .padding(40)
+                .interactiveDismissDisabled(isLoading)
+            }
             .onAppear {
                 // Check current authorization status when view appears
                 // This refreshes status if user granted permissions in Settings
                 healthKit.checkAuthorizationStatus()
                 healthSyncEnabled = healthKit.isAuthorized
+                
+                // If HealthKit is already authorized, start periodic sync
+                if healthKit.isAuthorized {
+                    print("✅ HealthKit already authorized on ProfileView appear - starting periodic sync")
+                    healthKit.startPeriodicSync()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 // Refresh authorization status when app comes to foreground
                 // This handles cases where user grants permissions in Settings then returns to app
                 healthKit.checkAuthorizationStatus()
                 healthSyncEnabled = healthKit.isAuthorized
+                
+                // If HealthKit is now authorized, start periodic sync
+                if healthKit.isAuthorized {
+                    print("✅ HealthKit permission detected on foreground - starting periodic sync")
+                    healthKit.startPeriodicSync()
+                }
             }
         }
     }
@@ -134,12 +168,13 @@ struct ProfileView: View {
                             // First, refresh status in case user granted permissions in Settings
                             healthKit.checkAuthorizationStatus()
                             
-                            // If already authorized, skip request
+                            // If already authorized, skip request and start periodic sync
                             if healthKit.isAuthorized {
-                                print("✅ HealthKit already authorized")
+                                print("✅ HealthKit already authorized - starting periodic sync")
                                 await MainActor.run {
                                     healthSyncEnabled = true
                                 }
+                                healthKit.startPeriodicSync()
                                 try? await healthKit.syncToBackend()
                                 return
                             }
@@ -155,8 +190,10 @@ struct ProfileView: View {
                                 healthSyncEnabled = healthKit.isAuthorized
                             }
                             
-                            // Sync data after authorization if authorized
+                            // If permission was just granted, start periodic sync
                             if healthKit.isAuthorized {
+                                print("✅ HealthKit permission granted in ProfileView - starting periodic sync")
+                                healthKit.startPeriodicSync()
                                 try? await healthKit.syncToBackend()
                             } else {
                                 // Give user option to check Settings
@@ -387,7 +424,10 @@ struct ProfileView: View {
                 icon: "square.and.arrow.up.fill",
                 iconColor: .blue,
                 title: "Export Data",
-                action: { showingExportData = true }
+                action: { 
+                    showingExportData = true
+                    exportData()
+                }
             )
 
             SettingsRow(
@@ -433,6 +473,7 @@ struct ProfileView: View {
 
     private func exportData() {
         isLoading = true
+        showingExportData = true
         Task {
             do {
                 // Use dictionary request method for export data
@@ -449,11 +490,13 @@ struct ProfileView: View {
                 // Create file and share
                 await MainActor.run {
                     isLoading = false
+                    showingExportData = false
                     shareData(jsonString: jsonString)
                 }
             } catch {
                 await MainActor.run {
                     isLoading = false
+                    showingExportData = false
                     errorMessage = "Failed to export data: \(error.localizedDescription)"
                     showingError = true
                 }

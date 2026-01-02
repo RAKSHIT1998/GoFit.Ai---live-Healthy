@@ -1124,8 +1124,9 @@ struct OnboardingSignupView: View {
             PaywallView()
                 .environmentObject(PurchaseManager())
                 .onDisappear {
-                    // After paywall dismisses (purchase or close), dismiss signup view
+                    // After paywall dismisses (user closes it), dismiss signup view
                     // RootView will automatically show MainTabView since auth.isLoggedIn is true
+                    // User can choose to subscribe or skip - paywall won't auto-dismiss
                     if auth.isLoggedIn {
                         dismiss()
                     }

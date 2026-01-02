@@ -219,15 +219,19 @@ struct PaywallView: View {
         Task {
             do {
                 try await purchases.purchase(productId: selectedPlan.id)
-                // Dismiss paywall - user will automatically go to home screen
-                // since auth.isLoggedIn is true and RootView will show MainTabView
+                // Purchase successful - let user choose to close paywall manually
+                // Don't auto-dismiss - user can close it when ready
                 await MainActor.run {
-                    dismiss()
+                    loading = false
+                    // Show success message or update UI
+                    // User can close paywall using the "Close" button
                 }
             } catch {
-                self.error = error.localizedDescription
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    loading = false
+                }
             }
-            loading = false
         }
     }
 }

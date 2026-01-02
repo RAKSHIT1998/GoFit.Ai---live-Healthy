@@ -33,9 +33,18 @@ class HealthKitService: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
+                let wasAuthorized = self.isAuthorized
                 self.checkAuthorizationStatus()
-                // Sync when app comes to foreground if authorized and user is logged in
-                if self.isAuthorized, AuthService.shared.readToken() != nil {
+                
+                // If permission was just granted (was false, now true), start periodic sync
+                if !wasAuthorized && self.isAuthorized {
+                    print("✅ HealthKit permission granted! Starting periodic sync...")
+                    if AuthService.shared.readToken() != nil {
+                        self.startPeriodicSync()
+                        try? await self.syncToBackend()
+                    }
+                } else if self.isAuthorized, AuthService.shared.readToken() != nil {
+                    // Already authorized - just sync
                     try? await self.syncToBackend()
                 }
             }
