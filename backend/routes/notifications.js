@@ -220,6 +220,7 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
     });
     
     const content = completion.choices[0]?.message?.content || '';
+    console.log(`✅ OpenAI water reminder response received: ${content.length} characters`);
     let jsonContent;
     
     try {
