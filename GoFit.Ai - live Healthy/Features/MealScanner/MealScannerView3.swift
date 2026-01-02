@@ -372,8 +372,8 @@ struct MealScannerView3: View {
                 
                 // Automatically upload immediately when photo is captured (Snapchat style)
                 // No preview needed - instant analysis
-                Task { [weak self] in
-                    await self?.uploadImage(newImage)
+                Task {
+                    await uploadImage(newImage)
                 }
             }
             .sheet(isPresented: $showPicker) {
@@ -421,9 +421,11 @@ struct MealScannerView3: View {
         // Optimize image for faster upload - use slightly lower quality for speed
         // Still good enough for food recognition
         // Process image compression on background queue to avoid blocking UI
-        guard let data = await Task.detached(priority: .userInitiated) {
+        let data = await Task.detached(priority: .userInitiated) {
             return image.jpegData(compressionQuality: 0.75)
-        }.value else {
+        }.value
+        
+        guard let data = data else {
             await MainActor.run {
                 errorMsg = "Failed to process image"
                 isUploading = false

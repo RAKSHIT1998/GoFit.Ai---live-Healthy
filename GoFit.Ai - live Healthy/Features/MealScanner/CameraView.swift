@@ -13,6 +13,7 @@ struct CameraView: UIViewRepresentable {
         var device: AVCaptureDevice?
         var previewLayer: AVCaptureVideoPreviewLayer?
         var lastCaptureTrigger: Int = 0
+        private var isCapturingPhoto = false
 
         init(_ parent: CameraView) {
             self.parent = parent
@@ -119,11 +120,13 @@ struct CameraView: UIViewRepresentable {
                 return
             }
             
-            // Check if output is ready
-            guard output.isCapturingPhoto == false else {
+            // Check if already capturing
+            guard !isCapturingPhoto else {
                 print("⚠️ Already capturing photo, skipping")
                 return
             }
+            
+            isCapturingPhoto = true
             
             // Use fastest capture settings for instant photo
             // Prioritize speed over maximum resolution for one-tap capture
@@ -247,6 +250,9 @@ struct CameraView: UIViewRepresentable {
 
 extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        // Reset capture flag
+        isCapturingPhoto = false
+        
         if let error = error {
             print("❌ Photo capture error: \(error.localizedDescription)")
             DispatchQueue.main.async { [weak self] in
