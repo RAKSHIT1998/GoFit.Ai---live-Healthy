@@ -22,6 +22,8 @@ if (OPENAI_API_KEY) {
 }
 
 // Get daily recommendations
+// This endpoint uses OpenAI (ChatGPT) to generate personalized meal and workout plans
+// It sends ALL customer data collected during onboarding to ChatGPT for personalization
 router.get('/daily', authMiddleware, async (req, res) => {
   try {
     const today = new Date();
@@ -34,10 +36,11 @@ router.get('/daily', authMiddleware, async (req, res) => {
     });
 
     if (!recommendation) {
-      // Generate new recommendation
-      console.log('📝 No recommendation found for today, generating new one...');
+      // Generate new recommendation using OpenAI with all onboarding data
+      console.log('📝 No recommendation found for today, generating new one with OpenAI...');
+      console.log(`🤖 Sending user data to ChatGPT for user: ${req.user._id}`);
       recommendation = await generateRecommendation(req.user);
-      console.log('✅ New recommendation generated successfully');
+      console.log('✅ New recommendation generated successfully by ChatGPT');
     } else {
       console.log('✅ Found existing recommendation for today');
     }
@@ -56,11 +59,14 @@ router.get('/daily', authMiddleware, async (req, res) => {
 });
 
 // Generate new recommendation
+// This endpoint uses OpenAI (ChatGPT) to regenerate personalized meal and workout plans
+// It sends ALL customer data collected during onboarding to ChatGPT for personalization
 router.post('/regenerate', authMiddleware, async (req, res) => {
   try {
     console.log('📝 Regenerating recommendations for user:', req.user._id);
+    console.log(`🤖 Sending user data to ChatGPT for regeneration...`);
     const recommendation = await generateRecommendation(req.user);
-    console.log('✅ Recommendations regenerated successfully');
+    console.log('✅ Recommendations regenerated successfully by ChatGPT');
     res.json(recommendation);
   } catch (error) {
     console.error('❌ Regenerate recommendations error:', error);
@@ -118,7 +124,22 @@ router.post('/feedback', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * Generate personalized meal and workout recommendations using OpenAI (ChatGPT)
+ * 
+ * This function:
+ * 1. Collects ALL customer data from onboarding (preferences, goals, lifestyle, etc.)
+ * 2. Sends comprehensive user profile to OpenAI GPT-4o
+ * 3. Receives personalized daily meal and workout plans
+ * 4. Saves recommendations to database for daily use
+ * 
+ * @param {Object} user - User document with all onboarding data
+ * @returns {Object} Recommendation document with meal and workout plans
+ */
 async function generateRecommendation(user) {
+  console.log(`🤖 Starting OpenAI recommendation generation for user: ${user._id}`);
+  console.log(`📊 User profile: goals=${user.goals}, activityLevel=${user.activityLevel}`);
+  
   // Get ML insights for personalized recommendations
   let mlInsights = await mlService.getMLInsights(user._id);
   
@@ -143,28 +164,43 @@ async function generateRecommendation(user) {
   today.setHours(0, 0, 0, 0);
 
   // Build enhanced context for AI with ML insights and comprehensive onboarding data
+  // This includes ALL data collected during onboarding to ensure ChatGPT has complete user profile
   const context = {
     user: {
+      // Basic profile
+      name: user.name,
       goals: user.goals,
       activityLevel: user.activityLevel,
-      dietaryPreferences: user.dietaryPreferences,
-      allergies: user.allergies,
+      dietaryPreferences: user.dietaryPreferences || [],
+      allergies: user.allergies || [],
       fastingPreference: user.fastingPreference,
+      
+      // Physical metrics
       weightKg: user.metrics?.weightKg || 70,
       heightCm: user.metrics?.heightCm || 170,
+      targetWeightKg: user.metrics?.targetWeightKg || null, // Target weight from onboarding
       targetCalories: user.metrics?.targetCalories || 2000,
-      // Comprehensive onboarding data for personalization
-      workoutPreferences: user.onboardingData?.workoutPreferences || [],
-      favoriteCuisines: user.onboardingData?.favoriteCuisines || [],
-      foodPreferences: user.onboardingData?.foodPreferences || [],
-      workoutTimeAvailability: user.onboardingData?.workoutTimeAvailability || 'moderate',
-      lifestyleFactors: user.onboardingData?.lifestyleFactors || [],
+      targetProtein: user.metrics?.targetProtein || 150,
+      targetCarbs: user.metrics?.targetCarbs || 200,
+      targetFat: user.metrics?.targetFat || 65,
+      
+      // Comprehensive onboarding data for personalization (ALL fields collected during signup)
+      workoutPreferences: user.onboardingData?.workoutPreferences || user.workoutPreferences || [],
+      favoriteCuisines: user.onboardingData?.favoriteCuisines || user.favoriteCuisines || [],
+      foodPreferences: user.onboardingData?.foodPreferences || user.foodPreferences || [],
+      workoutTimeAvailability: user.onboardingData?.workoutTimeAvailability || user.workoutTimeAvailability || 'moderate',
+      lifestyleFactors: user.onboardingData?.lifestyleFactors || user.lifestyleFactors || [],
+      favoriteFoods: user.onboardingData?.favoriteFoods || [], // From onboarding
       mealTimingPreference: user.onboardingData?.mealTimingPreference || 'regular',
-      drinkingFrequency: user.onboardingData?.drinkingFrequency || 'never',
-      smokingStatus: user.onboardingData?.smokingStatus || 'never',
-      // Add ML insights
+      cookingSkill: user.onboardingData?.cookingSkill || 'intermediate', // Cooking ability for recipe complexity
+      budgetPreference: user.onboardingData?.budgetPreference || 'moderate', // Budget for meal planning
+      motivationLevel: user.onboardingData?.motivationLevel || 'moderate', // Motivation level for workout intensity
+      drinkingFrequency: user.onboardingData?.drinkingFrequency || user.drinkingFrequency || 'never',
+      smokingStatus: user.onboardingData?.smokingStatus || user.smokingStatus || 'never',
+      
+      // Machine Learning insights (learned from user behavior over time)
       userType: mlInsights?.userType || 'beginner',
-      favoriteFoods: mlInsights?.preferences?.favoriteFoods || [],
+      mlFavoriteFoods: mlInsights?.preferences?.favoriteFoods || [], // ML-learned favorites (may differ from onboarding)
       preferredMealTimes: mlInsights?.preferences?.preferredMealTimes || [],
       averageMealCalories: mlInsights?.preferences?.averageMealCalories || 0,
       preferredMacroRatio: mlInsights?.preferences?.preferredMacroRatio || {
@@ -177,6 +213,9 @@ async function generateRecommendation(user) {
     recentMeals: recentMeals.map(m => ({
       items: m.items.map(i => i.name),
       calories: m.totalCalories,
+      protein: m.totalProtein || 0,
+      carbs: m.totalCarbs || 0,
+      fat: m.totalFat || 0,
       timestamp: m.timestamp
     }))
   };
@@ -195,29 +234,42 @@ async function generateRecommendation(user) {
   // Generate meal plan with OpenAI - Enhanced prompt with ML insights
   const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
-USER PROFILE (COMPREHENSIVE):
-- Name: ${user.name}
+USER PROFILE (COMPREHENSIVE - ALL ONBOARDING DATA):
+- Name: ${context.user.name}
 - Goals: ${context.user.goals}
 - Activity Level: ${context.user.activityLevel}
 - Dietary Preferences: ${context.user.dietaryPreferences.join(', ') || 'None specified'}
 - Allergies/Restrictions: ${context.user.allergies.join(', ') || 'None'}
-- Target Daily Calories: ${context.user.targetCalories} kcal
-- Target Protein: ${user.metrics?.targetProtein || 150}g
-- Target Carbs: ${user.metrics?.targetCarbs || 200}g
-- Target Fat: ${user.metrics?.targetFat || 65}g
 - Current Weight: ${context.user.weightKg} kg
 - Height: ${context.user.heightCm} cm
+- Target Weight: ${context.user.targetWeightKg ? context.user.targetWeightKg + ' kg' : 'Not specified'}
+- Target Daily Calories: ${context.user.targetCalories} kcal
+- Target Protein: ${context.user.targetProtein}g
+- Target Carbs: ${context.user.targetCarbs}g
+- Target Fat: ${context.user.targetFat}g
 - Fasting Preference: ${context.user.fastingPreference}
+
+WORKOUT & FITNESS PREFERENCES (from onboarding):
 - Workout Preferences: ${context.user.workoutPreferences.join(', ') || 'General fitness'}
+- Workout Time Availability: ${context.user.workoutTimeAvailability}
+- Motivation Level: ${context.user.motivationLevel}
+
+FOOD & LIFESTYLE PREFERENCES (from onboarding):
 - Favorite Cuisines: ${context.user.favoriteCuisines.join(', ') || 'Varied'}
 - Food Preferences: ${context.user.foodPreferences.join(', ') || 'Balanced'}
+- Favorite Foods: ${context.user.favoriteFoods.join(', ') || 'None specified'}
 - Meal Timing Preference: ${context.user.mealTimingPreference || 'Regular'}
+- Cooking Skill Level: ${context.user.cookingSkill || 'Intermediate'}
+- Budget Preference: ${context.user.budgetPreference || 'Moderate'}
+
+LIFESTYLE HABITS (from onboarding):
 - Drinking Frequency: ${context.user.drinkingFrequency || 'Never'}
 - Smoking Status: ${context.user.smokingStatus || 'Never'}
+- Lifestyle Factors: ${context.user.lifestyleFactors.join(', ') || 'Standard'}
 
-MACHINE LEARNING INSIGHTS (learned from user behavior):
+MACHINE LEARNING INSIGHTS (learned from user behavior over time):
 - User Type: ${context.user.userType}
-- Favorite Foods: ${context.user.favoriteFoods.join(', ') || 'None yet - user is new'}
+- ML-Learned Favorite Foods: ${context.user.mlFavoriteFoods?.join(', ') || 'None yet - user is new, use onboarding favorites'}
 - Preferred Meal Times: ${JSON.stringify(context.user.preferredMealTimes)}
 - Average Meal Calories: ${context.user.averageMealCalories.toFixed(0)} kcal
 - Preferred Macro Ratio: Protein ${context.user.preferredMacroRatio.protein}%, Carbs ${context.user.preferredMacroRatio.carbs}%, Fat ${context.user.preferredMacroRatio.fat}%
@@ -227,12 +279,17 @@ RECENT MEAL HISTORY (last 5 meals):
 ${JSON.stringify(context.recentMeals.slice(0, 5), null, 2)}
 
 INSTRUCTIONS:
-1. **PRIORITIZE ONBOARDING DATA**: Use the comprehensive onboarding data collected during signup:
+1. **PRIORITIZE ALL ONBOARDING DATA**: Use ALL the comprehensive onboarding data collected during signup to create highly personalized recommendations:
    - **Workout Preferences**: Incorporate their preferred workout types (${context.user.workoutPreferences.join(', ') || 'general fitness'}) into the workout plan
-   - **Favorite Cuisines**: Include meals from their favorite cuisines (${context.user.favoriteCuisines.join(', ') || 'varied'}) in meal suggestions
+   - **Favorite Cuisines**: Include meals from their favorite cuisines (${context.user.favoriteCuisines.join(', ') || 'varied'}) in meal suggestions - this is critical for user satisfaction
    - **Food Preferences**: Consider their food preferences (${context.user.foodPreferences.join(', ') || 'balanced'}) when creating meal plans
+   - **Favorite Foods**: If they specified favorite foods (${context.user.favoriteFoods.join(', ') || 'none'}), incorporate them into meal suggestions
    - **Workout Time**: Design workouts that fit their available time (${context.user.workoutTimeAvailability})
+   - **Cooking Skill**: Adjust recipe complexity based on their cooking skill (${context.user.cookingSkill || 'intermediate'}) - simpler recipes for beginners, more complex for advanced
+   - **Budget Preference**: Consider their budget preference (${context.user.budgetPreference || 'moderate'}) when suggesting ingredients and meal options
+   - **Motivation Level**: Adjust workout intensity and meal plan complexity based on motivation level (${context.user.motivationLevel || 'moderate'})
    - **Lifestyle Factors**: Adapt recommendations based on their lifestyle (${context.user.lifestyleFactors.join(', ') || 'standard'})
+   - **Target Weight**: If they specified a target weight (${context.user.targetWeightKg || 'not specified'}), create a plan that helps them reach it
 2. **PRIORITIZE ML INSIGHTS**: Use the machine learning insights to personalize recommendations:
    - If user has favorite foods, incorporate them into meal suggestions
    - Respect preferred meal times from their behavior patterns
