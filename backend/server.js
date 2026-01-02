@@ -49,15 +49,19 @@ const limiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for auth routes (handled by separate auth limiters)
-    // This prevents auth routes from being counted against both limiters
-    return req.path.startsWith('/api/auth');
+    // Check both req.path (relative to mount point) and req.originalUrl (full path)
+    const path = req.path || '';
+    const originalUrl = req.originalUrl || req.url || '';
+    // When mounted at /api/, req.path for /api/auth/register is /auth/register
+    // originalUrl contains the full path including /api/
+    return path.startsWith('/auth') || originalUrl.includes('/api/auth') || originalUrl.includes('/auth/');
   }
 });
 
 // Rate limiter specifically for registration (lenient for onboarding, but prevents abuse)
 const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Allow 50 registration attempts per 15 minutes per IP (lenient for onboarding)
+  max: 100, // Allow 100 registration attempts per 15 minutes per IP (increased for onboarding)
   message: 'Too many registration attempts. Please wait a few minutes and try again.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -78,13 +82,17 @@ const authLimiter = rateLimit({
   }
 });
 
-// Apply registration limiter specifically to registration endpoint
+// IMPORTANT: Apply limiters in order of specificity (most specific first)
+// This ensures registration requests hit registrationLimiter first, not general limiter
+
+// Apply registration limiter specifically to registration endpoint (most specific)
 app.use('/api/auth/register', registrationLimiter);
 
 // Apply auth limiter to other auth routes (login, me, etc.)
 app.use('/api/auth', authLimiter);
 
-// Apply general limiter to all other API routes
+// Apply general limiter to all other API routes (least specific, applied last)
+// The skip function ensures auth routes are not counted by this limiter
 app.use('/api/', limiter);
 
 // Body parsing
