@@ -318,7 +318,8 @@ class NotificationService: ObservableObject {
         if enabled {
             scheduleWaterReminders()
         } else {
-            let identifiers = (8...20).map { "water-\($0)" }
+            // Only remove the even-hour identifiers that were actually scheduled
+            let identifiers = stride(from: 8, through: 20, by: 2).map { "water-\($0)" }
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
         }
     }

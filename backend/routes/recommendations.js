@@ -141,6 +141,9 @@ async function generateRecommendation(user) {
       foodPreferences: user.onboardingData?.foodPreferences || [],
       workoutTimeAvailability: user.onboardingData?.workoutTimeAvailability || 'moderate',
       lifestyleFactors: user.onboardingData?.lifestyleFactors || [],
+      mealTimingPreference: user.onboardingData?.mealTimingPreference || 'regular',
+      drinkingFrequency: user.onboardingData?.drinkingFrequency || 'never',
+      smokingStatus: user.onboardingData?.smokingStatus || 'never',
       // Add ML insights
       userType: mlInsights?.userType || 'beginner',
       favoriteFoods: mlInsights?.preferences?.favoriteFoods || [],
