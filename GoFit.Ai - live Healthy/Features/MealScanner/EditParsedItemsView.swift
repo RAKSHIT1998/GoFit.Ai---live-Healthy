@@ -124,21 +124,15 @@ struct EditParsedItemsView: View {
         errorMessage = nil
         defer { isSaving = false }
         
-        do {
-            await onSave(items)
-            // Show success and dismiss after a brief delay
-            await MainActor.run {
-                showSuccess = true
-            }
-            // Dismiss after showing success
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            await MainActor.run {
-                dismiss()
-            }
-        } catch {
-            await MainActor.run {
-                errorMessage = "Failed to save meal: \(error.localizedDescription)"
-            }
+        await onSave(items)
+        // Show success and dismiss after a brief delay
+        await MainActor.run {
+            showSuccess = true
+        }
+        // Dismiss after showing success
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        await MainActor.run {
+            dismiss()
         }
     }
 }

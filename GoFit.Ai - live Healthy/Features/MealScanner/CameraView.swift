@@ -163,9 +163,6 @@ struct CameraView: UIViewRepresentable {
                 settings = AVCapturePhotoSettings()
             }
             
-            // Enable high resolution photos for better AI recognition
-            settings.isHighResolutionPhotoEnabled = true
-            
             // Use maximum supported resolution for best AI recognition (iOS 16+)
             if #available(iOS 16.0, *) {
                 if let activeFormat = device?.activeFormat {
