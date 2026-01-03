@@ -12,10 +12,6 @@
 	</array>
 	<key>com.apple.developer.healthkit.background-delivery</key>
 	<true/>
-	<key>com.apple.developer.icloud-container-identifiers</key>
-	<array/>
-	<key>com.apple.developer.icloud-services</key>
-	<array/>
 	<key>com.apple.developer.storekit.custom-purchase-link.allowed-regions</key>
 	<array>
 		<string>jp</string>
