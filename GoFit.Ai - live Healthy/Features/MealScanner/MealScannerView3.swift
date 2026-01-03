@@ -46,6 +46,7 @@ struct MealScannerView3: View {
     @State private var showManualLog = false
     @State private var showFlash = false
     @State private var isCapturing = false
+    @State private var showSaveSuccess = false
     
     var body: some View {
         NavigationView {
@@ -271,7 +272,44 @@ struct MealScannerView3: View {
                                 
                             // Action buttons - Log or Dismiss
                             VStack(spacing: 12) {
-                                // Log Meal Button
+                                // Log Meal Button - Save Immediately
+                                Button {
+                                    Task {
+                                        await logMealImmediately(resp: resp)
+                                    }
+                                } label: {
+                                    HStack {
+                                        if isUploading {
+                                            ProgressView()
+                                                .tint(.white)
+                                                .frame(width: 20, height: 20)
+                                        } else {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.title3)
+                                        }
+                                        Text(isUploading ? "Saving..." : "Log This Meal")
+                                            .font(.system(size: 18, weight: .semibold))
+                                        Spacer()
+                                        if !isUploading {
+                                            Image(systemName: "arrow.right")
+                                                .font(.title3)
+                                        }
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(18)
+                                    .background(
+                                        LinearGradient(
+                                            colors: isUploading ? [Color.gray, Color.gray.opacity(0.8)] : [Design.Colors.primary, Design.Colors.primary.opacity(0.8)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .cornerRadius(16)
+                                    .shadow(color: Design.Colors.primary.opacity(0.3), radius: 10, x: 0, y: 5)
+                                }
+                                .disabled(isUploading)
+                                
+                                // Edit Before Logging Button
                                 Button {
                                     let items = resp.parsedItems ?? []
                                     editableItems = items.map { item in
@@ -288,26 +326,24 @@ struct MealScannerView3: View {
                                     showEditScreen = true
                                 } label: {
                                     HStack {
-                                        Image(systemName: "checkmark.circle.fill")
+                                        Image(systemName: "pencil.circle.fill")
                                             .font(.title3)
-                                        Text("Log This Meal")
-                                            .font(.system(size: 18, weight: .semibold))
+                                        Text("Edit Before Logging")
+                                            .font(.system(size: 16, weight: .medium))
                                         Spacer()
                                         Image(systemName: "arrow.right")
                                             .font(.title3)
                                     }
-                                    .foregroundColor(.white)
-                                    .padding(18)
-                                    .background(
-                                        LinearGradient(
-                                            colors: [Design.Colors.primary, Design.Colors.primary.opacity(0.8)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
+                                    .foregroundColor(.primary)
+                                    .padding(16)
+                                    .background(Design.Colors.cardBackground)
                                     .cornerRadius(16)
-                                    .shadow(color: Design.Colors.primary.opacity(0.3), radius: 10, x: 0, y: 5)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                    )
                                 }
+                                .disabled(isUploading)
                                 
                                 // Dismiss Button
                                 Button {
@@ -414,10 +450,7 @@ struct MealScannerView3: View {
             .sheet(isPresented: $showEditScreen) {
                 NavigationView {
                     EditParsedItemsView(items: $editableItems) { finalItems in
-                        Task {
-                            await saveFinalMeal(parsedItems: finalItems)
-                            showEditScreen = false
-                        }
+                        await saveFinalMeal(parsedItems: finalItems)
                     }
                 }
             }
@@ -427,6 +460,16 @@ struct MealScannerView3: View {
                         errorMsg = "Camera permission denied. Enable it in Settings."
                     }
                 }
+            }
+            .alert("Meal Logged!", isPresented: $showSaveSuccess) {
+                Button("OK") {
+                    // Reset to allow new scan
+                    uploadResult = nil
+                    capturedImage = nil
+                    isCapturing = false
+                }
+            } message: {
+                Text("Your meal has been saved successfully.")
             }
         }
     }
@@ -586,21 +629,61 @@ struct MealScannerView3: View {
         }
     }
 
+    // Log meal immediately without editing
+    func logMealImmediately(resp: ServerMealResponse) async {
+        guard let items = resp.parsedItems, !items.isEmpty else { return }
+        
+        await MainActor.run {
+            isUploading = true
+            errorMsg = nil
+        }
+        
+        defer {
+            Task { @MainActor in
+                isUploading = false
+            }
+        }
+        
+        do {
+            // Convert parsed items to editable items (with defaults)
+            let editableItems = items.map { item in
+                EditableParsedItem(
+                    name: item.name,
+                    qtyText: item.portionSize ?? "",
+                    calories: item.calories ?? 0,
+                    protein: item.protein ?? 0,
+                    carbs: item.carbs ?? 0,
+                    fat: item.fat ?? 0,
+                    sugar: item.sugar ?? 0
+                )
+            }
+            
+            await saveFinalMeal(parsedItems: editableItems)
+        } catch {
+            await MainActor.run {
+                errorMsg = "Failed to log meal: \(error.localizedDescription)"
+            }
+        }
+    }
+    
     // Save the final corrected meal items to backend
     func saveFinalMeal(parsedItems: [EditableParsedItem]) async {
-        isUploading = true
-        defer { isUploading = false }
         do {
             // convert editable items to a DTO the backend expects
             let dto = parsedItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
             let saved = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
-            // set uploadResult from returned saved response if needed
-            uploadResult = saved
             
-            // Post notification to refresh meal history
-            NotificationCenter.default.post(name: NSNotification.Name("MealSaved"), object: nil)
+            await MainActor.run {
+                // Post notification to refresh meal history
+                NotificationCenter.default.post(name: NSNotification.Name("MealSaved"), object: nil)
+                
+                // Show success alert
+                showSaveSuccess = true
+            }
         } catch {
-            errorMsg = "Save error: \(error.localizedDescription)"
+            await MainActor.run {
+                errorMsg = "Save error: \(error.localizedDescription)"
+            }
         }
     }
 }
