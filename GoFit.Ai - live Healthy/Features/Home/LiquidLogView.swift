@@ -112,13 +112,20 @@ struct LiquidLogView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
+                    Button {
                         Task {
                             await saveLiquid()
                         }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                        } else {
+                            Text("Save")
+                                .bold()
+                        }
                     }
                     .disabled(isSaving || amount <= 0)
-                    .bold()
                 }
             }
             .alert("Liquid Logged!", isPresented: $showSuccess) {
@@ -135,34 +142,51 @@ struct LiquidLogView: View {
         defer { isSaving = false }
         
         do {
-            let url = NetworkManager.shared.baseURL.appendingPathComponent("health/water")
-            var req = URLRequest(url: url)
-            req.httpMethod = "POST"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            
-            if let token = AuthService.shared.readToken()?.accessToken {
-                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            // Use NetworkManager's request method for consistency and proper error handling
+            struct WaterLogRequest: Codable {
+                let amount: Double
+                let beverageType: String
+                let beverageName: String
+                let calories: Double
+                let sugar: Double
             }
             
-            let payload: [String: Any] = [
-                "amount": amount,
-                "beverageType": beverageType,
-                "beverageName": beverageName,
-                "calories": calculateCalories(),
-                "sugar": calculateSugar()
-            ]
-            
-            req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-            
-            let (_, response) = try await URLSession.shared.data(for: req)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                throw NSError(domain: "LiquidLogError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to log liquid"])
+            struct WaterLogResponse: Codable {
+                let _id: String?
+                let amount: Double
+                let beverageType: String
             }
             
-            showSuccess = true
+            let requestBody = WaterLogRequest(
+                amount: amount,
+                beverageType: beverageType,
+                beverageName: beverageName,
+                calories: calculateCalories(),
+                sugar: calculateSugar()
+            )
+            
+            let bodyData = try JSONEncoder().encode(requestBody)
+            
+            let _: WaterLogResponse = try await NetworkManager.shared.request(
+                "health/water",
+                method: "POST",
+                body: bodyData
+            )
+            
+            // Success - show alert and dismiss
+            await MainActor.run {
+                showSuccess = true
+            }
         } catch {
-            errorMessage = "Failed to log liquid: \(error.localizedDescription)"
+            print("❌ Failed to log liquid: \(error)")
+            await MainActor.run {
+                if let nsError = error as NSError? {
+                    let errorMessageText = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                    errorMessage = "Failed to log liquid: \(errorMessageText)"
+                } else {
+                    errorMessage = "Failed to log liquid: \(error.localizedDescription)"
+                }
+            }
         }
     }
     
