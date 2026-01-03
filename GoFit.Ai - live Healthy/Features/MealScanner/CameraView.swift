@@ -32,12 +32,14 @@ struct CameraView: UIViewRepresentable {
                 
                 self.session.beginConfiguration()
                 
-                // Use low resolution preset for fastest startup
-                // We can still capture high quality photos, but preview starts faster
-                if self.session.canSetSessionPreset(.medium) {
-                    self.session.sessionPreset = .medium // Faster than .photo
-                } else if self.session.canSetSessionPreset(.photo) {
-                    self.session.sessionPreset = .photo
+                // Use .photo preset for highest quality captures (needed for AI recognition)
+                // This ensures we get the best possible image quality for food recognition
+                if self.session.canSetSessionPreset(.photo) {
+                    self.session.sessionPreset = .photo // Highest quality for AI
+                } else if self.session.canSetSessionPreset(.high) {
+                    self.session.sessionPreset = .high
+                } else {
+                    self.session.sessionPreset = .medium
                 }
                 
                 // Camera device - use default for fastest access
@@ -49,14 +51,21 @@ struct CameraView: UIViewRepresentable {
                 }
                 self.device = captureDevice
                 
-                // Minimal device configuration for speed
+                // Configure device for high quality photos
                 do {
                     try captureDevice.lockForConfiguration()
-                    // Use fastest autofocus mode
+                    // Use auto focus for sharp images (critical for AI recognition)
                     if captureDevice.isFocusModeSupported(.continuousAutoFocus) {
                         captureDevice.focusMode = .continuousAutoFocus
                     }
-                    // Skip exposure configuration to save time
+                    // Enable auto exposure for proper lighting
+                    if captureDevice.isExposureModeSupported(.continuousAutoExposure) {
+                        captureDevice.exposureMode = .continuousAutoExposure
+                    }
+                    // Enable auto white balance for accurate colors
+                    if captureDevice.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                        captureDevice.whiteBalanceMode = .continuousAutoWhiteBalance
+                    }
                     captureDevice.unlockForConfiguration()
                 } catch {
                     // Continue even if configuration fails
@@ -128,64 +137,59 @@ struct CameraView: UIViewRepresentable {
             
             isCapturingPhoto = true
             
-            // Use fastest capture settings for instant photo
-            // Prioritize speed over maximum resolution for one-tap capture
+            // Lock focus and exposure for sharp, well-exposed photo (critical for AI)
+            if let device = device {
+                do {
+                    try device.lockForConfiguration()
+                    // Lock focus at current point for sharp image
+                    if device.isFocusModeSupported(.autoFocus) {
+                        device.focusMode = .autoFocus
+                    }
+                    // Lock exposure for consistent lighting
+                    if device.isExposureModeSupported(.autoExpose) {
+                        device.exposureMode = .autoExpose
+                    }
+                    device.unlockForConfiguration()
+                } catch {
+                    print("⚠️ Could not lock device for capture: \(error)")
+                }
+            }
+            
+            // Use highest quality settings for AI recognition
             let settings: AVCapturePhotoSettings
             if output.availablePhotoCodecTypes.contains(.hevc) {
                 settings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
             } else {
                 settings = AVCapturePhotoSettings()
             }
-            // Use standard resolution for faster capture (iOS 16+)
+            
+            // Enable high resolution photos for better AI recognition
+            settings.isHighResolutionPhotoEnabled = true
+            
+            // Use maximum supported resolution for best AI recognition (iOS 16+)
             if #available(iOS 16.0, *) {
-                // Get supported dimensions from the device's active format to avoid crashes
-                // Only use dimensions that are actually supported by the device
                 if let activeFormat = device?.activeFormat {
-                    let targetWidth: Int32 = 1920
-                    let targetHeight: Int32 = 1080
                     let supportedDimensions = activeFormat.supportedMaxPhotoDimensions
                     
-                    // Filter dimensions that fit within target size
-                    var suitableDimensions: [CMVideoDimensions] = []
-                    for dimension in supportedDimensions {
-                        if dimension.width <= targetWidth && dimension.height <= targetHeight {
-                            suitableDimensions.append(dimension)
-                        }
-                    }
-                    
-                    // Find the largest suitable dimension
-                    if !suitableDimensions.isEmpty {
-                        var bestDimension = suitableDimensions[0]
-                        var bestPixels = Int(bestDimension.width) * Int(bestDimension.height)
-                        
-                        for dimension in suitableDimensions {
-                            let pixels = Int(dimension.width) * Int(dimension.height)
-                            if pixels > bestPixels {
-                                bestPixels = pixels
-                                bestDimension = dimension
-                            }
-                        }
-                        settings.maxPhotoDimensions = bestDimension
-                    } else if !supportedDimensions.isEmpty {
-                        // Fallback to smallest supported dimension
-                        var smallestDimension = supportedDimensions[0]
-                        var smallestPixels = Int(smallestDimension.width) * Int(smallestDimension.height)
+                    if !supportedDimensions.isEmpty {
+                        // Find the LARGEST supported dimension for maximum quality
+                        var maxDimension = supportedDimensions[0]
+                        var maxPixels = Int(maxDimension.width) * Int(maxDimension.height)
                         
                         for dimension in supportedDimensions {
                             let pixels = Int(dimension.width) * Int(dimension.height)
-                            if pixels < smallestPixels {
-                                smallestPixels = pixels
-                                smallestDimension = dimension
+                            if pixels > maxPixels {
+                                maxPixels = pixels
+                                maxDimension = dimension
                             }
                         }
-                        settings.maxPhotoDimensions = smallestDimension
+                        settings.maxPhotoDimensions = maxDimension
+                        print("📸 Using maximum photo dimensions: \(maxDimension.width)x\(maxDimension.height) for AI recognition")
                     }
                 }
-            } else {
-                // Fallback for iOS < 16
-                settings.isHighResolutionPhotoEnabled = false
             }
-            // Capture immediately without delay
+            
+            // Capture immediately - photo taken instantly
             output.capturePhoto(with: settings, delegate: self)
         }
     }
@@ -236,9 +240,22 @@ struct CameraView: UIViewRepresentable {
             // Update the trigger synchronously to prevent race conditions
             context.coordinator.lastCaptureTrigger = newTrigger
             
-            // Capture on the session queue to ensure thread safety
-            context.coordinator.sessionQueue.async {
-                context.coordinator.capture()
+            // If camera session is not running, restart it first
+            if !context.coordinator.session.isRunning {
+                context.coordinator.sessionQueue.async {
+                    context.coordinator.start()
+                    // Wait a brief moment for session to start before capturing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        context.coordinator.sessionQueue.async {
+                            context.coordinator.capture()
+                        }
+                    }
+                }
+            } else {
+                // Capture on the session queue to ensure thread safety
+                context.coordinator.sessionQueue.async {
+                    context.coordinator.capture()
+                }
             }
         }
     }
@@ -250,6 +267,16 @@ struct CameraView: UIViewRepresentable {
 
 extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        // Stop camera session immediately after capture to save resources
+        // This prevents the camera from "keeping on working"
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            if self.session.isRunning {
+                self.session.stopRunning()
+                print("📸 Camera session stopped after capture")
+            }
+        }
+        
         // Reset capture flag
         isCapturingPhoto = false
         
@@ -266,7 +293,7 @@ extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
-            // Get photo data representation
+            // Get photo data representation (use highest quality)
             guard let data = photo.fileDataRepresentation() else {
                 print("❌ Failed to get photo data representation")
                 DispatchQueue.main.async {
@@ -284,9 +311,13 @@ extension CameraView.Coordinator: AVCapturePhotoCaptureDelegate {
                 return
             }
             
+            // Log photo quality for debugging
+            let imageSize = uiImage.size
+            let imageDataSize = data.count
+            print("✅ Photo captured successfully - Size: \(Int(imageSize.width))x\(Int(imageSize.height)), Data: \(imageDataSize/1024)KB")
+            
             // Update on main thread
             DispatchQueue.main.async {
-                print("✅ Photo captured successfully, size: \(uiImage.size)")
                 self.parent.capturedImage = uiImage
             }
         }

@@ -351,6 +351,9 @@ struct MealScannerView3: View {
                                     uploadResult = nil
                                     capturedImage = nil
                                     isCapturing = false
+                                    // Trigger camera restart by incrementing trigger
+                                    // This will cause CameraView to restart the session
+                                    captureTrigger += 1
                                 } label: {
                                     HStack {
                                         Image(systemName: "xmark.circle.fill")
