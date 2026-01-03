@@ -10,8 +10,9 @@
 		B2F1DFB72F068104002E1B7B /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F1DFB62F068104002E1B7B /* AuthenticationServices.framework */; };
 		B2F1DFC12F068105002E1B7B /* gofit.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B2F1DFB52F068104002E1B7B /* gofit.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B2F1E35B2F09094E002E1B7B /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27DDA162EEF07D70047CE53 /* HealthKit.framework */; };
-		B2F1E35E2F09094F002E1B7B /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; };
 		B2F1E3602F090951002E1B7B /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */; };
+		B2F1E6E22F0937D2002E1B7B /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; };
+		B2F1E6E32F0937D2002E1B7B /* StoreKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,17 @@
 				B2F1DFC12F068105002E1B7B /* gofit.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2F1E6E42F0937D2002E1B7B /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				B2F1E6E32F0937D2002E1B7B /* StoreKit.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -114,7 +126,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B2F1E35E2F09094F002E1B7B /* StoreKit.framework in Frameworks */,
+				B2F1E6E22F0937D2002E1B7B /* StoreKit.framework in Frameworks */,
 				B2F1E35B2F09094E002E1B7B /* HealthKit.framework in Frameworks */,
 				B2F1E3602F090951002E1B7B /* WatchConnectivity.framework in Frameworks */,
 			);
@@ -190,6 +202,7 @@
 				B2484A8A2EEC79A2009D604B /* Frameworks */,
 				B2484A8B2EEC79A2009D604B /* Resources */,
 				B2F1DFC62F068105002E1B7B /* Embed Foundation Extensions */,
+				B2F1E6E42F0937D2002E1B7B /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

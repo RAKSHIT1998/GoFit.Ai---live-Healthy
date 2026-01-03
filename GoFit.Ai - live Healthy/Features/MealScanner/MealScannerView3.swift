@@ -647,26 +647,20 @@ struct MealScannerView3: View {
             }
         }
         
-        do {
-            // Convert parsed items to editable items (with defaults)
-            let editableItems = items.map { item in
-                EditableParsedItem(
-                    name: item.name,
-                    qtyText: item.portionSize ?? "",
-                    calories: item.calories ?? 0,
-                    protein: item.protein ?? 0,
-                    carbs: item.carbs ?? 0,
-                    fat: item.fat ?? 0,
-                    sugar: item.sugar ?? 0
-                )
-            }
-            
-            await saveFinalMeal(parsedItems: editableItems)
-        } catch {
-            await MainActor.run {
-                errorMsg = "Failed to log meal: \(error.localizedDescription)"
-            }
+        // Convert parsed items to editable items (with defaults)
+        let editableItems = items.map { item in
+            EditableParsedItem(
+                name: item.name,
+                qtyText: item.portionSize ?? "",
+                calories: item.calories ?? 0,
+                protein: item.protein ?? 0,
+                carbs: item.carbs ?? 0,
+                fat: item.fat ?? 0,
+                sugar: item.sugar ?? 0
+            )
         }
+        
+        await saveFinalMeal(parsedItems: editableItems)
     }
     
     // Save the final corrected meal items to backend
@@ -674,7 +668,7 @@ struct MealScannerView3: View {
         do {
             // convert editable items to a DTO the backend expects
             let dto = parsedItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
-            let saved = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
+            let _ = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
             
             await MainActor.run {
                 // Post notification to refresh meal history
