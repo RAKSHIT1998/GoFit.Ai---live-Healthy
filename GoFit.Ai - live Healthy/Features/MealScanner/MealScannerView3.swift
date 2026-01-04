@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 // Nutrition Metric Card Component
 struct NutritionMetricCard: View {
@@ -82,29 +83,29 @@ struct MealScannerView3: View {
                         }
                         Spacer()
                         
-                        // Capture Button - Snapchat style
+                        // Capture Button - Instant capture
                         Button(action: { 
                             // Prevent multiple captures
                             guard !isCapturing else { return }
                             isCapturing = true
                             
-                            // Immediate haptic feedback
+                            // INSTANT CAPTURE: Trigger immediately, no delays
+                            captureTrigger += 1
+                            
+                            // Immediate haptic feedback (non-blocking)
                             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                             impactFeedback.impactOccurred()
                             
-                            // Flash effect
-                            withAnimation(.easeOut(duration: 0.1)) {
+                            // Flash effect (non-blocking, doesn't delay capture)
+                            withAnimation(.easeOut(duration: 0.05)) {
                                 showFlash = true
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                                 showFlash = false
                             }
                             
-                            // Trigger capture immediately - photo taken instantly
-                            captureTrigger += 1
-                            
-                            // Reset capture flag after a short delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            // Reset capture flag quickly
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 isCapturing = false
                             }
                         }) {
@@ -453,7 +454,7 @@ struct MealScannerView3: View {
             .sheet(isPresented: $showEditScreen) {
                 NavigationView {
                     EditParsedItemsView(items: $editableItems) { finalItems in
-                        await saveFinalMeal(parsedItems: finalItems)
+                            await saveFinalMeal(parsedItems: finalItems)
                     }
                 }
             }
@@ -461,6 +462,12 @@ struct MealScannerView3: View {
                 checkCameraPermission { granted in
                     if !granted {
                         errorMsg = "Camera permission denied. Enable it in Settings."
+                    } else {
+                        // Verify camera is available
+                        guard AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) != nil else {
+                            errorMsg = "Camera not available on this device."
+                            return
+                        }
                     }
                 }
             }
@@ -593,7 +600,7 @@ struct MealScannerView3: View {
                 try await NetworkManager.shared.uploadMealImage(data: data, filename: "meal.jpg", userId: authVM.userId)
             }
             await MainActor.run {
-                uploadResult = resp
+            uploadResult = resp
                 errorMsg = nil // Clear any previous errors
             }
         } catch {
@@ -606,10 +613,10 @@ struct MealScannerView3: View {
                 isCapturing = false
                 
                 // Parse error to show user-friendly message
-                if let nsError = error as NSError? {
-                    let errorCode = nsError.code
-                    let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
-                    
+            if let nsError = error as NSError? {
+                let errorCode = nsError.code
+                let errorMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String ?? error.localizedDescription
+                
                     // Check for "no food detected" error (from backend)
                     if errorCode == 400 && errorMessage.contains("NO_FOOD_DETECTED") {
                         errorMsg = "🍽️ No food detected in this image.\n\nPlease take a photo of food or beverages to scan."
@@ -662,24 +669,64 @@ struct MealScannerView3: View {
         
         await saveFinalMeal(parsedItems: editableItems)
     }
-    
+
     // Save the final corrected meal items to backend
     func saveFinalMeal(parsedItems: [EditableParsedItem]) async {
+        // Calculate totals
+        let totalCalories = parsedItems.reduce(0) { $0 + $1.calories }
+        let totalProtein = parsedItems.reduce(0) { $0 + $1.protein }
+        let totalCarbs = parsedItems.reduce(0) { $0 + $1.carbs }
+        let totalFat = parsedItems.reduce(0) { $0 + $1.fat }
+        let totalSugar = parsedItems.reduce(0) { $0 + $1.sugar }
+        
+        // Create cached meal for immediate local storage
+        let cachedItems = parsedItems.map { item in
+            CachedMeal.CachedMealItem(
+                name: item.name,
+                calories: item.calories,
+                protein: item.protein,
+                carbs: item.carbs,
+                fat: item.fat,
+                sugar: item.sugar,
+                portionSize: item.qtyText.isEmpty ? nil : item.qtyText
+            )
+        }
+        
+        let cachedMeal = CachedMeal(
+            id: UUID().uuidString,
+            timestamp: Date(),
+            items: cachedItems,
+            totalCalories: totalCalories,
+            totalProtein: totalProtein,
+            totalCarbs: totalCarbs,
+            totalFat: totalFat,
+            totalSugar: totalSugar,
+            mealType: "snack", // Default, can be enhanced later
+            synced: false
+        )
+        
+        // Store locally IMMEDIATELY for instant UI update
+        LocalMealCache.shared.addMeal(cachedMeal)
+        
+        // Post notification to refresh UI immediately
+        await MainActor.run {
+            NotificationCenter.default.post(name: NSNotification.Name("MealSaved"), object: nil)
+            showSaveSuccess = true
+        }
+        
+        // Then sync to backend in background (non-blocking)
+        Task.detached(priority: .utility) {
         do {
             // convert editable items to a DTO the backend expects
             let dto = parsedItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
-            let _ = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
+                let _ = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
             
-            await MainActor.run {
-                // Post notification to refresh meal history
-                NotificationCenter.default.post(name: NSNotification.Name("MealSaved"), object: nil)
-                
-                // Show success alert
-                showSaveSuccess = true
-            }
+                // Mark as synced in local cache
+                LocalMealCache.shared.markSynced(mealId: cachedMeal.id)
+                print("✅ Meal synced to backend: \(cachedMeal.id)")
         } catch {
-            await MainActor.run {
-                errorMsg = "Save error: \(error.localizedDescription)"
+                print("⚠️ Failed to sync meal to backend: \(error.localizedDescription)")
+                // Meal remains in cache with synced=false, can retry later
             }
         }
     }

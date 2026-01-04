@@ -126,7 +126,17 @@ struct HomeDashboardView: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MealSaved"))) { _ in
+                // Reload immediately from local cache (instant update)
                 Task {
+                    let localTotals = LocalMealCache.shared.getTodayTotals()
+                    await MainActor.run {
+                        todayCalories = "\(Int(localTotals.calories))"
+                        todayProtein = "\(Int(localTotals.protein))g"
+                        todayCarbs = "\(Int(localTotals.carbs))g"
+                        todayFat = "\(Int(localTotals.fat))g"
+                        todaySugar = localTotals.sugar
+                    }
+                    // Then sync with backend in background
                     await loadSummary()
                 }
             }
@@ -629,14 +639,26 @@ struct HomeDashboardView: View {
     }
     
     private func loadSummary() async {
-        // Check if user is logged in and has valid token
+        // Check if user is logged in
         guard auth.isLoggedIn else {
             print("⚠️ Cannot load summary: User not logged in")
             return
         }
         
+        // FIRST: Load from local cache immediately for instant UI
+        let localTotals = LocalMealCache.shared.getTodayTotals()
+        await MainActor.run {
+            todayCalories = "\(Int(localTotals.calories))"
+            todayProtein = "\(Int(localTotals.protein))g"
+            todayCarbs = "\(Int(localTotals.carbs))g"
+            todayFat = "\(Int(localTotals.fat))g"
+            todaySugar = localTotals.sugar
+        }
+        print("✅ Loaded from local cache: \(Int(localTotals.calories)) kcal")
+        
+        // THEN: Sync with backend in background (non-blocking)
         guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
-            print("⚠️ Cannot load summary: No valid token")
+            print("⚠️ No valid token, using local cache only")
             return
         }
         
@@ -668,25 +690,25 @@ struct HomeDashboardView: View {
             let fat = summary.fat.isFinite && !summary.fat.isNaN ? summary.fat : 0
             let sugar = (summary.sugar ?? 0).isFinite && !(summary.sugar ?? 0).isNaN ? (summary.sugar ?? 0) : 0
 
+            // Update UI with backend data (may be more accurate)
             await MainActor.run {
-            todayCalories = "\(Int(calories))"
-            todayProtein = "\(Int(protein))g"
-            todayCarbs = "\(Int(carbs))g"
-            todayFat = "\(Int(fat))g"
+                todayCalories = "\(Int(calories))"
+                todayProtein = "\(Int(protein))g"
+                todayCarbs = "\(Int(carbs))g"
+                todayFat = "\(Int(fat))g"
                 todaySugar = sugar
             }
+            print("✅ Synced with backend: \(Int(calories)) kcal")
         } catch {
-            print("Summary error:", error)
-            // Only log out on actual 401 (unauthorized) errors, not network errors
+            print("⚠️ Backend sync failed, using local cache: \(error.localizedDescription)")
+            // Keep local cache values - don't clear them
+            // Only log out on actual 401 (unauthorized) errors
             if let nsError = error as NSError?,
                nsError.code == 401 {
                 print("❌ Unauthorized (401) - token expired or invalid. Logging out.")
                 await MainActor.run {
                     auth.logout()
                 }
-            } else {
-                // For network errors, timeouts, etc., just log but don't log out
-                print("⚠️ Summary load failed (non-auth error): \(error.localizedDescription)")
             }
         }
 
