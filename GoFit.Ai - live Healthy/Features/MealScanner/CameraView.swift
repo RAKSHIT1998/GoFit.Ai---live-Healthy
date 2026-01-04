@@ -225,25 +225,20 @@ struct CameraView: UIViewRepresentable {
             return view
         }
         
-        // Safely setup preview layer with error handling
-        do {
-            context.coordinator.previewLayer = AVCaptureVideoPreviewLayer(session: context.coordinator.session)
-            context.coordinator.previewLayer?.videoGravity = .resizeAspectFill
+        // Safely setup preview layer
+        context.coordinator.previewLayer = AVCaptureVideoPreviewLayer(session: context.coordinator.session)
+        context.coordinator.previewLayer?.videoGravity = .resizeAspectFill
+        
+        // Set frame after a small delay to ensure view has proper bounds
+        DispatchQueue.main.async {
+            // Ensure we're still on main thread and view is valid
+            guard let previewLayer = context.coordinator.previewLayer else { return }
+            previewLayer.frame = view.bounds
             
-            // Set frame after a small delay to ensure view has proper bounds
-            DispatchQueue.main.async {
-                // Ensure we're still on main thread and view is valid
-                guard let previewLayer = context.coordinator.previewLayer else { return }
-                previewLayer.frame = view.bounds
-                
-                // Only add if not already added
-                if previewLayer.superlayer == nil {
-                    view.layer.addSublayer(previewLayer)
-                }
+            // Only add if not already added
+            if previewLayer.superlayer == nil {
+                view.layer.addSublayer(previewLayer)
             }
-        } catch {
-            print("⚠️ Failed to setup camera preview layer: \(error)")
-            return view
         }
         
         context.coordinator.lastCaptureTrigger = captureTrigger
@@ -272,16 +267,17 @@ struct CameraView: UIViewRepresentable {
             context.coordinator.lastCaptureTrigger = newTrigger
             
             // INSTANT CAPTURE: Capture immediately if session is running
-            if context.coordinator.session.isRunning {
+            let coordinator = context.coordinator
+            if coordinator.session.isRunning {
                 // Capture immediately on session queue (fastest path - no delays)
-                context.coordinator.sessionQueue.async { [weak context] in
-                    guard let coordinator = context?.coordinator else { return }
+                coordinator.sessionQueue.async { [weak coordinator] in
+                    guard let coordinator = coordinator else { return }
                     coordinator.capture()
                 }
             } else {
                 // If session not running, start it and capture (minimal delay)
-                context.coordinator.sessionQueue.async { [weak context] in
-                    guard let coordinator = context?.coordinator else { return }
+                coordinator.sessionQueue.async { [weak coordinator] in
+                    guard let coordinator = coordinator else { return }
                     coordinator.start()
                     // Minimal delay for session to start (reduced from 0.2s to 0.1s)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

@@ -85,18 +85,18 @@ final class LocalMealCache {
     func markSynced(mealId: String) {
         cacheLock.sync {
             if let index = meals.firstIndex(where: { $0.id == mealId }) {
-                var updatedMeal = meals[index]
+                let existingMeal = meals[index]
                 // Create new meal with synced flag
                 let syncedMeal = CachedMeal(
-                    id: updatedMeal.id,
-                    timestamp: updatedMeal.timestamp,
-                    items: updatedMeal.items,
-                    totalCalories: updatedMeal.totalCalories,
-                    totalProtein: updatedMeal.totalProtein,
-                    totalCarbs: updatedMeal.totalCarbs,
-                    totalFat: updatedMeal.totalFat,
-                    totalSugar: updatedMeal.totalSugar,
-                    mealType: updatedMeal.mealType,
+                    id: existingMeal.id,
+                    timestamp: existingMeal.timestamp,
+                    items: existingMeal.items,
+                    totalCalories: existingMeal.totalCalories,
+                    totalProtein: existingMeal.totalProtein,
+                    totalCarbs: existingMeal.totalCarbs,
+                    totalFat: existingMeal.totalFat,
+                    totalSugar: existingMeal.totalSugar,
+                    mealType: existingMeal.mealType,
                     synced: true
                 )
                 meals[index] = syncedMeal
