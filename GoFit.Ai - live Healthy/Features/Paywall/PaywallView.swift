@@ -53,21 +53,37 @@ struct PaywallView: View {
                 // Only show close button if not blocking (trial not expired)
                 if !isBlocking {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Close") { dismiss() }
-                            .foregroundColor(Design.Colors.primary)
+                        Button("Close") { 
+                            dismiss() 
+                        }
+                        .foregroundColor(Design.Colors.primary)
                     }
                 }
             }
             .onAppear {
+                // Load products when paywall appears
                 purchases.loadProducts()
+                
                 // Check if this is a blocking paywall (trial expired)
                 isBlocking = purchases.requiresSubscription
+                
+                // Animate features
                 withAnimation(.spring().delay(0.1)) {
                     animateFeatures = true
                 }
             }
             .onChange(of: purchases.requiresSubscription) { oldValue, newValue in
                 isBlocking = newValue
+            }
+            .onChange(of: purchases.hasActiveSubscription) { oldValue, newValue in
+                // When subscription becomes active, only dismiss if this was a blocking paywall
+                // For non-blocking paywalls (after signup), let user dismiss manually
+                if newValue && isBlocking {
+                    // If this was a blocking paywall and subscription is now active, dismiss
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        dismiss()
+                    }
+                }
             }
         }
     }
@@ -140,10 +156,10 @@ struct PaywallView: View {
                         .foregroundColor(.orange)
                     Text("Products not available")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Text("Please check your internet connection")
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.secondary)
                 }
                 .padding()
             } else {
@@ -157,7 +173,9 @@ struct PaywallView: View {
                         type: planType,
                         isSelected: isSelected
                     ) {
-                        selectedPlan = planType
+                        withAnimation(.spring()) {
+                            selectedPlan = planType
+                        }
                     }
                 }
             }
@@ -165,12 +183,13 @@ struct PaywallView: View {
         .padding(.horizontal)
     }
 
-
     // MARK: - CTA
     private var ctaButton: some View {
         VStack(spacing: 12) {
             Button {
-                purchase()
+                Task {
+                    await purchase()
+                }
             } label: {
                 HStack {
                     if loading {
@@ -193,13 +212,14 @@ struct PaywallView: View {
                 .foregroundColor(.white)
                 .cornerRadius(16)
             }
-            .disabled(loading || purchases.isLoading)
+            .disabled(loading || purchases.isLoading || purchases.products.isEmpty)
 
             if let error {
                 Text(error)
                     .foregroundColor(.red)
                     .font(.caption)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal)
             }
         }
         .padding(.horizontal)
@@ -250,31 +270,80 @@ struct PaywallView: View {
         .padding(.top, Design.Spacing.sm)
     }
 
-    private func purchase() {
+    private func purchase() async {
         loading = true
         error = nil
 
-        Task {
-            do {
-                try await purchases.purchase(productId: selectedPlan.id)
-                // Purchase successful - update subscription status
-                await purchases.checkTrialAndSubscriptionStatus()
-                
-                await MainActor.run {
-                    loading = false
-                    // If purchase was successful and subscription is now active, dismiss paywall
-                    if purchases.hasActiveSubscription || purchases.subscriptionStatus == .active {
-                        if isBlocking {
-                            // If this was a blocking paywall, dismiss it now
-                            dismiss()
-                        }
+        do {
+            try await purchases.purchase(productId: selectedPlan.id)
+            // Purchase successful - update subscription status
+            await purchases.checkTrialAndSubscriptionStatus()
+            
+            await MainActor.run {
+                loading = false
+                // Only auto-dismiss if this was a blocking paywall
+                // For non-blocking paywalls (after signup), user can dismiss manually
+                if isBlocking && (purchases.hasActiveSubscription || purchases.subscriptionStatus == .active) {
+                    // Give user a moment to see success before dismissing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        dismiss()
                     }
                 }
-            } catch {
-                await MainActor.run {
-                    self.error = error.localizedDescription
-                    loading = false
+            }
+        } catch {
+            await MainActor.run {
+                loading = false
+                if let purchaseError = error as? PurchaseError {
+                    switch purchaseError {
+                    case .userCancelled:
+                        // Don't show error for user cancellation
+                        break
+                    default:
+                        error = purchaseError.localizedDescription
+                    }
+                } else {
+                    error = error.localizedDescription
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Feature Row
+struct FeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let delay: Double
+    @State private var animate = false
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(Design.Colors.primary)
+                .frame(width: 40)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(Design.Typography.headline)
+                    .foregroundColor(.primary)
+                
+                Text(description)
+                    .font(Design.Typography.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .background(Design.Colors.cardBackground)
+        .cornerRadius(12)
+        .opacity(animate ? 1 : 0)
+        .offset(x: animate ? 0 : -20)
+        .onAppear {
+            withAnimation(.spring().delay(delay)) {
+                animate = true
             }
         }
     }

@@ -48,16 +48,47 @@ class PurchaseManager: ObservableObject {
     init() {
         updateListenerTask = listenForTransactions()
         startStatusMonitoring()
-        initializeTrialIfNeeded()
+        // Don't initialize trial here - only when user signs up or first uses the app
+        // This prevents premature trial start for users who haven't signed up yet
     }
     
     // MARK: - Trial Management
-    private func initializeTrialIfNeeded() {
-        // Only set trial start date if it hasn't been set yet
-        if UserDefaults.standard.object(forKey: trialStartDateKey) == nil {
-            UserDefaults.standard.set(Date(), forKey: trialStartDateKey)
-            print("📅 Trial started: \(Date())")
+    func initializeTrialForNewUser() {
+        // This should be called when a new user signs up or first launches after signup
+        // Only set trial start date if it hasn't been set yet and user is logged in
+        guard UserDefaults.standard.object(forKey: trialStartDateKey) == nil else {
+            print("📅 Trial already initialized")
+            return
         }
+        
+        // Check if user is logged in before starting trial
+        guard AuthService.shared.readToken() != nil else {
+            print("⚠️ User not logged in - cannot start trial yet")
+            return
+        }
+        
+        UserDefaults.standard.set(Date(), forKey: trialStartDateKey)
+        print("📅 Trial started for new user: \(Date())")
+        
+        // Immediately check trial and subscription status after initializing
+        Task {
+            await checkTrialAndSubscriptionStatus()
+        }
+    }
+    
+    private func initializeTrialIfNeeded() {
+        // Only set trial start date if it hasn't been set yet AND user is logged in
+        guard UserDefaults.standard.object(forKey: trialStartDateKey) == nil else {
+            return
+        }
+        
+        // Only initialize trial if user is logged in
+        guard AuthService.shared.readToken() != nil else {
+            return
+        }
+        
+        UserDefaults.standard.set(Date(), forKey: trialStartDateKey)
+        print("📅 Trial initialized: \(Date())")
     }
     
     func getTrialStartDate() -> Date? {
@@ -81,6 +112,17 @@ class PurchaseManager: ObservableObject {
     }
     
     func checkTrialAndSubscriptionStatus() async {
+        // First, check if user is logged in - if not, don't check subscription
+        guard AuthService.shared.readToken() != nil else {
+            print("ℹ️ User not logged in - skipping subscription check")
+            requiresSubscription = false
+            showPaywall = false
+            return
+        }
+        
+        // Initialize trial if needed (only for logged-in users)
+        initializeTrialIfNeeded()
+        
         // Update subscription status first (but don't call checkTrialAndSubscriptionStatus again to avoid recursion)
         await updateSubscriptionStatus()
         await checkSubscriptionStatus()
@@ -88,7 +130,7 @@ class PurchaseManager: ObservableObject {
         // Check if user has active subscription (including trial from StoreKit)
         let hasSubscription = hasActiveSubscription || subscriptionStatus == .trial || subscriptionStatus == .active
         
-        // Check if local 3-day trial is still active
+        // Check if local 3-day trial is still active (only if trial has been initialized)
         let localTrialActive = isTrialActive()
         
         // Calculate trial days remaining
@@ -107,6 +149,15 @@ class PurchaseManager: ObservableObject {
             requiresSubscription = false
             showPaywall = false
             print("✅ Trial still active (\(trialDaysRemaining ?? 0) days remaining) - access granted")
+            return
+        }
+        
+        // If trial hasn't been initialized yet (new user), allow access
+        // The paywall will be shown after onboarding/signup separately
+        if UserDefaults.standard.object(forKey: trialStartDateKey) == nil {
+            requiresSubscription = false
+            showPaywall = false
+            print("ℹ️ Trial not yet initialized - allowing access (paywall shown separately)")
             return
         }
         

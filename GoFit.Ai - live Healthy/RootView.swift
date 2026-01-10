@@ -5,34 +5,49 @@ struct RootView: View {
     @StateObject private var purchases = PurchaseManager()
     @StateObject private var healthKit = HealthKitService.shared
     
+    @State private var hasCheckedSubscriptionAfterLogin = false
+    
     var body: some View {
         Group {
             if !auth.didFinishOnboarding {
                 OnboardingScreens()
                     .environmentObject(auth)
+                    .environmentObject(purchases)
             } else if !auth.isLoggedIn {
                 AuthView()
                     .environmentObject(auth)
                     .environmentObject(purchases)
-            } else if purchases.requiresSubscription {
-                // Trial expired and no subscription - show paywall
-                PaywallView()
-                    .environmentObject(purchases)
-                    .interactiveDismissDisabled() // Prevent dismissing paywall
             } else {
-                MainTabView()
-                    .environmentObject(auth)
-                    .environmentObject(purchases)
+                // User is logged in - show main app or blocking paywall
+                // Only show blocking paywall if:
+                // 1. User is logged in (not a new signup showing onboarding paywall)
+                // 2. Subscription is required (trial expired and no subscription)
+                // 3. We've already checked subscription status (avoid showing immediately after login)
+                if hasCheckedSubscriptionAfterLogin && purchases.requiresSubscription {
+                    // Blocking paywall for existing users whose trial expired
+                    PaywallView()
+                        .environmentObject(purchases)
+                        .interactiveDismissDisabled()
+                } else {
+                    MainTabView()
+                        .environmentObject(auth)
+                        .environmentObject(purchases)
+                }
             }
         }
         .onAppear {
             purchases.loadProducts()
             
             // Check subscription and trial status on app launch
-            Task {
-                await purchases.updateSubscriptionStatus()
-                await purchases.checkSubscriptionStatus()
-                await purchases.checkTrialAndSubscriptionStatus()
+            if auth.isLoggedIn {
+                Task {
+                    await purchases.updateSubscriptionStatus()
+                    await purchases.checkSubscriptionStatus()
+                    await purchases.checkTrialAndSubscriptionStatus()
+                    await MainActor.run {
+                        hasCheckedSubscriptionAfterLogin = true
+                    }
+                }
             }
             
             // Check HealthKit authorization and sync if logged in
@@ -49,11 +64,22 @@ struct RootView: View {
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
             if newValue {
-                // When user logs in, check subscription and HealthKit
+                // When user logs in/signs up, initialize trial and check subscription
+                // Reset the flag to prevent premature paywall display
+                hasCheckedSubscriptionAfterLogin = false
+                
                 Task {
+                    // Give paywall time to show after signup if needed
+                    // Only check subscription status after a delay
+                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                    
                     await purchases.updateSubscriptionStatus()
                     await purchases.checkSubscriptionStatus()
                     await purchases.checkTrialAndSubscriptionStatus()
+                    
+                    await MainActor.run {
+                        hasCheckedSubscriptionAfterLogin = true
+                    }
                     
                     healthKit.checkAuthorizationStatus()
                     if healthKit.isAuthorized {
@@ -63,7 +89,8 @@ struct RootView: View {
                     }
                 }
             } else {
-                // When user logs out, stop HealthKit sync
+                // When user logs out, stop HealthKit sync and reset flag
+                hasCheckedSubscriptionAfterLogin = false
                 healthKit.stopPeriodicSync()
             }
         }
@@ -77,8 +104,10 @@ struct RootView: View {
         }
         .onChange(of: purchases.subscriptionStatus) { oldValue, newValue in
             // When subscription status changes, recheck trial status
-            Task {
-                await purchases.checkTrialAndSubscriptionStatus()
+            if auth.isLoggedIn {
+                Task {
+                    await purchases.checkTrialAndSubscriptionStatus()
+                }
             }
         }
     }

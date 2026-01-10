@@ -150,7 +150,6 @@ struct OnboardingScreens: View {
         .sheet(isPresented: $showingSignup) {
             OnboardingSignupView(viewModel: viewModel)
                 .environmentObject(auth)
-                .environmentObject(PurchaseManager())
                 .onAppear {
                     // Clear any test/default names from saved state
                     auth.clearTestData()
@@ -941,6 +940,7 @@ struct PermissionCard: View {
 struct OnboardingSignupView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     @EnvironmentObject var auth: AuthViewModel
+    @StateObject private var purchases = PurchaseManager()
     @Environment(\.dismiss) var dismiss
     
     @State private var email = ""
@@ -1145,11 +1145,11 @@ struct OnboardingSignupView: View {
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
-                .environmentObject(PurchaseManager())
+                .environmentObject(purchases)
+                .interactiveDismissDisabled(false) // Allow dismissing paywall (not blocking for new signups)
                 .onDisappear {
-                    // After paywall dismisses (user closes it), dismiss signup view
+                    // After paywall dismisses, dismiss signup view
                     // RootView will automatically show MainTabView since auth.isLoggedIn is true
-                    // User can choose to subscribe or skip - paywall won't auto-dismiss
                     if auth.isLoggedIn {
                         dismiss()
                     }
@@ -1157,8 +1157,15 @@ struct OnboardingSignupView: View {
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
             if newValue && !showingPaywall {
+                // Initialize trial for new user
+                purchases.initializeTrialForNewUser()
+                
                 // Show paywall after signup (if not already showing)
-                showingPaywall = true
+                // Small delay to ensure state is properly updated
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingPaywall = true
+                }
+                
                 // Mark onboarding as complete
                 auth.didFinishOnboarding = true
                 auth.saveLocalState()
@@ -1246,14 +1253,19 @@ struct OnboardingSignupView: View {
                 )
                 print("✅ Signup successful from OnboardingSignupView")
                 
-                // Mark onboarding as complete and show paywall
+                // Mark onboarding as complete first
                 await MainActor.run {
                     isLoading = false // Reset loading state after successful signup
                     auth.didFinishOnboarding = true
                     auth.saveLocalState()
                     
-                    // Show paywall immediately after successful signup
-                    showingPaywall = true
+                    // Initialize trial for new user after successful signup
+                    purchases.initializeTrialForNewUser()
+                    
+                    // Small delay to ensure state is updated before showing paywall
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showingPaywall = true
+                    }
                 }
             } catch {
                 print("❌ Signup failed in OnboardingSignupView: \(error.localizedDescription)")

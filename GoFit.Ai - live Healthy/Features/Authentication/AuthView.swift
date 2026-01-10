@@ -3,6 +3,7 @@ import AuthenticationServices
 
 struct AuthView: View {
     @EnvironmentObject var auth: AuthViewModel
+    @EnvironmentObject var purchases: PurchaseManager
     @State private var isLoginMode = true
     @State private var email = ""
     @State private var password = ""
@@ -296,7 +297,14 @@ struct AuthView: View {
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
-                .environmentObject(auth)
+                .environmentObject(purchases)
+                .interactiveDismissDisabled(false) // Allow dismissing paywall after signup
+                .onDisappear {
+                    // Initialize trial after signup if not already initialized
+                    if auth.isLoggedIn {
+                        purchases.initializeTrialForNewUser()
+                    }
+                }
         }
         .onAppear {
             // If coming from onboarding (has onboarding data), default to signup mode
@@ -328,9 +336,13 @@ struct AuthView: View {
             }
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
-            if newValue && !isLoginMode {
-                // Show paywall after signup
-                showingPaywall = true
+            if newValue && !isLoginMode && !showingPaywall {
+                // Initialize trial for new user after signup
+                purchases.initializeTrialForNewUser()
+                // Show paywall after signup (with small delay to ensure state is updated)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showingPaywall = true
+                }
             }
         }
     }
@@ -389,15 +401,20 @@ struct AuthView: View {
                     // Use name from onboarding if available, otherwise use form input
                     let signupName = !auth.name.isEmpty ? auth.name : name
                     try await auth.signup(name: signupName, email: email, password: password)
-                    // After successful signup, show paywall
+                    // After successful signup, initialize trial and show paywall
                     await MainActor.run {
                         isLoading = false
+                        // Initialize trial for new user after signup
+                        purchases.initializeTrialForNewUser()
                         // Clear form on success
                         name = ""
                         email = ""
                         password = ""
                         confirmPassword = ""
-                        showingPaywall = true
+                        // Small delay before showing paywall to ensure state is updated
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            showingPaywall = true
+                        }
                     }
                 }
             } catch {
@@ -440,7 +457,12 @@ struct AuthView: View {
                 await MainActor.run {
                     isLoading = false
                     if !isLoginMode {
-                        showingPaywall = true
+                        // Initialize trial for new Apple sign-in user
+                        purchases.initializeTrialForNewUser()
+                        // Small delay before showing paywall
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            showingPaywall = true
+                        }
                     }
                 }
             } catch {
