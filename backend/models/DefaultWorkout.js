@@ -62,3 +62,6 @@ defaultWorkoutSchema.index({ location: 1 });
 
 export default mongoose.model('DefaultWorkout', defaultWorkoutSchema);
 
+
+
+

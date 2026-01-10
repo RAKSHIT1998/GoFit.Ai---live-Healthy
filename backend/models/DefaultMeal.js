@@ -72,3 +72,6 @@ defaultMealSchema.index({ tags: 1 });
 
 export default mongoose.model('DefaultMeal', defaultMealSchema);
 
+
+
+
