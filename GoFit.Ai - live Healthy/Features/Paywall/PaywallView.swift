@@ -290,60 +290,20 @@ struct PaywallView: View {
                     }
                 }
             }
-        } catch {
+        } catch let purchaseError {
             await MainActor.run {
                 loading = false
-                if let purchaseError = error as? PurchaseError {
+                if let purchaseError = purchaseError as? PurchaseError {
                     switch purchaseError {
                     case .userCancelled:
                         // Don't show error for user cancellation
                         break
                     default:
-                        error = purchaseError.localizedDescription
+                        self.error = purchaseError.localizedDescription
                     }
                 } else {
-                    error = error.localizedDescription
+                    self.error = purchaseError.localizedDescription
                 }
-            }
-        }
-    }
-}
-
-// MARK: - Feature Row
-struct FeatureRow: View {
-    let icon: String
-    let title: String
-    let description: String
-    let delay: Double
-    @State private var animate = false
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(Design.Colors.primary)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(Design.Typography.headline)
-                    .foregroundColor(.primary)
-                
-                Text(description)
-                    .font(Design.Typography.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .background(Design.Colors.cardBackground)
-        .cornerRadius(12)
-        .opacity(animate ? 1 : 0)
-        .offset(x: animate ? 0 : -20)
-        .onAppear {
-            withAnimation(.spring().delay(delay)) {
-                animate = true
             }
         }
     }
