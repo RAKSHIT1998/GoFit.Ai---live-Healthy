@@ -62,7 +62,7 @@ struct WorkoutSuggestionsView: View {
     @State private var isRefreshing = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Design.Colors.background
                     .ignoresSafeArea()
@@ -151,6 +151,7 @@ struct WorkoutSuggestionsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(isUsingFallback ? "Built-in Recipes & Workouts" : "AI Recommendations")
                         .font(Design.Typography.headline)
+                        .foregroundColor(.primary)
                     if isUsingFallback {
                         Text("Rotates daily • Complete instructions included")
                             .font(Design.Typography.caption)
@@ -175,7 +176,7 @@ struct WorkoutSuggestionsView: View {
                 selectedTab = 1
             }
         }
-        .background(Color.gray.opacity(0.1))
+        .background(Design.Colors.secondaryBackground)
         .cornerRadius(Design.Radius.medium)
     }
     
@@ -225,6 +226,7 @@ struct WorkoutSuggestionsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exercise.name)
                         .font(Design.Typography.headline)
+                        .foregroundColor(.primary)
                     
                     HStack(spacing: Design.Spacing.md) {
                         Label("\(exercise.duration) min", systemImage: "clock.fill")
@@ -347,6 +349,7 @@ struct WorkoutSuggestionsView: View {
                         .foregroundColor(color)
                     Text(title)
                         .font(Design.Typography.headline)
+                        .foregroundColor(.primary)
                 }
                 .padding(.horizontal, Design.Spacing.md)
                 
@@ -365,6 +368,7 @@ struct WorkoutSuggestionsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(meal.name)
                         .font(Design.Typography.headline)
+                        .foregroundColor(.primary)
                     
                     HStack(spacing: Design.Spacing.md) {
                         macroBadge(value: Int(meal.calories), unit: "kcal", color: Design.Colors.calories)
@@ -465,12 +469,14 @@ struct WorkoutSuggestionsView: View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.caption2)
+                .foregroundColor(.secondary)
             Text(text)
                 .font(Design.Typography.caption)
+                .foregroundColor(.secondary)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color.gray.opacity(0.1))
+        .background(Design.Colors.secondaryBackground)
         .cornerRadius(Design.Radius.small)
     }
     
@@ -505,6 +511,7 @@ struct WorkoutSuggestionsView: View {
                     .foregroundColor(Design.Colors.primary)
                 Text("Insights")
                     .font(Design.Typography.headline)
+                    .foregroundColor(.primary)
             }
             
             ForEach(insights, id: \.self) { insight in

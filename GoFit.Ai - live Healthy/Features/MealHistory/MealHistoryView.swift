@@ -24,7 +24,7 @@ struct MealHistoryView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Design.Colors.background
                     .ignoresSafeArea()

@@ -190,7 +190,7 @@ struct CardStyle: ViewModifier {
 
 extension View {
     func cardStyle(
-        backgroundColor: Color = Color.white,
+        backgroundColor: Color = Design.Colors.cardBackground,
         cornerRadius: CGFloat = AppDesign.Radius.large,
         shadow: Shadow = AppDesign.Shadows.medium,
         useGlass: Bool = false
