@@ -48,7 +48,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for auth routes, recommendations, and photo analysis (handled by separate limiters)
+    // Skip rate limiting for auth routes, recommendations, photo analysis, and subscriptions (handled by separate limiters)
     // Check both req.path (relative to mount point) and req.originalUrl (full path)
     const path = req.path || '';
     const originalUrl = req.originalUrl || req.url || '';
@@ -57,7 +57,8 @@ const limiter = rateLimit({
     const isAuthRoute = path.startsWith('/auth') || originalUrl.includes('/api/auth') || originalUrl.includes('/auth/');
     const isRecommendationsRoute = path.startsWith('/recommendations') || originalUrl.includes('/api/recommendations');
     const isPhotoRoute = path.startsWith('/photo') || originalUrl.includes('/api/photo');
-    return isAuthRoute || isRecommendationsRoute || isPhotoRoute;
+    const isSubscriptionRoute = path.startsWith('/subscriptions') || originalUrl.includes('/api/subscriptions');
+    return isAuthRoute || isRecommendationsRoute || isPhotoRoute || isSubscriptionRoute;
   }
 });
 
@@ -107,6 +108,16 @@ const photoLimiter = rateLimit({
   skipSuccessfulRequests: false, // Count all requests (including successful ones)
 });
 
+// Rate limiter for subscription routes (lenient since status checks happen frequently)
+const subscriptionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Allow 300 subscription requests per 15 minutes per IP
+  message: 'Too many subscription requests. Please wait a moment and try again.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests
+});
+
 // IMPORTANT: Apply limiters in order of specificity (most specific first)
 // This ensures requests hit the correct limiter
 
@@ -122,8 +133,11 @@ app.use('/api/recommendations', recommendationsLimiter);
 // Apply photo limiter to photo analysis routes (before general limiter)
 app.use('/api/photo', photoLimiter);
 
+// Apply subscription limiter to subscription routes (before general limiter)
+app.use('/api/subscriptions', subscriptionLimiter);
+
 // Apply general limiter to all other API routes (least specific, applied last)
-// The skip function ensures auth, recommendations, and photo routes are not counted by this limiter
+// The skip function ensures auth, recommendations, photo, and subscription routes are not counted by this limiter
 app.use('/api/', limiter);
 
 // Body parsing

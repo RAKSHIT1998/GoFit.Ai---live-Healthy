@@ -22,6 +22,11 @@ class PurchaseManager: ObservableObject {
     // MARK: - Tasks
     private var updateListenerTask: Task<Void, Error>?
     private var statusUpdateTask: Task<Void, Never>?
+    
+    // MARK: - Caching
+    private var lastStatusCheck: Date?
+    private var statusCheckCache: (status: SubscriptionStatus, hasActive: Bool)?
+    private let statusCacheTimeout: TimeInterval = 60 // Cache for 1 minute
 
     // MARK: - Enums
     enum SubscriptionStatus {
@@ -351,9 +356,12 @@ class PurchaseManager: ObservableObject {
     private func startStatusMonitoring() {
         statusUpdateTask = Task {
             while !Task.isCancelled {
+                // Only check StoreKit status locally (no backend call)
                 await updateSubscriptionStatus()
-                await checkTrialAndSubscriptionStatus() // Also check trial status periodically
-                try? await Task.sleep(nanoseconds: 60_000_000_000) // Check every minute
+                // Check trial status locally (no backend call)
+                await checkTrialAndSubscriptionStatus()
+                // Check backend subscription status less frequently (every 5 minutes instead of 1 minute)
+                try? await Task.sleep(nanoseconds: 300_000_000_000) // Check every 5 minutes
             }
         }
     }
@@ -417,6 +425,18 @@ class PurchaseManager: ObservableObject {
     }
 
     func checkSubscriptionStatus() async {
+        // Check cache first to avoid excessive backend calls
+        if let cached = statusCheckCache,
+           let lastCheck = lastStatusCheck,
+           Date().timeIntervalSince(lastCheck) < statusCacheTimeout {
+            // Use cached status if available and fresh
+            await MainActor.run {
+                subscriptionStatus = cached.status
+                hasActiveSubscription = cached.hasActive
+            }
+            return
+        }
+        
         do {
             print("🔄 Checking subscription status with backend...")
             let url = URL(string: "\(NetworkManager.shared.baseURL)/subscriptions/status")!
@@ -434,6 +454,13 @@ class PurchaseManager: ObservableObject {
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("❌ Invalid response from subscription status check")
+                return
+            }
+            
+            // Handle rate limiting (429) with retry
+            if httpResponse.statusCode == 429 {
+                print("⚠️ Rate limited (429) - will retry later")
+                // Don't update cache on rate limit, will retry next time
                 return
             }
             
@@ -457,14 +484,24 @@ class PurchaseManager: ObservableObject {
             }
 
             let backendResponse = try JSONDecoder().decode(Response.self, from: data)
-            hasActiveSubscription = backendResponse.hasActiveSubscription
             
+            // Update cache
+            let newStatus: SubscriptionStatus
             if let isInTrial = backendResponse.isInTrial, isInTrial {
-                subscriptionStatus = .trial
+                newStatus = .trial
             } else if backendResponse.hasActiveSubscription {
-                subscriptionStatus = .active
+                newStatus = .active
             } else {
-                subscriptionStatus = .expired
+                newStatus = .expired
+            }
+            
+            await MainActor.run {
+                hasActiveSubscription = backendResponse.hasActiveSubscription
+                subscriptionStatus = newStatus
+                
+                // Update cache
+                statusCheckCache = (status: newStatus, hasActive: backendResponse.hasActiveSubscription)
+                lastStatusCheck = Date()
             }
             
             print("✅ Subscription status from backend: \(backendResponse.hasActiveSubscription ? "Active" : "Inactive")")
@@ -473,6 +510,10 @@ class PurchaseManager: ObservableObject {
             }
 
         } catch {
+            // Don't log cancellation errors as they're expected
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                return
+            }
             print("❌ Subscription status fetch failed: \(error.localizedDescription)")
         }
     }
