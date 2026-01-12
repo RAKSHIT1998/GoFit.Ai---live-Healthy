@@ -150,6 +150,8 @@ struct OnboardingScreens: View {
         .sheet(isPresented: $showingSignup) {
             OnboardingSignupView(viewModel: viewModel)
                 .environmentObject(auth)
+                .presentationDetents([.large]) // Ensure full screen on iPad
+                .presentationDragIndicator(.visible)
                 .onAppear {
                     // Clear any test/default names from saved state
                     auth.clearTestData()
@@ -961,7 +963,7 @@ struct OnboardingSignupView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Design.Colors.background
                     .ignoresSafeArea()
@@ -987,7 +989,7 @@ struct OnboardingSignupView: View {
                                     .padding(.horizontal)
                             }
                             
-                            // Form Card
+                            // Form Card with iPad width constraint
                             ModernCard {
                                 VStack(spacing: Design.Spacing.md) {
                                     // Name (editable - user can change it)
@@ -1068,6 +1070,7 @@ struct OnboardingSignupView: View {
                                 }
                             }
                             .padding(.horizontal, Design.Spacing.md)
+                            .frame(maxWidth: 600) // Limit width on iPad for better layout
                             
                             // Error message
                             if let error = errorMessage {
@@ -1111,6 +1114,7 @@ struct OnboardingSignupView: View {
                     }
                 }
             }
+            .frame(maxWidth: 600) // Limit width on iPad for better layout
             .navigationTitle("Create Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1146,6 +1150,8 @@ struct OnboardingSignupView: View {
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(purchases)
+                .presentationDetents([.large]) // Ensure full screen on iPad
+                .presentationDragIndicator(.visible)
                 .interactiveDismissDisabled(false) // Allow dismissing paywall (not blocking for new signups)
                 .onDisappear {
                     // After paywall dismisses, dismiss signup view

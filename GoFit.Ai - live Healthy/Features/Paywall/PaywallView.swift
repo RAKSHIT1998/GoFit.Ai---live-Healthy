@@ -31,7 +31,7 @@ struct PaywallView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Adaptive background for dark mode
                 Design.Colors.background
@@ -46,6 +46,7 @@ struct PaywallView: View {
                         terms
                     }
                     .padding(.bottom, Design.Spacing.xl)
+                    .frame(maxWidth: 600) // Limit width on iPad for better layout
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
