@@ -149,6 +149,14 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
                 userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In could not be handled. Please check your app configuration."])
             case .failed:
                 userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed. Please try again."])
+            case .notInteractive:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In cannot be completed at this time. Please try again later."])
+            case .matchedExcludedCredential:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed. Please try a different account."])
+            case .credentialImport:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed to import credentials. Please try again."])
+            case .credentialExport:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed to export credentials. Please try again."])
             @unknown default:
                 // Handle any future error codes that may be added
                 userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed with error code \(authError.code.rawValue). Please try again."])
