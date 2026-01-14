@@ -387,7 +387,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           content: prompt
         }
       ],
-      temperature: 0.7, // Balanced creativity and consistency
+        temperature: 0.7, // Balanced creativity and consistency
       max_tokens: 4000, // Increased for more detailed meal recipes and workout instructions
       response_format: { type: 'json_object' } // Request JSON format
     });
@@ -597,19 +597,46 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           console.error(`⚠️ Exercise at index ${index} is a string, skipping...`);
           return null;
         }
+        
+        // Ensure muscleGroups is an array of strings
+        let muscleGroups = [];
+        if (Array.isArray(exercise.muscleGroups)) {
+          muscleGroups = exercise.muscleGroups
+            .map(mg => String(mg || '').trim())
+            .filter(mg => mg.length > 0);
+        } else if (exercise.muscleGroups) {
+          // Handle case where it's a single string or non-array
+          muscleGroups = [String(exercise.muscleGroups).trim()].filter(mg => mg.length > 0);
+        }
+        
+        // Ensure equipment is an array of strings
+        let equipment = ['none'];
+        if (Array.isArray(exercise.equipment)) {
+          equipment = exercise.equipment
+            .map(eq => String(eq || '').trim())
+            .filter(eq => eq.length > 0);
+          if (equipment.length === 0) {
+            equipment = ['none'];
+          }
+        } else if (exercise.equipment) {
+          // Handle case where it's a single string or non-array
+          const eqStr = String(exercise.equipment).trim();
+          equipment = eqStr.length > 0 ? [eqStr] : ['none'];
+        }
+        
         // Ensure all required fields are present
         return {
-          name: exercise.name || `Exercise ${index + 1}`,
-          duration: exercise.duration || 10,
-          calories: exercise.calories || 0,
-          type: exercise.type || 'cardio',
-          instructions: exercise.instructions || '',
-          sets: exercise.sets ?? null,
-          reps: exercise.reps || '10',
-          restTime: exercise.restTime ?? null,
-          difficulty: exercise.difficulty || 'beginner',
-          muscleGroups: Array.isArray(exercise.muscleGroups) ? exercise.muscleGroups : [],
-          equipment: Array.isArray(exercise.equipment) ? exercise.equipment : ['none']
+          name: String(exercise.name || `Exercise ${index + 1}`).trim(),
+          duration: Number(exercise.duration) || 10,
+          calories: Number(exercise.calories) || 0,
+          type: String(exercise.type || 'cardio').trim(),
+          instructions: String(exercise.instructions || '').trim(),
+          sets: exercise.sets != null ? Number(exercise.sets) : null,
+          reps: String(exercise.reps || '10').trim(),
+          restTime: exercise.restTime != null ? Number(exercise.restTime) : null,
+          difficulty: String(exercise.difficulty || 'beginner').trim(),
+          muscleGroups: muscleGroups,
+          equipment: equipment
         };
       }).filter(ex => ex !== null); // Remove null entries
     }

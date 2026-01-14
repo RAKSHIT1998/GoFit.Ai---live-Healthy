@@ -46,8 +46,11 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 
 # Apple In-App Purchase
-APPLE_SHARED_SECRET=your-apple-shared-secret
-APPLE_BUNDLE_ID=com.gofitai.app
+# Get these from App Store Connect: https://appstoreconnect.apple.com
+APPLE_SHARED_SECRET=0c401df645b84cbd949f34a68d706ff9
+APPLE_APP_STORE_CONNECT_API_KEY_ID=AM9B5Z682V
+APPLE_IN_APP_PURCHASE_KEY_ID=2WR55LJR4K
+APPLE_BUNDLE_ID=com.rakshit.Gofit.ai.GoFit-Ai-live-Healthy
 
 # CORS - Allowed origins
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
