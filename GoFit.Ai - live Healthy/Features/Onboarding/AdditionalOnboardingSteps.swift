@@ -27,16 +27,16 @@ struct WeightHeightStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "figure.stand")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("Your Body Stats")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Help us personalize your plan")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -45,15 +45,15 @@ struct WeightHeightStep: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(unitSystem == .metric ? "Weight (kg)" : "Weight (lbs)")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     
                     TextField(unitSystem == .metric ? "Enter weight in kg" : "Enter weight in lbs", text: $weightText)
                         .keyboardType(.decimalPad)
                         .textFieldStyle(.plain)
                         .font(.title2)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .padding()
-                        .background(Color.white.opacity(0.2))
+                        .background(Design.Colors.cardBackground)
                         .cornerRadius(16)
                         .focused($focusedField, equals: .weight)
                         .onChange(of: weightText) { oldValue, newValue in
@@ -71,16 +71,16 @@ struct WeightHeightStep: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(unitSystem == .metric ? "Height (cm)" : "Height (ft/in)")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     
                     if unitSystem == .metric {
                         TextField("Enter height in cm", text: $heightText)
                             .keyboardType(.decimalPad)
                             .textFieldStyle(.plain)
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding()
-                            .background(Color.white.opacity(0.2))
+                            .background(Design.Colors.cardBackground)
                             .cornerRadius(16)
                             .focused($focusedField, equals: .height)
                             .onChange(of: heightText) { oldValue, newValue in
@@ -102,9 +102,9 @@ struct WeightHeightStep: View {
                             .keyboardType(.numberPad)
                             .textFieldStyle(.plain)
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding()
-                            .background(Color.white.opacity(0.2))
+                            .background(Design.Colors.cardBackground)
                             .cornerRadius(16)
                             .focused($focusedField, equals: .heightFeet)
                             
@@ -124,9 +124,9 @@ struct WeightHeightStep: View {
                             .keyboardType(.numberPad)
                             .textFieldStyle(.plain)
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding()
-                            .background(Color.white.opacity(0.2))
+                            .background(Design.Colors.cardBackground)
                             .cornerRadius(16)
                             .focused($focusedField, equals: .heightInches)
                             
@@ -204,16 +204,16 @@ struct WorkoutPreferencesStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "figure.run")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("What Workouts Do You Like?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Select all that apply (optional)")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -284,16 +284,16 @@ struct FavoriteCuisinesStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "fork.knife")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("Favorite Cuisines?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Select all that you enjoy (optional)")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -360,16 +360,16 @@ struct FoodPreferencesStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "heart.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("Food Preferences?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("What types of food do you enjoy? (optional)")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -433,16 +433,16 @@ struct LifestyleStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "clock.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("Workout Time & Lifestyle")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Help us understand your schedule")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -569,12 +569,12 @@ struct CuisinesAndFoodPreferencesStep: View {
                 
                 Text("What Do You Love to Eat?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Help us create meals you'll actually enjoy")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -656,12 +656,12 @@ struct LifestyleAndMotivationStep: View {
                 
                 Text("Tell Us About Your Lifestyle")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("This helps us personalize your experience")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -772,12 +772,12 @@ struct LifestyleHabitsStep: View {
                 
                 Text("Lifestyle Habits")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Help us understand your lifestyle for better recommendations")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
@@ -935,9 +935,9 @@ struct TargetWeightStep: View {
                             .keyboardType(.decimalPad)
                             .textFieldStyle(.plain)
                             .font(.title2)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding()
-                            .background(Color.white.opacity(0.2))
+                            .background(Design.Colors.cardBackground)
                             .cornerRadius(16)
                             .focused($isFocused)
                             .onChange(of: targetWeightText) { oldValue, newValue in
@@ -1205,7 +1205,7 @@ struct RecommendationCard: View {
                         .foregroundColor(.white)
                     Text(unit)
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.secondary)
                 }
             }
             
@@ -1213,7 +1213,7 @@ struct RecommendationCard: View {
             
             Text(description)
                 .font(.caption)
-                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(.secondary)
                 .multilineTextAlignment(.trailing)
         }
         .padding()

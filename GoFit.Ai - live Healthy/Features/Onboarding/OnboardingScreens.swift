@@ -9,9 +9,17 @@ struct OnboardingScreens: View {
     
     var body: some View {
         ZStack {
-            // Adaptive background for dark mode
-            Design.Colors.background
-                .ignoresSafeArea()
+            // Gradient background that works in both light and dark mode
+            LinearGradient(
+                colors: [
+                    Design.Colors.primary.opacity(0.15),
+                    Design.Colors.primary.opacity(0.05),
+                    Design.Colors.background
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Skip button (dev mode only)
@@ -89,10 +97,10 @@ struct OnboardingScreens: View {
                                 Image(systemName: "chevron.left")
                                 Text("Back")
                             }
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
-                            .background(Color.white.opacity(0.2))
+                            .background(Design.Colors.cardBackground)
                             .cornerRadius(12)
                         }
                     }
@@ -237,7 +245,7 @@ struct WelcomeStep: View {
                 
                 Text("Welcome to\nGoFit.Ai")
                     .font(.system(size: 42, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                     .opacity(animateFeatures ? 1.0 : 0.0)
             }
@@ -245,7 +253,7 @@ struct WelcomeStep: View {
             
             Text("Your AI-powered health companion")
                 .font(.title3)
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .opacity(animateFeatures ? 1.0 : 0.0)
             
@@ -311,7 +319,7 @@ struct OnboardingFeatureRow: View {
             Text(text)
                 .font(.body)
                 .fontWeight(.medium)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
         }
         .padding()
         .background(Design.Colors.cardBackground.opacity(0.3))
@@ -332,25 +340,25 @@ struct NameStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "person.circle.fill")
                     .font(.system(size: 80))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("What's your name?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("We'll use this to personalize your experience")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
             TextField("Enter your name", text: $viewModel.name)
                 .textFieldStyle(.plain)
                 .font(.title2)
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
                 .padding()
-                .background(Color.white.opacity(0.2))
+                .background(Design.Colors.cardBackground)
                 .cornerRadius(16)
                 .padding(.horizontal, 32)
                 .autocapitalization(.words)
@@ -389,12 +397,12 @@ struct GoalStep: View {
             VStack(spacing: 16) {
                 Text("What's your goal?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("We'll tailor your plan accordingly")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -434,7 +442,7 @@ struct GoalCard: View {
                 Text(goal.displayName)
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6) : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -461,12 +469,12 @@ struct ActivityStep: View {
             VStack(spacing: 16) {
                 Text("How active are you?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("This helps us calculate your calorie needs")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -511,9 +519,9 @@ struct ActivityCard: View {
                     }
                 }
                 
-                Text(level.description)
-                    .font(.caption)
-                    .foregroundColor(isSelected ? Design.Colors.primary.opacity(0.8) : .white.opacity(0.7))
+                    Text(level.description)
+                        .font(.caption)
+                        .foregroundColor(isSelected ? Design.Colors.primary.opacity(0.8) : .secondary)
             }
             .padding()
             .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
@@ -533,12 +541,12 @@ struct DietaryPreferencesStep: View {
             VStack(spacing: 16) {
                 Text("Dietary Preferences")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Select all that apply (optional)")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -578,7 +586,7 @@ struct DietaryPreferenceCard: View {
             HStack {
                 Text(preference.displayName)
                     .font(.body)
-                    .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6) : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
 
                 Spacer()
                 
@@ -608,12 +616,12 @@ struct AllergiesStep: View {
         VStack(spacing: 16) {
                 Text("Any Allergies?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("We'll avoid these in your recommendations")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -653,7 +661,7 @@ struct AllergyCard: View {
             HStack {
                 Text(allergy)
                     .font(.body)
-                    .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6) : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -680,16 +688,16 @@ struct FastingPreferenceStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "timer")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                 
                 Text("Intermittent Fasting?")
                     .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
                 Text("Choose your preferred fasting window (optional)")
                     .font(.body)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
             

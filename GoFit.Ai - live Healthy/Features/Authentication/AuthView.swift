@@ -321,7 +321,7 @@ struct AuthView: View {
                         }) {
                             Text("Sign in with Phone")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.secondary)
                         }
                         .padding(.top, 8)
                     }
@@ -333,7 +333,7 @@ struct AuthView: View {
                         }) {
                             Text("Skip Authentication (Dev Mode)")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(.secondary)
                                 .padding(.top, 16)
                         }
                     }
@@ -563,16 +563,22 @@ struct AnimatedGradientBackground: View {
     @State private var animateGradient = false
     
     var body: some View {
-        LinearGradient(
-            colors: [
-                Design.Colors.primary.opacity(0.1),
-                Design.Colors.primary.opacity(0.05),
-                Color.clear,
-                Design.Colors.primary.opacity(0.08)
-            ],
-            startPoint: animateGradient ? .topLeading : .bottomTrailing,
-            endPoint: animateGradient ? .bottomTrailing : .topLeading
-        )
+        ZStack {
+            // Base background
+            Design.Colors.background
+            
+            // Gradient overlay
+            LinearGradient(
+                colors: [
+                    Design.Colors.primary.opacity(0.15),
+                    Design.Colors.primary.opacity(0.08),
+                    Design.Colors.background,
+                    Design.Colors.primary.opacity(0.1)
+                ],
+                startPoint: animateGradient ? .topLeading : .bottomTrailing,
+                endPoint: animateGradient ? .bottomTrailing : .topLeading
+            )
+        }
         .onAppear {
             withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
                 animateGradient = true
