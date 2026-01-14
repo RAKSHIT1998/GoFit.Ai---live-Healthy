@@ -277,7 +277,7 @@ struct TargetSettingsView: View {
         // Load from backend if available
         Task {
             do {
-                let response: [String: Any] = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
+                let response: [String: Any] = try await NetworkManager.shared.requestDictionary("auth/me", method: "GET", body: nil)
                 await MainActor.run {
                     if let metrics = response["metrics"] as? [String: Any] {
                         if let w = metrics["weightKg"] as? Double {
@@ -336,13 +336,16 @@ struct TargetSettingsView: View {
                     "activityLevel": activityLevel
                 ]
                 
-                // Remove nil values
-                body = body.compactMapValues { $0 }
+                // Remove nil values and convert to non-optional dictionary
+                let cleanBody = body.compactMapValues { $0 }
                 
-                let _: [String: Any] = try await NetworkManager.shared.request(
+                // Encode body to Data
+                let bodyData = try JSONSerialization.data(withJSONObject: cleanBody, options: [])
+                
+                let _: [String: Any] = try await NetworkManager.shared.requestDictionary(
                     "auth/targets",
                     method: "PUT",
-                    body: body
+                    body: bodyData
                 )
                 
                 await MainActor.run {

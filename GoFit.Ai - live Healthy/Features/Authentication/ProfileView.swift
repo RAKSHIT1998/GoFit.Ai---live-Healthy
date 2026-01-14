@@ -394,6 +394,19 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Targets
+    private var targetsSection: some View {
+        SettingsSection(title: "Goals & Targets") {
+            SettingsRow(
+                icon: "target",
+                iconColor: .purple,
+                title: "Weight & Targets",
+                subtitle: "Update your goals and targets",
+                action: { showingTargetSettings = true }
+            )
+        }
+    }
+
     // MARK: - Subscription
     private var subscriptionSection: some View {
         SettingsSection(title: "Subscription") {
