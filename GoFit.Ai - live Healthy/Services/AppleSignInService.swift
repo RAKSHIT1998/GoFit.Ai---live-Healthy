@@ -150,7 +150,8 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
             case .failed:
                 userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed. Please try again."])
             @unknown default:
-                break
+                // Handle any future error codes that may be added
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed with error code \(authError.code.rawValue). Please try again."])
             }
         }
         
