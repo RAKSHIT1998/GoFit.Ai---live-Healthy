@@ -962,6 +962,7 @@ struct OnboardingSignupView: View {
     @State private var errorMessage: String?
     @State private var showingPaywall = false
     @State private var showingLogin = false
+    @State private var isLoginFromSignup = false // Track if login was initiated from signup screen
     
     // Focus state for keyboard management
     @FocusState private var focusedField: SignupField?
@@ -1115,6 +1116,7 @@ struct OnboardingSignupView: View {
                             
                             // Login button for existing users
                             Button(action: {
+                                isLoginFromSignup = true
                                 showingLogin = true
                             }) {
                                 HStack(spacing: 8) {
@@ -1205,6 +1207,8 @@ struct OnboardingSignupView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .onDisappear {
+                    // Reset the flag when login sheet closes (whether login succeeded or not)
+                    isLoginFromSignup = false
                     // If user successfully logged in, dismiss the signup view
                     if auth.isLoggedIn {
                         dismiss()
@@ -1212,19 +1216,36 @@ struct OnboardingSignupView: View {
                 }
         }
         .onChange(of: auth.isLoggedIn) { oldValue, newValue in
-            if newValue && !showingPaywall {
-                // Initialize trial for new user
-                purchases.initializeTrialForNewUser()
-                
-                // Show paywall after signup (if not already showing)
-                // Small delay to ensure state is properly updated
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showingPaywall = true
+            // Only handle new signups, not existing user logins
+            // Check if this is a new signup by verifying:
+            // 1. User just logged in (newValue is true, oldValue was false)
+            // 2. This is NOT from the login button (isLoginFromSignup is false)
+            // 3. Paywall is not already showing
+            // 4. Onboarding data exists (indicating a new signup)
+            if newValue && !oldValue && !isLoginFromSignup && !showingPaywall {
+                // Only initialize trial and show paywall for NEW signups
+                // Check if onboardingData exists to confirm this is a new signup
+                if auth.onboardingData != nil {
+                    // Initialize trial for new user
+                    purchases.initializeTrialForNewUser()
+                    
+                    // Show paywall after signup (if not already showing)
+                    // Small delay to ensure state is properly updated
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showingPaywall = true
+                    }
+                    
+                    // Mark onboarding as complete
+                    auth.didFinishOnboarding = true
+                    auth.saveLocalState()
+                } else {
+                    // Existing user logged in - just mark onboarding as complete if needed
+                    // but don't show paywall or initialize trial
+                    if !auth.didFinishOnboarding {
+                        auth.didFinishOnboarding = true
+                        auth.saveLocalState()
+                    }
                 }
-                
-                // Mark onboarding as complete
-                auth.didFinishOnboarding = true
-                auth.saveLocalState()
             }
         }
     }
