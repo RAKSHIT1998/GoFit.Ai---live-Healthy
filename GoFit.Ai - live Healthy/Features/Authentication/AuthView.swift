@@ -469,7 +469,10 @@ struct AuthView: View {
                         errorMessage = error.localizedDescription.isEmpty ? "An unexpected error occurred. Please try again." : error.localizedDescription
                     }
                     isLoading = false
+                    // Only log errors in debug mode to avoid exposing sensitive information in production
+                    #if DEBUG
                     print("❌ Signup error: \(errorMessage ?? "Unknown error")")
+                    #endif
                 }
             }
         }

@@ -53,19 +53,27 @@ final class AuthService {
         do {
             // Try to decode as AuthTokenResponse first (with user data)
             if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
-                let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
+                guard let accessToken = response.accessToken, !accessToken.isEmpty else {
+                    throw NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Invalid authentication token received from server."])
+                }
+                let token = AuthToken(accessToken: accessToken, expiresAt: nil)
                 saveToken(token)
                 return token
             }
             // Fallback: try direct AuthToken decode
             let token = try JSONDecoder().decode(AuthToken.self, from: data)
+            guard let accessToken = token.accessToken, !accessToken.isEmpty else {
+                throw NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Invalid authentication token received from server."])
+            }
             saveToken(token)
             return token
         } catch {
+            #if DEBUG
             print("❌ Failed to decode AuthToken from login response")
             if let responseString = String(data: data, encoding: .utf8) {
                 print("Response: \(responseString)")
             }
+            #endif
             throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
         }
     }
@@ -241,17 +249,18 @@ final class AuthService {
         do {
             // Try to decode as AuthTokenResponse first (with user data)
             if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
-                // Check if accessToken is null (account created but token generation failed)
-                if response.accessToken == nil || response.accessToken.isEmpty {
-                    throw NSError(domain: "AuthError", code: 201, userInfo: [NSLocalizedDescriptionKey: "Account created successfully. Please sign in to continue."])
+                // Check if accessToken is null or empty (account created but token generation failed)
+                guard let accessToken = response.accessToken, !accessToken.isEmpty else {
+                    let message = response.message ?? "Account created successfully. Please sign in to continue."
+                    throw NSError(domain: "AuthError", code: 201, userInfo: [NSLocalizedDescriptionKey: message])
                 }
-                let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
+                let token = AuthToken(accessToken: accessToken, expiresAt: nil)
                 saveToken(token)
                 return token
             }
             // Fallback: try direct AuthToken decode
             let token = try JSONDecoder().decode(AuthToken.self, from: data)
-            if token.accessToken.isEmpty {
+            guard let accessToken = token.accessToken, !accessToken.isEmpty else {
                 throw NSError(domain: "AuthError", code: 201, userInfo: [NSLocalizedDescriptionKey: "Account created successfully. Please sign in to continue."])
             }
             saveToken(token)
@@ -261,11 +270,13 @@ final class AuthService {
             if decodeError.domain == "AuthError" && decodeError.code == 201 {
                 throw decodeError
             }
-            // If decoding fails, log the response for debugging
+            // If decoding fails, log the response for debugging (only in debug mode)
+            #if DEBUG
             print("❌ Failed to decode AuthToken from response")
             if let responseString = String(data: data, encoding: .utf8) {
                 print("Response: \(responseString)")
             }
+            #endif
             throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
         }
     }
@@ -334,19 +345,27 @@ final class AuthService {
         do {
             // Try to decode as AuthTokenResponse first (with user data)
             if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
-                let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
+                guard let accessToken = response.accessToken, !accessToken.isEmpty else {
+                    throw NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Invalid authentication token received from server."])
+                }
+                let token = AuthToken(accessToken: accessToken, expiresAt: nil)
                 saveToken(token)
                 return token
             }
             // Fallback: try direct AuthToken decode
             let token = try JSONDecoder().decode(AuthToken.self, from: data)
+            guard let accessToken = token.accessToken, !accessToken.isEmpty else {
+                throw NSError(domain: "AuthError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Invalid authentication token received from server."])
+            }
             saveToken(token)
             return token
         } catch {
+            #if DEBUG
             print("❌ Failed to decode AuthToken from Apple Sign In response")
             if let responseString = String(data: data, encoding: .utf8) {
                 print("Response: \(responseString)")
             }
+            #endif
             throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
         }
     }
@@ -406,8 +425,9 @@ final class AuthService {
 
 // MARK: - Response Models
 struct AuthTokenResponse: Codable {
-    let accessToken: String
+    let accessToken: String? // Optional to handle cases where token generation fails
     let user: UserResponse?
+    let message: String? // Optional message from backend
 }
 
 struct UserResponse: Codable {

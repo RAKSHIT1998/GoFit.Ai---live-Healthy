@@ -45,7 +45,7 @@ final class AuthViewModel: ObservableObject {
         }
         
         // Check for existing token - if found, user stays logged in
-        if let t = AuthService.shared.readToken(), !t.accessToken.isEmpty {
+        if let t = AuthService.shared.readToken(), let accessToken = t.accessToken, !accessToken.isEmpty {
             self.token = t
             self.isLoggedIn = true
             // Restore user data from local state if available
@@ -270,7 +270,7 @@ final class AuthViewModel: ObservableObject {
         guard !EnvironmentConfig.skipAuthentication, isLoggedIn else { return }
         
         // Check if token exists before attempting refresh
-        guard let token = AuthService.shared.readToken(), !token.accessToken.isEmpty else {
+        guard let token = AuthService.shared.readToken(), let accessToken = token.accessToken, !accessToken.isEmpty else {
             print("⚠️ No token found, cannot refresh profile")
             // Only log out if we're supposed to be logged in but have no token
             // This handles edge cases where token was deleted externally
