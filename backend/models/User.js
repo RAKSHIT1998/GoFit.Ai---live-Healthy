@@ -94,6 +94,7 @@ const userSchema = new mongoose.Schema({
   metrics: {
     weightKg: Number,
     heightCm: Number,
+    targetWeightKg: Number,
     targetCalories: Number,
     targetProtein: Number,
     targetCarbs: Number,
@@ -153,6 +154,14 @@ const userSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  resetPasswordToken: {
+    type: String,
+    default: undefined
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: undefined
   }
 }, {
   timestamps: true

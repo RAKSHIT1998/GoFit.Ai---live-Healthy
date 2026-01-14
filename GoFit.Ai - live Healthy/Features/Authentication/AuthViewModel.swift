@@ -205,7 +205,8 @@ final class AuthViewModel: ObservableObject {
             idToken: result.idToken,
             userIdentifier: result.userIdentifier,
             email: result.email,
-            name: result.fullName
+            name: result.fullName,
+            onboardingData: onboardingData
         )
         self.token = token
         self.isLoggedIn = true

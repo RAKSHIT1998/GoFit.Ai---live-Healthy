@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var showingExportData = false
     @State private var showingChangePassword = false
     @State private var showingShareProgress = false
+    @State private var showingTargetSettings = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
@@ -54,6 +55,7 @@ struct ProfileView: View {
 
                     VStack(spacing: 16) {
                         accountSection
+                        targetsSection
                         subscriptionSection
                         healthSection
                         preferencesSection
@@ -75,6 +77,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingChangePassword) {
                 ChangePasswordView().environmentObject(auth)
+            }
+            .sheet(isPresented: $showingTargetSettings) {
+                TargetSettingsView().environmentObject(auth)
             }
             .sheet(isPresented: $showingShareProgress) {
                 ShareProgressView(

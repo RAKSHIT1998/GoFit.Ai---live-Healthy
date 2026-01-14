@@ -1,7 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { sendEmail } from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -110,6 +112,14 @@ router.post('/register', async (req, res) => {
       drinkingFrequency: user.drinkingFrequency || 'not set',
       smokingStatus: user.smokingStatus || 'not set'
     });
+
+    // Send welcome email (non-blocking)
+    try {
+      await sendEmail(user.email, 'welcome', { name: user.name });
+    } catch (emailError) {
+      console.error('⚠️ Failed to send welcome email (non-critical):', emailError);
+      // Don't fail registration if email fails
+    }
 
     // Auto-calculate calories based on onboarding data
     try {
@@ -274,6 +284,94 @@ router.put('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// Update user targets (weight, calories, macros, etc.)
+router.put('/targets', authMiddleware, async (req, res) => {
+  try {
+    const { 
+      weightKg, 
+      heightCm, 
+      targetWeightKg,
+      targetCalories, 
+      targetProtein, 
+      targetCarbs, 
+      targetFat,
+      goals,
+      activityLevel
+    } = req.body;
+
+    const updateData = {};
+    
+    // Update metrics
+    if (weightKg !== undefined) {
+      updateData['metrics.weightKg'] = weightKg;
+    }
+    if (heightCm !== undefined) {
+      updateData['metrics.heightCm'] = heightCm;
+    }
+    if (targetWeightKg !== undefined) {
+      updateData['metrics.targetWeightKg'] = targetWeightKg;
+    }
+    if (targetCalories !== undefined) {
+      updateData['metrics.targetCalories'] = targetCalories;
+    }
+    if (targetProtein !== undefined) {
+      updateData['metrics.targetProtein'] = targetProtein;
+    }
+    if (targetCarbs !== undefined) {
+      updateData['metrics.targetCarbs'] = targetCarbs;
+    }
+    if (targetFat !== undefined) {
+      updateData['metrics.targetFat'] = targetFat;
+    }
+    
+    // Update goals and activity level
+    if (goals) updateData.goals = goals;
+    if (activityLevel) updateData.activityLevel = activityLevel;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateData },
+      { new: true }
+    ).select('-passwordHash');
+
+    // Recalculate calories if weight, height, goals, or activity level changed
+    if (weightKg !== undefined || heightCm !== undefined || goals || activityLevel) {
+      try {
+        const { calculateCalories, calculateMacros } = await import('../utils/calorieCalculator.js');
+        const calorieData = calculateCalories(user);
+        if (calorieData) {
+          const macros = calculateMacros(calorieData.recommendedCalories, user.dietaryPreferences);
+          
+          // Update calculated values
+          await User.findByIdAndUpdate(
+            req.user._id,
+            { 
+              $set: {
+                'metrics.targetCalories': calorieData.recommendedCalories,
+                'metrics.targetProtein': macros.protein,
+                'metrics.targetCarbs': macros.carbs,
+                'metrics.targetFat': macros.fat
+              }
+            }
+          );
+          
+          // Fetch updated user
+          const updatedUser = await User.findById(req.user._id).select('-passwordHash');
+          return res.json(updatedUser);
+        }
+      } catch (calcError) {
+        console.error('⚠️ Failed to recalculate calories (non-critical):', calcError);
+        // Continue with the update even if calculation fails
+      }
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Update targets error:', error);
+    res.status(500).json({ message: 'Failed to update targets', error: error.message });
+  }
+});
+
 // Change password
 router.post('/change-password', authMiddleware, async (req, res) => {
   try {
@@ -363,16 +461,53 @@ router.post('/apple', async (req, res) => {
     const trialEndDate = new Date(now);
     trialEndDate.setDate(trialEndDate.getDate() + 3); // 3-day free trial
     
+    // Extract onboarding data from request if available
+    const {
+      goals, activityLevel, dietaryPreferences, allergies, fastingPreference,
+      weightKg, heightCm,
+      workoutPreferences, favoriteCuisines, foodPreferences,
+      workoutTimeAvailability, lifestyleFactors,
+      favoriteFoods, mealTimingPreference, cookingSkill,
+      budgetPreference, motivationLevel, drinkingFrequency, smokingStatus
+    } = req.body;
+    
     user = new User({
       name: name || 'Apple User',
       email: email ? email.toLowerCase() : `${userIdentifier}@apple.privaterelay.app`,
       appleId: userIdentifier,
       // No passwordHash for Apple users
-      goals: 'maintain',
-      activityLevel: 'moderate',
-      dietaryPreferences: [],
-      allergies: [],
-      fastingPreference: 'none',
+      goals: goals || 'maintain',
+      activityLevel: activityLevel || 'moderate',
+      dietaryPreferences: dietaryPreferences || [],
+      allergies: allergies || [],
+      fastingPreference: fastingPreference || 'none',
+      metrics: {
+        weightKg: weightKg || 70,
+        heightCm: heightCm || 170
+      },
+      // Direct fields for easier access
+      workoutPreferences: workoutPreferences || [],
+      favoriteCuisines: favoriteCuisines || [],
+      foodPreferences: foodPreferences || [],
+      workoutTimeAvailability: workoutTimeAvailability || 'any',
+      lifestyleFactors: lifestyleFactors || [],
+      drinkingFrequency: drinkingFrequency || 'never',
+      smokingStatus: smokingStatus || 'never',
+      // Comprehensive onboarding data for AI personalization
+      onboardingData: {
+        workoutPreferences: workoutPreferences || [],
+        favoriteCuisines: favoriteCuisines || [],
+        foodPreferences: foodPreferences || [],
+        workoutTimeAvailability: workoutTimeAvailability || 'any',
+        lifestyleFactors: lifestyleFactors || [],
+        favoriteFoods: favoriteFoods || [],
+        mealTimingPreference: mealTimingPreference || 'regular',
+        cookingSkill: cookingSkill || 'intermediate',
+        budgetPreference: budgetPreference || 'moderate',
+        motivationLevel: motivationLevel || 'moderate',
+        drinkingFrequency: drinkingFrequency || 'never',
+        smokingStatus: smokingStatus || 'never'
+      },
       subscription: {
         status: 'trial', // Start with trial status
         startDate: now,
@@ -382,6 +517,36 @@ router.post('/apple', async (req, res) => {
     });
 
     await user.save();
+    
+    // Auto-calculate calories based on onboarding data
+    try {
+      const { calculateCalories, calculateMacros } = await import('../utils/calorieCalculator.js');
+      
+      const calorieData = calculateCalories(user);
+      if (calorieData) {
+        const macros = calculateMacros(calorieData.recommendedCalories, user.dietaryPreferences);
+        
+        // Update user metrics
+        user.metrics = {
+          ...user.metrics,
+          targetCalories: calorieData.recommendedCalories,
+          targetProtein: macros.protein,
+          targetCarbs: macros.carbs,
+          targetFat: macros.fat
+        };
+        await user.save();
+      }
+    } catch (error) {
+      console.error('⚠️ Failed to auto-calculate calories for Apple user (non-critical):', error.message);
+    }
+
+    // Send welcome email for new Apple users (non-blocking)
+    try {
+      await sendEmail(user.email, 'welcome', { name: user.name });
+    } catch (emailError) {
+      console.error('⚠️ Failed to send welcome email (non-critical):', emailError);
+      // Don't fail signup if email fails
+    }
 
     // Generate token
     const token = generateToken(user._id);
@@ -484,6 +649,104 @@ router.get('/export', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Export data error:', error);
     res.status(500).json({ message: 'Failed to export data', error: error.message });
+  }
+});
+
+// Forgot password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    // Don't reveal if user exists or not (security best practice)
+    if (!user) {
+      // Still return success to prevent email enumeration
+      return res.json({ 
+        message: 'If an account with that email exists, a password reset link has been sent.' 
+      });
+    }
+
+    // Check if user has password (Apple-only users can't reset password)
+    if (!user.passwordHash) {
+      return res.json({ 
+        message: 'If an account with that email exists, a password reset link has been sent.' 
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // Create reset link
+    const resetLink = `${process.env.APP_URL || 'https://gofitai.org'}/reset-password?token=${resetToken}`;
+
+    // Send email (non-blocking)
+    try {
+      await sendEmail(user.email, 'forgotPassword', { 
+        name: user.name, 
+        resetLink: resetLink 
+      });
+      console.log('✅ Password reset email sent to:', user.email);
+    } catch (emailError) {
+      console.error('❌ Failed to send password reset email:', emailError);
+      // Reset the token if email fails
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+      return res.status(500).json({ message: 'Failed to send password reset email' });
+    }
+
+    res.json({ 
+      message: 'If an account with that email exists, a password reset link has been sent.' 
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Failed to process password reset request', error: error.message });
+  }
+});
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and new password are required' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    // Update password
+    user.passwordHash = password; // Will be hashed by pre-save hook
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Failed to reset password', error: error.message });
   }
 });
 

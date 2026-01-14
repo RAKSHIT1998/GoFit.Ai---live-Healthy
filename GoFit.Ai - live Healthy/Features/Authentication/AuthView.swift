@@ -12,6 +12,7 @@ struct AuthView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingPaywall = false
+    @State private var showingForgotPassword = false
     
     // Animation states
     @State private var animateLogo = false
@@ -111,6 +112,24 @@ struct AuthView: View {
                             .opacity(animateForm ? 1.0 : 0.0)
                             .offset(x: animateForm ? 0 : -30)
                             .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: animateForm)
+                            
+                            // Forgot password link (only in login mode)
+                            if isLoginMode {
+                                Button(action: {
+                                    showingForgotPassword = true
+                                }) {
+                                    HStack {
+                                        Spacer()
+                                        Text("Forgot Password?")
+                                            .font(Design.Typography.caption)
+                                            .foregroundColor(Design.Colors.primary)
+                                    }
+                                }
+                                .padding(.horizontal, Design.Spacing.md)
+                                .opacity(animateForm ? 1.0 : 0.0)
+                                .offset(y: animateForm ? 0 : 10)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.25), value: animateForm)
+                            }
                             
                             if !isLoginMode {
                                 CustomSecureField(
@@ -295,17 +314,20 @@ struct AuthView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallView()
-                .environmentObject(purchases)
-                .interactiveDismissDisabled(false) // Allow dismissing paywall after signup
-                .onDisappear {
-                    // Initialize trial after signup if not already initialized
-                    if auth.isLoggedIn {
-                        purchases.initializeTrialForNewUser()
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+                    .environmentObject(purchases)
+                    .interactiveDismissDisabled(false) // Allow dismissing paywall after signup
+                    .onDisappear {
+                        // Initialize trial after signup if not already initialized
+                        if auth.isLoggedIn {
+                            purchases.initializeTrialForNewUser()
+                        }
                     }
-                }
-        }
+            }
+            .sheet(isPresented: $showingForgotPassword) {
+                ForgotPasswordView()
+            }
         .onAppear {
             // If coming from onboarding (has onboarding data), default to signup mode
             if auth.onboardingData != nil && !auth.isLoggedIn {

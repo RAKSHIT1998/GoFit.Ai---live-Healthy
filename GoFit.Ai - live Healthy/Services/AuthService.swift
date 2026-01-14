@@ -250,19 +250,42 @@ final class AuthService {
     }
     
     // Sign in with Apple
-    func signInWithApple(idToken: String, userIdentifier: String, email: String?, name: String?) async throws -> AuthToken {
+    func signInWithApple(idToken: String, userIdentifier: String, email: String?, name: String?, onboardingData: OnboardingData? = nil) async throws -> AuthToken {
         let url = baseURL.appendingPathComponent("auth/apple")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.timeoutInterval = 30.0
         
-        let body: [String: Any?] = [
+        var body: [String: Any?] = [
             "idToken": idToken,
             "userIdentifier": userIdentifier,
             "email": email,
             "name": name
         ]
+        
+        // Add onboarding data if available
+        if let data = onboardingData {
+            body["weightKg"] = data.weightKg
+            body["heightCm"] = data.heightCm
+            body["goals"] = data.goal
+            body["activityLevel"] = data.activityLevel
+            body["dietaryPreferences"] = data.dietaryPreferences
+            body["allergies"] = data.allergies
+            body["fastingPreference"] = data.fastingPreference
+            body["workoutPreferences"] = data.workoutPreferences
+            body["favoriteCuisines"] = data.favoriteCuisines
+            body["foodPreferences"] = data.foodPreferences
+            body["workoutTimeAvailability"] = data.workoutTimeAvailability
+            body["lifestyleFactors"] = data.lifestyleFactors
+            body["favoriteFoods"] = data.favoriteFoods
+            body["mealTimingPreference"] = data.mealTimingPreference
+            body["cookingSkill"] = data.cookingSkill
+            body["budgetPreference"] = data.budgetPreference
+            body["motivationLevel"] = data.motivationLevel
+            body["drinkingFrequency"] = data.drinkingFrequency
+            body["smokingStatus"] = data.smokingStatus
+        }
         
         // Remove nil values
         let cleanBody = body.compactMapValues { $0 }
@@ -304,6 +327,58 @@ final class AuthService {
                 print("Response: \(responseString)")
             }
             throw NSError(domain: "AuthError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to decode server response. Please try again."])
+        }
+    }
+    
+    // Forgot password
+    func forgotPassword(email: String) async throws {
+        let url = baseURL.appendingPathComponent("auth/forgot-password")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 30.0
+        
+        let body = ["email": email]
+        req.httpBody = try JSONEncoder().encode(body)
+        
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        guard 200...299 ~= http.statusCode else {
+            if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
+               let message = errorData["message"] {
+                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
+            } else {
+                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to send password reset email"])
+            }
+        }
+    }
+    
+    // Reset password
+    func resetPassword(token: String, newPassword: String) async throws {
+        let url = baseURL.appendingPathComponent("auth/reset-password")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 30.0
+        
+        let body = ["token": token, "password": newPassword]
+        req.httpBody = try JSONEncoder().encode(body)
+        
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        guard 200...299 ~= http.statusCode else {
+            if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
+               let message = errorData["message"] {
+                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
+            } else {
+                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to reset password"])
+            }
         }
     }
 }
