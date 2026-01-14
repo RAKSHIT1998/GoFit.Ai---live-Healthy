@@ -110,7 +110,7 @@ struct WeightHeightStep: View {
                             
                             Text("'")
                                 .font(.title2)
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                             
                             TextField("Inches", text: Binding(
                                 get: { heightText.split(separator: "'").count > 1 ? String(heightText.split(separator: "'")[1].dropLast()) : "" },
@@ -132,7 +132,7 @@ struct WeightHeightStep: View {
                             
                             Text("\"")
                                 .font(.title2)
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                         }
                     }
                 }
@@ -253,17 +253,17 @@ struct WorkoutPreferenceCard: View {
             VStack(spacing: 12) {
                 Image(systemName: workout.icon)
                     .font(.system(size: 32))
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Text(workout.displayName)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -333,7 +333,7 @@ struct CuisineCard: View {
             HStack {
                 Text(cuisine.displayName)
                     .font(.body)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -343,7 +343,7 @@ struct CuisineCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -409,10 +409,10 @@ struct FoodPreferenceCard: View {
             Text(preference.displayName)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+                .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -451,7 +451,7 @@ struct LifestyleStep: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("How much time can you dedicate to workouts?")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     
                     VStack(spacing: 12) {
                         ForEach(OnboardingViewModel.WorkoutTime.allCases, id: \.self) { time in
@@ -471,7 +471,7 @@ struct LifestyleStep: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Lifestyle Factors (optional)")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     
                     ScrollView {
                         VStack(spacing: 12) {
@@ -511,7 +511,7 @@ struct WorkoutTimeCard: View {
             HStack {
                 Text(time.displayName)
                     .font(.body)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -521,7 +521,7 @@ struct WorkoutTimeCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -537,7 +537,7 @@ struct LifestyleFactorCard: View {
             HStack {
                 Text(factor.displayName)
                     .font(.body)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -547,7 +547,7 @@ struct LifestyleFactorCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -564,7 +564,7 @@ struct CuisinesAndFoodPreferencesStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "fork.knife.circle.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.bounce, value: viewModel.favoriteCuisines.count)
                 
                 Text("What Do You Love to Eat?")
@@ -584,7 +584,7 @@ struct CuisinesAndFoodPreferencesStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Favorite Cuisines")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                         
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -610,7 +610,7 @@ struct CuisinesAndFoodPreferencesStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Food Preferences")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                         
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -651,7 +651,7 @@ struct LifestyleAndMotivationStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.pulse, value: viewModel.motivationLevel)
                 
                 Text("Tell Us About Your Lifestyle")
@@ -671,7 +671,7 @@ struct LifestyleAndMotivationStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("How motivated are you?")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                         
                         VStack(spacing: 12) {
@@ -693,7 +693,7 @@ struct LifestyleAndMotivationStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Lifestyle Factors (optional)")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                         
                         VStack(spacing: 12) {
@@ -736,7 +736,7 @@ struct MotivationCard: View {
                 
                 Text(level.displayName)
                     .font(.body)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -746,7 +746,7 @@ struct MotivationCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -767,7 +767,7 @@ struct LifestyleHabitsStep: View {
             VStack(spacing: 16) {
                 Image(systemName: "heart.text.square.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(.white)
+                    .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.pulse, value: viewModel.drinkingFrequency)
                 
                 Text("Lifestyle Habits")
@@ -788,7 +788,7 @@ struct LifestyleHabitsStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Alcohol Consumption")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                         
                         VStack(spacing: 12) {
@@ -811,7 +811,7 @@ struct LifestyleHabitsStep: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Smoking Status")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .padding(.horizontal, 24)
                         
                         VStack(spacing: 12) {
@@ -849,13 +849,13 @@ struct LifestyleHabitCard: View {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                     .frame(width: 40)
                 
                 Text(title)
                     .font(.body)
                     .fontWeight(.medium)
-                    .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Spacer()
                 
@@ -865,7 +865,7 @@ struct LifestyleHabitCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -910,16 +910,16 @@ struct TargetWeightStep: View {
                 VStack(spacing: 16) {
                     Image(systemName: "target")
                         .font(.system(size: 60))
-                        .foregroundColor(.white)
+                        .foregroundColor(Design.Colors.primary)
                     
                     Text("Your Target Weight")
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .multilineTextAlignment(.center)
                     
                     Text("Tell us your goal weight and we'll calculate your ideal calorie and protein intake")
                         .font(.body)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
@@ -929,7 +929,7 @@ struct TargetWeightStep: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(unitSystem == .metric ? "Target Weight (kg)" : "Target Weight (lbs)")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                         
                         TextField(unitSystem == .metric ? "Enter target weight in kg" : "Enter target weight in lbs", text: $targetWeightText)
                             .keyboardType(.decimalPad)
@@ -1000,7 +1000,7 @@ struct TargetWeightStep: View {
                                 }
                             }
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Design.Colors.primaryGradient)

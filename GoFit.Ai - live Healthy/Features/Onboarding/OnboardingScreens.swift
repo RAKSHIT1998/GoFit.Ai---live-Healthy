@@ -322,7 +322,7 @@ struct OnboardingFeatureRow: View {
                 .foregroundColor(.primary)
         }
         .padding()
-        .background(Design.Colors.cardBackground.opacity(0.3))
+        .background(Design.Colors.secondaryBackground)
         .cornerRadius(16)
         .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(delay), value: delay)
     }
@@ -436,7 +436,7 @@ struct GoalCard: View {
             HStack(spacing: 16) {
                 Image(systemName: goal.icon)
                     .font(.title2)
-                    .foregroundColor(isSelected ? Color(red: 0.2, green: 0.7, blue: 0.6) : .white)
+                    .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                     .frame(width: 40)
                 
                 Text(goal.displayName)
@@ -452,7 +452,7 @@ struct GoalCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(16)
         }
     }
@@ -509,7 +509,7 @@ struct ActivityCard: View {
                 HStack {
                     Text(level.displayName)
                         .font(.headline)
-                        .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                        .foregroundColor(isSelected ? Design.Colors.primary : .primary)
 
             Spacer()
 
@@ -524,7 +524,7 @@ struct ActivityCard: View {
                         .foregroundColor(isSelected ? Design.Colors.primary.opacity(0.8) : .secondary)
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -596,7 +596,7 @@ struct DietaryPreferenceCard: View {
                 }
         }
         .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -671,7 +671,7 @@ struct AllergyCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -734,7 +734,7 @@ struct FastingPreferenceCard: View {
                 HStack {
                     Text(preference.displayName)
                         .font(.headline)
-                        .foregroundColor(isSelected ? Design.Colors.primary : .white)
+                        .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                     
                     Spacer()
                     
@@ -745,7 +745,7 @@ struct FastingPreferenceCard: View {
                 }
             }
             .padding()
-            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.cardBackground.opacity(0.3))
+            .background(isSelected ? Design.Colors.cardBackground : Design.Colors.secondaryBackground)
             .cornerRadius(12)
         }
     }
@@ -961,6 +961,7 @@ struct OnboardingSignupView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingPaywall = false
+    @State private var showingLogin = false
     
     // Focus state for keyboard management
     @FocusState private var focusedField: SignupField?
@@ -1112,6 +1113,32 @@ struct OnboardingSignupView: View {
                             .opacity((isLoading || !isFormValid) ? 0.6 : 1.0)
                             .padding(.horizontal, Design.Spacing.md)
                             
+                            // Login button for existing users
+                            Button(action: {
+                                showingLogin = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.right.circle.fill")
+                                        .font(.title3)
+                                    Text("Already have an account? Sign In")
+                                        .font(Design.Typography.body)
+                                        .fontWeight(.semibold)
+                                }
+                                .foregroundColor(Design.Colors.primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Design.Colors.primary, lineWidth: 2)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Design.Colors.primary.opacity(0.1))
+                                        )
+                                )
+                            }
+                            .padding(.horizontal, Design.Spacing.md)
+                            .padding(.top, Design.Spacing.md)
+                            
                             Spacer(minLength: 40)
                         }
                     }
@@ -1166,6 +1193,19 @@ struct OnboardingSignupView: View {
                 .onDisappear {
                     // After paywall dismisses, dismiss signup view
                     // RootView will automatically show MainTabView since auth.isLoggedIn is true
+                    if auth.isLoggedIn {
+                        dismiss()
+                    }
+                }
+        }
+        .sheet(isPresented: $showingLogin) {
+            AuthView()
+                .environmentObject(auth)
+                .environmentObject(purchases)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .onDisappear {
+                    // If user successfully logged in, dismiss the signup view
                     if auth.isLoggedIn {
                         dismiss()
                     }

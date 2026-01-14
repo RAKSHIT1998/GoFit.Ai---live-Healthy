@@ -121,11 +121,14 @@ struct AuthView: View {
                                     HStack {
                                         Spacer()
                                         Text("Forgot Password?")
-                                            .font(Design.Typography.caption)
+                                            .font(Design.Typography.body)
                                             .foregroundColor(Design.Colors.primary)
+                                            .underline()
+                                        Spacer()
                                     }
                                 }
                                 .padding(.horizontal, Design.Spacing.md)
+                                .padding(.top, Design.Spacing.sm)
                                 .opacity(animateForm ? 1.0 : 0.0)
                                 .offset(y: animateForm ? 0 : 10)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.25), value: animateForm)
