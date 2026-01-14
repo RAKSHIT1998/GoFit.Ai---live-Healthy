@@ -21,7 +21,7 @@ struct GoFitAiApp: App {
         }
     }()
 
-    @AppStorage("darkModePreference") private var darkModePreference: String = "system"
+    @AppStorage("darkModePreference") private var darkModePreference: String = "light"
     
     var body: some Scene {
         WindowGroup {

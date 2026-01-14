@@ -194,4 +194,3 @@ struct AppleSignInResult {
     let fullName: String?
     let nonce: String
 }
-
