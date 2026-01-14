@@ -125,7 +125,36 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
     }
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        completionHandler?(.failure(error))
+        #if DEBUG
+        if let authError = error as? ASAuthorizationError {
+            print("❌ Apple Sign In error: \(authError.localizedDescription)")
+            print("   Error code: \(authError.code.rawValue)")
+            print("   Error domain: \(authError.localizedDescription)")
+        } else {
+            print("❌ Apple Sign In error: \(error.localizedDescription)")
+        }
+        #endif
+        
+        // Provide more helpful error messages
+        var userFriendlyError = error
+        if let authError = error as? ASAuthorizationError {
+            switch authError.code {
+            case .unknown:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed. Please ensure Sign in with Apple is enabled in your app settings."])
+            case .canceled:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In was canceled."])
+            case .invalidResponse:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Invalid response from Apple. Please try again."])
+            case .notHandled:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In could not be handled. Please check your app configuration."])
+            case .failed:
+                userFriendlyError = NSError(domain: "AppleSignIn", code: authError.code.rawValue, userInfo: [NSLocalizedDescriptionKey: "Apple Sign In failed. Please try again."])
+            @unknown default:
+                break
+            }
+        }
+        
+        completionHandler?(.failure(userFriendlyError))
         completionHandler = nil
         currentNonce = nil
     }
@@ -134,11 +163,26 @@ extension AppleSignInService: ASAuthorizationControllerDelegate {
 // MARK: - ASAuthorizationControllerPresentationContextProviding
 extension AppleSignInService: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            fatalError("No window found")
+        // Get the key window more reliably
+        if let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }),
+           let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
+            return window
         }
-        return window
+        
+        // Fallback: get any window from any scene
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            return window
+        }
+        
+        // Last resort: get any available window (shouldn't happen in normal flow)
+        #if DEBUG
+        print("⚠️ Warning: No window found for Apple Sign In presentation. Using first available window.")
+        #endif
+        let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        return windowScene?.windows.first ?? UIWindow()
     }
 }
 
