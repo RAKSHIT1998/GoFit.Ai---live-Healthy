@@ -236,11 +236,13 @@ final class AuthService {
                 }
             }
             
-            // Log for debugging
+            // Log for debugging (only in debug mode to avoid exposing sensitive information)
+            #if DEBUG
             print("❌ Registration error: \(errorMessage) (Status: \(http.statusCode))")
             if let responseString = String(data: data, encoding: .utf8) {
                 print("Response: \(responseString)")
             }
+            #endif
             
             throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
