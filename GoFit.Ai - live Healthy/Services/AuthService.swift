@@ -96,11 +96,15 @@ final class AuthService {
                     let delaySeconds = pow(2.0, Double(attempt))
                     
                     if attempt < maxRetries - 1 {
+                        #if DEBUG
                         print("⏳ Rate limit hit, retrying in \(delaySeconds) seconds (attempt \(attempt + 1)/\(maxRetries))...")
+                        #endif
                         try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
                         continue
                     } else {
+                        #if DEBUG
                         print("❌ Max retries reached for rate limit")
+                        #endif
                         throw error
                     }
                 } else {
@@ -118,9 +122,11 @@ final class AuthService {
     private func performSignup(name: String, email: String, password: String, onboardingData: OnboardingData? = nil) async throws -> AuthToken {
         let url = baseURL.appendingPathComponent("auth/register")
         
-        // Debug logging
+        // Debug logging (only in debug mode to avoid exposing sensitive information)
+        #if DEBUG
         print("🔵 Registration request URL: \(url.absoluteString)")
         print("🔵 Base URL: \(baseURL.absoluteString)")
+        #endif
         
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -155,18 +161,23 @@ final class AuthService {
             body["motivationLevel"] = data.motivationLevel
             body["drinkingFrequency"] = data.drinkingFrequency
             body["smokingStatus"] = data.smokingStatus
+            #if DEBUG
             print("🔵 Including comprehensive onboarding data in signup")
+            #endif
         }
         
         // Validate that body can be serialized to JSON
         do {
             req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         } catch {
+            #if DEBUG
             print("❌ Failed to serialize request body to JSON: \(error.localizedDescription)")
+            #endif
             throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Failed to prepare signup data. Please try again."])
         }
         
-        // Log request body (without password for security)
+        // Log request body (without password for security) - only in debug mode
+        #if DEBUG
         if let bodyString = String(data: req.httpBody!, encoding: .utf8) {
             // Parse JSON and redact password to handle escaped characters correctly
             if let jsonData = bodyString.data(using: .utf8),
@@ -191,26 +202,33 @@ final class AuthService {
                 }
             }
         }
+        #endif
         
         let (data, resp): (Data, URLResponse)
         do {
             (data, resp) = try await URLSession.shared.data(for: req)
         } catch {
             // Network error (connection failed, timeout, etc.)
+            #if DEBUG
             print("❌ Network error during registration: \(error.localizedDescription)")
             if let urlError = error as? URLError {
                 print("❌ URLError code: \(urlError.code.rawValue)")
                 print("❌ URLError description: \(urlError.localizedDescription)")
             }
+            #endif
             throw error
         }
         
         guard let http = resp as? HTTPURLResponse else {
+            #if DEBUG
             print("❌ Invalid response type: \(type(of: resp))")
+            #endif
             throw URLError(.badServerResponse)
         }
         
+        #if DEBUG
         print("🔵 Response status code: \(http.statusCode)")
+        #endif
         
         // Check for error response
         guard 200...299 ~= http.statusCode else {
@@ -220,7 +238,9 @@ final class AuthService {
             // Check for rate limiting (429 status code)
             if http.statusCode == 429 {
                 errorMessage = "Too many requests. Please wait a few minutes and try again."
+                #if DEBUG
                 print("❌ Rate limit exceeded (429)")
+                #endif
             } else {
                 // Try to decode as JSON
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
