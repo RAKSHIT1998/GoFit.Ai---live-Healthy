@@ -11,6 +11,7 @@ struct TargetSettingsView: View {
     @State private var targetProtein: Double?
     @State private var targetCarbs: Double?
     @State private var targetFat: Double?
+    @State private var liquidIntakeGoal: Double = 2.5
     @State private var goal: String = "maintain"
     @State private var activityLevel: String = "moderate"
     
@@ -41,10 +42,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Current Weight")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("kg", value: $weightKg, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("kg")
                                             .foregroundColor(.secondary)
@@ -53,10 +56,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Height")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("cm", value: $heightCm, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("cm")
                                             .foregroundColor(.secondary)
@@ -65,10 +70,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Target Weight")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("kg", value: $targetWeightKg, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("kg")
                                             .foregroundColor(.secondary)
@@ -119,10 +126,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Target Calories")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("kcal", value: $targetCalories, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("kcal")
                                             .foregroundColor(.secondary)
@@ -131,10 +140,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Target Protein")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("g", value: $targetProtein, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("g")
                                             .foregroundColor(.secondary)
@@ -143,10 +154,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Target Carbs")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("g", value: $targetCarbs, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("g")
                                             .foregroundColor(.secondary)
@@ -155,10 +168,12 @@ struct TargetSettingsView: View {
                                     HStack {
                                         Text("Target Fat")
                                             .font(Design.Typography.body)
+                                            .foregroundColor(.primary)
                                         Spacer()
                                         TextField("g", value: $targetFat, format: .number)
                                             .keyboardType(.decimalPad)
                                             .textFieldStyle(.roundedBorder)
+                                            .background(Design.Colors.secondaryBackground)
                                             .frame(width: 100)
                                         Text("g")
                                             .foregroundColor(.secondary)
@@ -186,6 +201,36 @@ struct TargetSettingsView: View {
                         }
                         .padding(.horizontal, Design.Spacing.md)
                         
+                        // Liquid Intake Goal
+                        ModernCard {
+                            VStack(alignment: .leading, spacing: Design.Spacing.md) {
+                                Text("Daily Liquid Intake Goal")
+                                    .font(Design.Typography.headline)
+                                    .foregroundColor(.primary)
+                                
+                                HStack {
+                                    Text("Target Liquid Intake")
+                                        .font(Design.Typography.body)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    TextField("L", value: $liquidIntakeGoal, format: .number)
+                                        .keyboardType(.decimalPad)
+                                        .textFieldStyle(.roundedBorder)
+                                        .background(Design.Colors.secondaryBackground)
+                                        .frame(width: 100)
+                                    Text("L")
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Text("Set your daily water/liquid intake goal. The default is 2.5L per day.")
+                                    .font(Design.Typography.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, Design.Spacing.xs)
+                            }
+                            .padding(Design.Spacing.md)
+                        }
+                        .padding(.horizontal, Design.Spacing.md)
+                        
                         // Error message
                         if let error = errorMessage {
                             HStack(spacing: Design.Spacing.sm) {
@@ -197,9 +242,9 @@ struct TargetSettingsView: View {
                             }
                             .padding(Design.Spacing.md)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(Design.Radius.medium)
-                            .padding(.horizontal, Design.Spacing.md)
+                        .background(Design.Colors.secondaryBackground)
+                        .cornerRadius(Design.Radius.medium)
+                        .padding(.horizontal, Design.Spacing.md)
                         }
                         
                         // Save button
@@ -298,13 +343,16 @@ struct TargetSettingsView: View {
                         if let tcarbs = metrics["targetCarbs"] as? Double {
                             targetCarbs = tcarbs
                         }
-                        if let tf = metrics["targetFat"] as? Double {
-                            targetFat = tf
-                        }
+                    if let tf = metrics["targetFat"] as? Double {
+                        targetFat = tf
                     }
-                    if let activity = response["activityLevel"] as? String {
-                        activityLevel = activity
+                    if let liquid = metrics["liquidIntakeGoal"] as? Double {
+                        liquidIntakeGoal = liquid
                     }
+                }
+                if let activity = response["activityLevel"] as? String {
+                    activityLevel = activity
+                }
                 }
             } catch {
                 print("⚠️ Failed to load targets: \(error.localizedDescription)")
@@ -332,6 +380,7 @@ struct TargetSettingsView: View {
                     "targetProtein": targetProtein,
                     "targetCarbs": targetCarbs,
                     "targetFat": targetFat,
+                    "liquidIntakeGoal": liquidIntakeGoal,
                     "goals": goal,
                     "activityLevel": activityLevel
                 ]

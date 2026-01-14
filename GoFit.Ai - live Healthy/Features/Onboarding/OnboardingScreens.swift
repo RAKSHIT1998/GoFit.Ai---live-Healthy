@@ -153,19 +153,21 @@ struct OnboardingScreens: View {
                 .presentationDetents([.large]) // Ensure full screen on iPad
                 .presentationDragIndicator(.visible)
                 .onAppear {
-                    // Clear any test/default names from saved state
+                    // Clear any test/default names from saved state (only generic test values)
                     auth.clearTestData()
                     
-                    // Clear "rakshit" from viewModel.name if present
-                    if viewModel.name.lowercased() == "rakshit" {
+                    // Only clear generic test names, not actual user names
+                    if viewModel.name == "User" || viewModel.name == "Dev User" {
                         viewModel.name = ""
                     }
                     
                     // Debug: Log the name state when signup view appears
+                    #if DEBUG
                     print("📱 OnboardingSignupView appeared")
                     print("📱 viewModel.name: '\(viewModel.name)'")
                     print("📱 auth.name: '\(auth.name)'")
                     print("📱 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
+                    #endif
                 }
         }
     }
@@ -998,9 +1000,9 @@ struct OnboardingSignupView: View {
                                         text: Binding(
                                             get: { 
                                                 // Use viewModel.name if available, otherwise empty
-                                                // Clear any "rakshit" default
                                                 let name = viewModel.name.isEmpty ? "" : viewModel.name
-                                                return name.lowercased() == "rakshit" ? "" : name
+                                                // Only clear generic test values, not actual user names
+                                                return (name == "User" || name == "Dev User") ? "" : name
                                             },
                                             set: { 
                                                 // Update viewModel.name when user types
@@ -1132,11 +1134,11 @@ struct OnboardingSignupView: View {
                 focusedField = nil
             }
             .onAppear {
-                // Clear any test/default names from saved state
+                // Clear any test/default names from saved state (only generic test values)
                 auth.clearTestData()
                 
-                // Clear "rakshit" from viewModel.name if present
-                if viewModel.name.lowercased() == "rakshit" {
+                // Only clear generic test names, not actual user names
+                if viewModel.name == "User" || viewModel.name == "Dev User" {
                     viewModel.name = ""
                 }
                 
@@ -1230,15 +1232,15 @@ struct OnboardingSignupView: View {
         
         Task {
             do {
-                // Get the name from onboarding - prioritize viewModel.name, then auth.name, never use "rakshit" or defaults
+                // Get the name from onboarding - prioritize viewModel.name, then auth.name
                 let signupName: String
                 if !viewModel.name.isEmpty {
                     signupName = viewModel.name
-                } else if !auth.name.isEmpty && auth.name.lowercased() != "rakshit" {
+                } else if !auth.name.isEmpty && auth.name != "User" && auth.name != "Dev User" {
                     signupName = auth.name
                 } else if let onboardingName = auth.onboardingData?.name, 
                           !onboardingName.isEmpty && 
-                          onboardingName.lowercased() != "rakshit" {
+                          onboardingName != "User" && onboardingName != "Dev User" {
                     signupName = onboardingName
                 } else {
                     signupName = "User"

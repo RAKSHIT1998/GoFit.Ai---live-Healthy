@@ -98,7 +98,11 @@ const userSchema = new mongoose.Schema({
     targetCalories: Number,
     targetProtein: Number,
     targetCarbs: Number,
-    targetFat: Number
+    targetFat: Number,
+    liquidIntakeGoal: {
+      type: Number,
+      default: 2.5 // Default 2.5L per day
+    }
   },
   // Comprehensive onboarding data for AI personalization
   onboardingData: {

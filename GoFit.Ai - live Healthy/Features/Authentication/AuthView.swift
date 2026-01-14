@@ -237,6 +237,34 @@ struct AuthView: View {
                     .padding(.top, Design.Spacing.md)
                     .opacity(animateForm ? 1.0 : 0.0)
                     
+                    // Additional login link when in signup mode (for better UX when email exists)
+                    if !isLoginMode {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                                isLoginMode = true
+                                errorMessage = nil
+                                animateForm = false
+                                name = ""
+                                confirmPassword = ""
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                withAnimation {
+                                    animateForm = true
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.left")
+                                    .font(.caption)
+                                Text("Already have an account? Sign In")
+                                    .font(Design.Typography.caption)
+                            }
+                            .foregroundColor(Design.Colors.primary)
+                        }
+                        .padding(.top, Design.Spacing.sm)
+                        .opacity(animateForm ? 1.0 : 0.0)
+                    }
+                    
                     // Divider
                     HStack {
                         Rectangle()
@@ -461,7 +489,12 @@ struct AuthView: View {
                             // Account created but token generation failed - user should sign in
                             errorMessage = "Account created successfully. Please sign in to continue."
                         } else if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
-                            errorMessage = message
+                            // Check if it's a duplicate email error and suggest login
+                            if !isLoginMode && (message.lowercased().contains("already exists") || message.lowercased().contains("user with this email")) {
+                                errorMessage = "An account with this email already exists. Please sign in instead."
+                            } else {
+                                errorMessage = message
+                            }
                         } else {
                             errorMessage = error.localizedDescription.isEmpty ? "An unexpected error occurred. Please try again." : error.localizedDescription
                         }

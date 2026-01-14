@@ -352,6 +352,7 @@ router.put('/targets', authMiddleware, async (req, res) => {
       targetProtein, 
       targetCarbs, 
       targetFat,
+      liquidIntakeGoal,
       goals,
       activityLevel
     } = req.body;
@@ -379,6 +380,9 @@ router.put('/targets', authMiddleware, async (req, res) => {
     }
     if (targetFat !== undefined) {
       updateData['metrics.targetFat'] = targetFat;
+    }
+    if (liquidIntakeGoal !== undefined) {
+      updateData['metrics.liquidIntakeGoal'] = liquidIntakeGoal;
     }
     
     // Update goals and activity level

@@ -21,6 +21,7 @@ struct HomeDashboardView: View {
 
     @State private var fastingStatus = "Not fasting"
     @State private var waterIntake: Double = 0
+    @State private var liquidIntakeGoal: Double = AppConstants.defaultWaterGoal
     
     // AI-calculated target calories from onboarding
     @State private var targetCalories: Int? = nil
@@ -48,6 +49,7 @@ struct HomeDashboardView: View {
                     .padding(.bottom, Design.Spacing.xl)
                 }
                 .refreshable {
+                    await loadLiquidIntakeGoal()
                     await loadSummary()
                     await loadWaterIntake()
                     await loadHealthData()
@@ -119,6 +121,7 @@ struct HomeDashboardView: View {
 
                 Task {
                     await loadTargetCalories() // Load AI-calculated target calories
+                    await loadLiquidIntakeGoal() // Load custom liquid intake goal
                     await loadSummary()
                     await loadWaterIntake()
                     await loadHealthData() // Load from backend first
@@ -460,18 +463,18 @@ struct HomeDashboardView: View {
             }
 
             let progress: Double = {
-                guard AppConstants.defaultWaterGoal > 0,
+                guard liquidIntakeGoal > 0,
                       waterIntake.isFinite,
                       !waterIntake.isNaN else {
                     return 0.0
                 }
-                return min(waterIntake / AppConstants.defaultWaterGoal, 1.0)
+                return min(waterIntake / liquidIntakeGoal, 1.0)
             }()
             
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gray.opacity(0.1))
+                        .fill(Design.Colors.secondaryBackground)
                         .frame(height: 16)
                     
                     RoundedRectangle(cornerRadius: 12)
@@ -483,7 +486,7 @@ struct HomeDashboardView: View {
             .frame(height: 16)
 
             HStack {
-                Text("Goal: \(String(format: "%.1f", AppConstants.defaultWaterGoal))L")
+                Text("Goal: \(String(format: "%.1f", liquidIntakeGoal))L")
                     .font(Design.Typography.caption)
                     .foregroundColor(.secondary)
                 
@@ -738,6 +741,31 @@ struct HomeDashboardView: View {
             }
         } catch {
             fastingStatus = "Not fasting"
+        }
+    }
+    
+    // Load liquid intake goal from backend
+    private func loadLiquidIntakeGoal() async {
+        guard auth.isLoggedIn else {
+            return
+        }
+        
+        guard let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty else {
+            return
+        }
+        
+        do {
+            let response: [String: Any] = try await NetworkManager.shared.requestDictionary("auth/me", method: "GET", body: nil)
+            if let metrics = response["metrics"] as? [String: Any],
+               let liquid = metrics["liquidIntakeGoal"] as? Double {
+                await MainActor.run {
+                    liquidIntakeGoal = liquid
+                }
+            }
+        } catch {
+            #if DEBUG
+            print("⚠️ Failed to load liquid intake goal: \(error.localizedDescription)")
+            #endif
         }
     }
     

@@ -354,27 +354,27 @@ final class AuthViewModel: ObservableObject {
     func resetOnboarding() {
         self.didFinishOnboarding = false
         self.onboardingData = nil
-        // Clear name if it's a default/test value
-        if self.name.lowercased() == "rakshit" || self.name == "User" || self.name == "Dev User" {
+        // Only clear generic test values, not actual user names
+        if self.name == "User" || self.name == "Dev User" {
             self.name = ""
         }
         saveLocalState()
         print("🔄 Onboarding reset - will show onboarding on next launch")
     }
     
-    // Clear any test/default names
+    // Clear any test/default names (only generic test values, not real names)
     func clearTestData() {
         var cleared = false
         
-        // Clear test name from main name field
-        if self.name.lowercased() == "rakshit" || self.name == "User" || self.name == "Dev User" {
+        // Only clear generic test names, not actual user names like "rakshit"
+        if self.name == "User" || self.name == "Dev User" {
             self.name = ""
             cleared = true
         }
         
-        // Clear test name from onboardingData if present
+        // Clear test name from onboardingData if present (only generic test values)
         if let onboarding = self.onboardingData {
-            if onboarding.name.lowercased() == "rakshit" || onboarding.name == "User" || onboarding.name == "Dev User" {
+            if onboarding.name == "User" || onboarding.name == "Dev User" {
                 // Create new OnboardingData with cleared name
                 self.onboardingData = OnboardingData(
                     name: "",
