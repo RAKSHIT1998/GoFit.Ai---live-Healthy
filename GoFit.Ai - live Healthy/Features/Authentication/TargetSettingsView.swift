@@ -324,7 +324,7 @@ struct TargetSettingsView: View {
         
         Task {
             do {
-                var body: [String: Any?] = [
+                let body: [String: Any?] = [
                     "weightKg": weightKg,
                     "heightCm": heightCm,
                     "targetWeightKg": targetWeightKg,
