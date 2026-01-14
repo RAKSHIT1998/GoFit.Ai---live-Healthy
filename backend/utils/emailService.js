@@ -33,7 +33,7 @@ const createTransporter = () => {
 
 // Email templates
 const emailTemplates = {
-  welcome: (name) => ({
+  welcome: ({ name }) => ({
     subject: 'Welcome to GoFit.Ai! 🎉',
     html: `
       <!DOCTYPE html>
@@ -97,7 +97,7 @@ const emailTemplates = {
     `
   }),
 
-  forgotPassword: (name, resetLink) => ({
+  forgotPassword: ({ name, resetLink }) => ({
     subject: 'Reset Your GoFit.Ai Password',
     html: `
       <!DOCTYPE html>
@@ -159,8 +159,13 @@ export const sendEmail = async (to, template, data) => {
   try {
     const transporter = createTransporter();
     
-    // Get email template
-    const emailContent = emailTemplates[template](data.name || data, data.resetLink);
+    // Get email template - pass data as an object with named properties
+    // This ensures consistency across all template functions
+    const templateData = typeof data === 'string' 
+      ? { name: data }  // Handle legacy case where data might be just a string (name)
+      : data;           // Otherwise use the data object as-is
+    
+    const emailContent = emailTemplates[template](templateData);
     
     const mailOptions = {
       from: process.env.SMTP_FROM || `"GoFit.Ai" <${process.env.SMTP_USER || 'noreply@gofitai.org'}>`,
