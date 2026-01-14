@@ -120,7 +120,11 @@ final class AuthService {
         req.timeoutInterval = 30.0 // 30 second timeout
         
         // Build request body with onboarding data
-        var body: [String: Any] = ["name": name, "email": email, "password": password]
+        var body: [String: Any] = [
+            "name": name.trimmingCharacters(in: .whitespacesAndNewlines),
+            "email": email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+            "password": password
+        ]
         
         // Add comprehensive onboarding data if available
         if let data = onboardingData {
@@ -128,15 +132,15 @@ final class AuthService {
             body["heightCm"] = data.heightCm
             body["goals"] = data.goal
             body["activityLevel"] = data.activityLevel
-            body["dietaryPreferences"] = data.dietaryPreferences
-            body["allergies"] = data.allergies
+            body["dietaryPreferences"] = data.dietaryPreferences // Already an array
+            body["allergies"] = data.allergies // Already an array
             body["fastingPreference"] = data.fastingPreference
-            body["workoutPreferences"] = data.workoutPreferences
-            body["favoriteCuisines"] = data.favoriteCuisines
-            body["foodPreferences"] = data.foodPreferences
+            body["workoutPreferences"] = data.workoutPreferences // Already an array
+            body["favoriteCuisines"] = data.favoriteCuisines // Already an array
+            body["foodPreferences"] = data.foodPreferences // Already an array
             body["workoutTimeAvailability"] = data.workoutTimeAvailability
-            body["lifestyleFactors"] = data.lifestyleFactors
-            body["favoriteFoods"] = data.favoriteFoods
+            body["lifestyleFactors"] = data.lifestyleFactors // Already an array
+            body["favoriteFoods"] = data.favoriteFoods // Already an array
             body["mealTimingPreference"] = data.mealTimingPreference
             body["cookingSkill"] = data.cookingSkill
             body["budgetPreference"] = data.budgetPreference
@@ -146,7 +150,13 @@ final class AuthService {
             print("🔵 Including comprehensive onboarding data in signup")
         }
         
-        req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        // Validate that body can be serialized to JSON
+        do {
+            req.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        } catch {
+            print("❌ Failed to serialize request body to JSON: \(error.localizedDescription)")
+            throw NSError(domain: "AuthError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Failed to prepare signup data. Please try again."])
+        }
         
         // Log request body (without password for security)
         if let bodyString = String(data: req.httpBody!, encoding: .utf8) {
@@ -231,15 +241,26 @@ final class AuthService {
         do {
             // Try to decode as AuthTokenResponse first (with user data)
             if let response = try? JSONDecoder().decode(AuthTokenResponse.self, from: data) {
+                // Check if accessToken is null (account created but token generation failed)
+                if response.accessToken == nil || response.accessToken.isEmpty {
+                    throw NSError(domain: "AuthError", code: 201, userInfo: [NSLocalizedDescriptionKey: "Account created successfully. Please sign in to continue."])
+                }
                 let token = AuthToken(accessToken: response.accessToken, expiresAt: nil)
                 saveToken(token)
                 return token
             }
             // Fallback: try direct AuthToken decode
             let token = try JSONDecoder().decode(AuthToken.self, from: data)
+            if token.accessToken.isEmpty {
+                throw NSError(domain: "AuthError", code: 201, userInfo: [NSLocalizedDescriptionKey: "Account created successfully. Please sign in to continue."])
+            }
             saveToken(token)
             return token
-        } catch {
+        } catch let decodeError as NSError {
+            // If it's our custom error about account creation, rethrow it
+            if decodeError.domain == "AuthError" && decodeError.code == 201 {
+                throw decodeError
+            }
             // If decoding fails, log the response for debugging
             print("❌ Failed to decode AuthToken from response")
             if let responseString = String(data: data, encoding: .utf8) {

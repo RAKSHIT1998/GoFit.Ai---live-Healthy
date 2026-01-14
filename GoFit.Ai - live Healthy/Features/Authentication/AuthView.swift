@@ -445,25 +445,31 @@ struct AuthView: View {
                     if let urlError = error as? URLError {
                         switch urlError.code {
                         case .notConnectedToInternet:
-                            errorMessage = "No internet connection. Please check your network."
+                            errorMessage = "No internet connection. Please check your network and try again."
                         case .timedOut:
-                            errorMessage = "Connection timed out. Please try again."
+                            errorMessage = "Connection timed out. Please check your internet connection and try again."
                         case .cannotFindHost:
-                            errorMessage = "Cannot reach server. Please check your connection."
+                            errorMessage = "Cannot reach server. Please check your connection and try again."
+                        case .networkConnectionLost:
+                            errorMessage = "Network connection lost. Please try again."
                         default:
                             errorMessage = "Network error: \(urlError.localizedDescription)"
                         }
                     } else if let nsError = error as NSError? {
-                        // Try to extract message from userInfo
-                        if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
+                        // Check for specific error codes
+                        if nsError.code == 201 {
+                            // Account created but token generation failed - user should sign in
+                            errorMessage = "Account created successfully. Please sign in to continue."
+                        } else if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
                             errorMessage = message
                         } else {
-                            errorMessage = error.localizedDescription
+                            errorMessage = error.localizedDescription.isEmpty ? "An unexpected error occurred. Please try again." : error.localizedDescription
                         }
                     } else {
-                        errorMessage = error.localizedDescription
+                        errorMessage = error.localizedDescription.isEmpty ? "An unexpected error occurred. Please try again." : error.localizedDescription
                     }
                     isLoading = false
+                    print("❌ Signup error: \(errorMessage ?? "Unknown error")")
                 }
             }
         }

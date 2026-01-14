@@ -33,21 +33,52 @@ router.post('/register', async (req, res) => {
       }
     });
 
+    // Validate and sanitize input
     if (!name || !email || !password) {
       console.log('❌ Registration failed: Missing required fields');
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
-    if (password.length < 8) {
+    // Trim and validate name
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      console.log('❌ Registration failed: Name is empty or whitespace only');
+      return res.status(400).json({ message: 'Name cannot be empty' });
+    }
+    if (trimmedName.length > 100) {
+      console.log('❌ Registration failed: Name too long');
+      return res.status(400).json({ message: 'Name must be less than 100 characters' });
+    }
+
+    // Validate and normalize email
+    const trimmedEmail = email.trim().toLowerCase();
+    if (trimmedEmail.length === 0) {
+      console.log('❌ Registration failed: Email is empty');
+      return res.status(400).json({ message: 'Email cannot be empty' });
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      console.log('❌ Registration failed: Invalid email format');
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    }
+
+    // Validate password
+    const trimmedPassword = password.trim();
+    if (trimmedPassword.length < 8) {
       console.log('❌ Registration failed: Password too short');
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
+    if (trimmedPassword.length > 128) {
+      console.log('❌ Registration failed: Password too long');
+      return res.status(400).json({ message: 'Password must be less than 128 characters' });
+    }
 
     // Check if user exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: trimmedEmail });
     if (existingUser) {
       console.log('❌ Registration failed: User already exists');
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'An account with this email already exists. Please sign in instead.' });
     }
 
     // Create user with 3-day free trial
@@ -56,9 +87,9 @@ router.post('/register', async (req, res) => {
     trialEndDate.setDate(trialEndDate.getDate() + 3); // 3-day free trial
     
     const user = new User({
-      name,
-      email: email.toLowerCase(),
-      passwordHash: password, // Will be hashed by pre-save hook
+      name: trimmedName,
+      email: trimmedEmail,
+      passwordHash: trimmedPassword, // Will be hashed by pre-save hook
       goals: goals || 'maintain',
       activityLevel: activityLevel || 'moderate',
       dietaryPreferences: dietaryPreferences || [],
@@ -153,7 +184,24 @@ router.post('/register', async (req, res) => {
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    let token;
+    try {
+      token = generateToken(user._id);
+    } catch (tokenError) {
+      console.error('❌ Token generation failed:', tokenError);
+      // If token generation fails, still return success but log the error
+      // The user was created successfully, they can login to get a token
+      return res.status(201).json({
+        accessToken: null,
+        message: 'Account created successfully. Please sign in to continue.',
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          goals: user.goals
+        }
+      });
+    }
 
     res.status(201).json({
       accessToken: token,
@@ -166,25 +214,34 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Registration error:', error);
+    console.error('Error stack:', error.stack);
     
     // Extract more detailed error message
     let errorMessage = 'Registration failed';
+    let statusCode = 500;
+    
     if (error.name === 'ValidationError') {
       // Mongoose validation error
+      statusCode = 400;
       const firstError = Object.values(error.errors)[0];
       errorMessage = firstError?.message || error.message || 'Validation failed';
       console.error('Validation errors:', error.errors);
     } else if (error.code === 11000) {
       // Duplicate key error (email already exists)
+      statusCode = 400;
       errorMessage = 'User with this email already exists';
       console.error('Duplicate key error:', error.keyPattern);
     } else if (error.message) {
+      // Check if it's a known error with a status code
+      if (error.message.includes('required') || error.message.includes('invalid')) {
+        statusCode = 400;
+      }
       errorMessage = error.message;
     }
     
-    res.status(500).json({ 
+    res.status(statusCode).json({ 
       message: errorMessage,
-      error: error.message 
+      ...(process.env.NODE_ENV === 'development' && { error: error.message, stack: error.stack })
     });
   }
 });
@@ -786,11 +843,17 @@ router.delete('/account', authMiddleware, async (req, res) => {
 function generateToken(userId) {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT_SECRET not configured');
+    console.error('❌ JWT_SECRET is not configured in environment variables');
+    throw new Error('Server configuration error: JWT_SECRET not configured. Please contact support.');
   }
-  return jwt.sign({ id: userId }, secret, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-  });
+  try {
+    return jwt.sign({ id: userId }, secret, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    });
+  } catch (error) {
+    console.error('❌ JWT sign error:', error);
+    throw new Error('Failed to generate authentication token. Please try again.');
+  }
 }
 
 export default router;
