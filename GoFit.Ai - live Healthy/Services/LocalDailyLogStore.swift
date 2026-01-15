@@ -56,9 +56,8 @@ final class LocalDailyLogStore: ObservableObject {
             guard let self = self else { return }
             
             // Capture current state synchronously
-            let logsToPersist: [DailyLog]
-            self.storageLock.sync {
-                logsToPersist = self.logs
+            let logsToPersist: [DailyLog] = self.storageLock.sync {
+                return self.logs
             }
             
             // Persist outside the lock
