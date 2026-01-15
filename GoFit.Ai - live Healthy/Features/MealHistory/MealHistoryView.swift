@@ -14,9 +14,12 @@ struct MealHistoryView: View {
                 
                 VStack(spacing: 0) {
                     // Scrollable calendar bar at top
-                    ScrollableCalendarBar(selectedDate: $selectedDate)
-                        .padding(.vertical, Design.Spacing.md)
-                        .background(Design.Colors.cardBackground)
+                    ScrollableCalendarBar(selectedDate: $selectedDate) {
+                        // Callback when date is selected - opens sheet even if same date is tapped again
+                        showingDailyDetails = true
+                    }
+                    .padding(.vertical, Design.Spacing.md)
+                    .background(Design.Colors.cardBackground)
                     
                     // Main content - show today's data by default
                     if let todayLog = logStore.getLog(for: selectedDate) {

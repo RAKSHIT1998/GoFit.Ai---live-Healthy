@@ -1,18 +1,22 @@
 import SwiftUI
 
-/// Scrollable calendar bar for selecting dates - shows 30 days
+/// Scrollable calendar bar for selecting dates - shows 31 days (15 past, today, 15 future)
 struct ScrollableCalendarBar: View {
     @Binding var selectedDate: Date
     @StateObject private var logStore = LocalDailyLogStore.shared
+    var onDateSelected: (() -> Void)? = nil // Callback when date is selected
     
     private let calendar = Calendar.current
-    private let daysToShow = 30 // 30-day cycle
+    
+    // Cache the date range to avoid regenerating on every render
+    // Normalize all dates to start of day for consistent ID matching
+    @State private var dateRange: [Date] = []
     
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Design.Spacing.sm) {
-                    ForEach(getDateRange(), id: \.self) { date in
+                    ForEach(dateRange, id: \.self) { date in
                         CalendarDayButton(
                             date: date,
                             isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
@@ -21,6 +25,8 @@ struct ScrollableCalendarBar: View {
                             action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     selectedDate = date
+                                    // Call callback to open sheet even if same date is tapped
+                                    onDateSelected?()
                                 }
                             }
                         )
@@ -30,32 +36,48 @@ struct ScrollableCalendarBar: View {
                 .padding(.horizontal, Design.Spacing.md)
             }
             .onAppear {
-                // Scroll to today on appear
-                let today = Date()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    withAnimation {
-                        proxy.scrollTo(today, anchor: .center)
+                // Initialize date range once
+                if dateRange.isEmpty {
+                    dateRange = generateDateRange()
+                }
+                
+                // Scroll to today on appear - use normalized date from range
+                let normalizedToday = normalizeToStartOfDay(Date())
+                if let todayInRange = dateRange.first(where: { calendar.isDate($0, inSameDayAs: normalizedToday) }) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(todayInRange, anchor: .center)
+                        }
                     }
                 }
             }
             .onChange(of: selectedDate) { oldValue, newValue in
-                // Scroll to selected date when it changes externally
-                withAnimation {
-                    proxy.scrollTo(newValue, anchor: .center)
+                // Scroll to selected date when it changes externally - use normalized date from range
+                let normalizedSelected = normalizeToStartOfDay(newValue)
+                if let selectedInRange = dateRange.first(where: { calendar.isDate($0, inSameDayAs: normalizedSelected) }) {
+                    withAnimation {
+                        proxy.scrollTo(selectedInRange, anchor: .center)
+                    }
                 }
             }
         }
         .frame(height: 80)
     }
     
-    private func getDateRange() -> [Date] {
-        let today = Date()
+    /// Normalize date to start of day for consistent comparison and ID matching
+    private func normalizeToStartOfDay(_ date: Date) -> Date {
+        calendar.startOfDay(for: date)
+    }
+    
+    /// Generate date range: 15 days past, today, 15 days future (31 days total)
+    private func generateDateRange() -> [Date] {
+        let today = normalizeToStartOfDay(Date())
         var dates: [Date] = []
         
-        // Start from 15 days ago to 15 days ahead (30 days total, centered on today)
-        for i in -15..<15 {
+        // Generate 15 days past, today, and 15 days future (31 days total, symmetric)
+        for i in -15...15 {
             if let date = calendar.date(byAdding: .day, value: i, to: today) {
-                dates.append(date)
+                dates.append(normalizeToStartOfDay(date))
             }
         }
         
