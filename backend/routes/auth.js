@@ -312,22 +312,25 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get current user
+// Get current user - Optimized for fast response
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    console.log('🔵 /me request for user:', req.user._id.toString());
+    // User is already loaded by authMiddleware, just return the data
+    // No additional database query needed - this should be very fast
+    const user = req.user;
+    
     res.json({
-      id: req.user._id.toString(),
-      name: req.user.name,
-      email: req.user.email,
-      goals: req.user.goals,
-      activityLevel: req.user.activityLevel,
-      dietaryPreferences: req.user.dietaryPreferences,
-      allergies: req.user.allergies,
-      fastingPreference: req.user.fastingPreference,
-      appleHealthEnabled: req.user.appleHealthEnabled,
-      subscription: req.user.subscription,
-      metrics: req.user.metrics
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      goals: user.goals,
+      activityLevel: user.activityLevel,
+      dietaryPreferences: user.dietaryPreferences || [],
+      allergies: user.allergies || [],
+      fastingPreference: user.fastingPreference || 'none',
+      appleHealthEnabled: user.appleHealthEnabled || false,
+      subscription: user.subscription || { status: 'free' },
+      metrics: user.metrics || {}
     });
   } catch (error) {
     console.error('❌ Get user error:', error);

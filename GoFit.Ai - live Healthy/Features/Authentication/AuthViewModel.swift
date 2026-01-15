@@ -52,12 +52,14 @@ final class AuthViewModel: ObservableObject {
             if let savedUserId = self.userId, !savedUserId.isEmpty {
                 // User data already loaded from local state, just verify token is still valid
                 // Try to refresh profile in background (non-blocking)
-                Task {
+                // Use low priority to not block UI
+                Task(priority: .utility) {
                     await refreshUserProfile()
                 }
             } else {
                 // No local user data, try to fetch from backend
-                Task {
+                // Use low priority to not block UI
+                Task(priority: .utility) {
                     await refreshUserProfile()
                 }
             }
@@ -303,7 +305,9 @@ final class AuthViewModel: ObservableObject {
         }
         
         do {
+            // NetworkManager already has 60-second timeout, but we'll handle errors gracefully
             let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
+            
             await MainActor.run {
                 self.userId = me.id
                 self.email = me.email
