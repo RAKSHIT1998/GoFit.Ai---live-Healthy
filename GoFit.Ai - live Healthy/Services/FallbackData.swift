@@ -634,6 +634,280 @@ struct FallbackDataService {
                 ingredients: ["1 cup edamame", "Sea salt"],
                 instructions: "Steam edamame. Season with sea salt. Enjoy warm.",
                 prepTime: 5, servings: 1
+            ),
+            // Additional vegan snacks
+            MealData(
+                name: "Vegan Protein Smoothie",
+                category: "snack",
+                calories: 210, protein: 22, carbs: 28, fat: 4,
+                ingredients: ["1 scoop vegan protein powder", "1 banana", "1 cup oat milk", "1 tbsp chia seeds"],
+                instructions: "Blend all ingredients until smooth. Serve immediately.",
+                prepTime: 3, servings: 1
+            ),
+            MealData(
+                name: "Roasted Chickpeas",
+                category: "snack",
+                calories: 150, protein: 8, carbs: 22, fat: 4,
+                ingredients: ["1 cup chickpeas", "1 tbsp olive oil", "Spices"],
+                instructions: "Toss chickpeas with oil and spices. Roast at 400°F for 25 minutes until crispy.",
+                prepTime: 30, servings: 1
+            ),
+            MealData(
+                name: "Vegan Energy Balls",
+                category: "snack",
+                calories: 180, protein: 6, carbs: 20, fat: 10,
+                ingredients: ["Dates", "Almonds", "Cocoa powder", "Coconut flakes"],
+                instructions: "Blend dates and almonds. Add cocoa and coconut. Form into balls. Refrigerate.",
+                prepTime: 15, servings: 4
+            )
+        ])
+        
+        // Add more VEGAN meals (30+ additional meals)
+        meals.append(contentsOf: [
+            // Vegan Breakfast (10 more)
+            MealData(
+                name: "Vegan Scrambled Tofu",
+                category: "breakfast",
+                calories: 280, protein: 20, carbs: 12, fat: 18,
+                ingredients: ["200g firm tofu", "1 tbsp nutritional yeast", "Turmeric", "Black salt", "1 tbsp olive oil", "Spinach"],
+                instructions: "Crumble tofu. Sauté with oil, turmeric, and nutritional yeast. Add spinach. Season with black salt.",
+                prepTime: 10, servings: 1
+            ),
+            MealData(
+                name: "Vegan Pancakes",
+                category: "breakfast",
+                calories: 320, protein: 10, carbs: 55, fat: 8,
+                ingredients: ["1 cup whole wheat flour", "1 cup plant milk", "1 tbsp maple syrup", "1 tsp baking powder", "1 tbsp flaxseed meal"],
+                instructions: "Mix dry ingredients. Add wet ingredients. Cook pancakes. Serve with berries.",
+                prepTime: 15, servings: 2
+            ),
+            MealData(
+                name: "Vegan Breakfast Burrito",
+                category: "breakfast",
+                calories: 380, protein: 18, carbs: 52, fat: 12,
+                ingredients: ["1 whole wheat tortilla", "Scrambled tofu", "Black beans", "Avocado", "Salsa"],
+                instructions: "Scramble tofu. Warm tortilla. Fill with tofu, beans, avocado, and salsa. Roll and serve.",
+                prepTime: 12, servings: 1
+            ),
+            MealData(
+                name: "Vegan Overnight Oats",
+                category: "breakfast",
+                calories: 340, protein: 14, carbs: 58, fat: 10,
+                ingredients: ["1 cup rolled oats", "1 cup almond milk", "1 tbsp chia seeds", "1/2 banana", "Berries", "1 tbsp almond butter"],
+                instructions: "Mix oats, milk, and chia seeds. Refrigerate overnight. Top with banana, berries, and almond butter.",
+                prepTime: 5, servings: 1
+            ),
+            MealData(
+                name: "Vegan Smoothie Bowl",
+                category: "breakfast",
+                calories: 360, protein: 12, carbs: 62, fat: 10,
+                ingredients: ["1 banana", "1/2 cup frozen berries", "1 cup plant milk", "Granola", "Coconut flakes", "Chia seeds"],
+                instructions: "Blend banana, berries, and milk. Pour into bowl. Top with granola, coconut, and chia seeds.",
+                prepTime: 5, servings: 1
+            ),
+            MealData(
+                name: "Vegan French Toast",
+                category: "breakfast",
+                calories: 320, protein: 10, carbs: 55, fat: 8,
+                ingredients: ["2 slices whole grain bread", "1 cup plant milk", "1 tbsp flaxseed meal", "1 tsp vanilla", "Cinnamon", "Berries"],
+                instructions: "Mix milk, flaxseed, and vanilla. Dip bread. Cook until golden. Top with berries and cinnamon.",
+                prepTime: 12, servings: 1
+            ),
+            MealData(
+                name: "Vegan Breakfast Hash",
+                category: "breakfast",
+                calories: 320, protein: 12, carbs: 48, fat: 10,
+                ingredients: ["1 sweet potato", "1/2 bell pepper", "1/4 onion", "Black beans", "2 tbsp olive oil", "Herbs"],
+                instructions: "Dice and roast sweet potato. Sauté vegetables and beans. Combine and season.",
+                prepTime: 20, servings: 1
+            ),
+            MealData(
+                name: "Vegan Breakfast Bowl",
+                category: "breakfast",
+                calories: 350, protein: 16, carbs: 55, fat: 10,
+                ingredients: ["1 cup cooked quinoa", "1/2 cup plant milk", "1/2 banana", "1 tbsp almond butter", "Berries", "Nuts"],
+                instructions: "Heat quinoa with plant milk. Top with banana, almond butter, berries, and nuts.",
+                prepTime: 8, servings: 1
+            ),
+            MealData(
+                name: "Vegan Waffles",
+                category: "breakfast",
+                calories: 340, protein: 12, carbs: 58, fat: 8,
+                ingredients: ["1 cup whole wheat flour", "1 cup plant milk", "1 tbsp maple syrup", "1 tsp baking powder", "1 tbsp coconut oil"],
+                instructions: "Mix ingredients. Cook in waffle iron. Top with berries and maple syrup.",
+                prepTime: 12, servings: 1
+            ),
+            MealData(
+                name: "Vegan Breakfast Tacos",
+                category: "breakfast",
+                calories: 360, protein: 16, carbs: 52, fat: 10,
+                ingredients: ["2 corn tortillas", "Scrambled tofu", "Black beans", "Salsa", "Avocado", "Cilantro"],
+                instructions: "Scramble tofu. Warm tortillas. Fill with tofu, beans, salsa, avocado, and cilantro.",
+                prepTime: 10, servings: 1
+            ),
+            
+            // Vegan Lunch (10 more)
+            MealData(
+                name: "Vegan Buddha Bowl",
+                category: "lunch",
+                calories: 420, protein: 20, carbs: 62, fat: 12,
+                ingredients: ["1 cup brown rice", "Chickpeas", "Roasted vegetables", "Tahini dressing", "Greens"],
+                instructions: "Cook rice. Roast chickpeas and vegetables. Arrange in bowl with greens. Drizzle with tahini.",
+                prepTime: 30, servings: 1
+            ),
+            MealData(
+                name: "Vegan Quinoa Salad",
+                category: "lunch",
+                calories: 380, protein: 18, carbs: 55, fat: 12,
+                ingredients: ["1 cup cooked quinoa", "Black beans", "Corn", "Tomatoes", "Cucumber", "Lime vinaigrette"],
+                instructions: "Combine quinoa with beans, corn, and vegetables. Toss with lime vinaigrette.",
+                prepTime: 15, servings: 1
+            ),
+            MealData(
+                name: "Vegan Lentil Curry",
+                category: "lunch",
+                calories: 400, protein: 22, carbs: 58, fat: 12,
+                ingredients: ["1 cup red lentils", "Coconut milk", "Curry spices", "1 cup brown rice", "Vegetables"],
+                instructions: "Cook lentils with coconut milk and spices. Simmer until tender. Serve over rice with vegetables.",
+                prepTime: 30, servings: 2
+            ),
+            MealData(
+                name: "Vegan Tofu Stir-Fry",
+                category: "lunch",
+                calories: 380, protein: 24, carbs: 48, fat: 10,
+                ingredients: ["200g firm tofu", "Mixed vegetables", "1 cup brown rice", "Soy sauce", "Ginger", "Garlic"],
+                instructions: "Press and cube tofu. Stir-fry with vegetables, ginger, and garlic. Add soy sauce. Serve over rice.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Vegan Black Bean Soup",
+                category: "lunch",
+                calories: 320, protein: 18, carbs: 52, fat: 6,
+                ingredients: ["2 cups black beans", "Vegetable broth", "Onion", "Garlic", "Cumin", "Lime"],
+                instructions: "Sauté onion and garlic. Add beans and broth. Simmer 20 minutes. Season with cumin and lime.",
+                prepTime: 30, servings: 2
+            ),
+            MealData(
+                name: "Vegan Falafel Wrap",
+                category: "lunch",
+                calories: 420, protein: 18, carbs: 58, fat: 14,
+                ingredients: ["4 falafel balls", "1 whole wheat wrap", "Hummus", "Lettuce", "Tomato", "Cucumber", "Tahini"],
+                instructions: "Warm falafel. Spread hummus on wrap. Add falafel, vegetables, and tahini. Roll and serve.",
+                prepTime: 15, servings: 1
+            ),
+            MealData(
+                name: "Vegan Sushi Bowl",
+                category: "lunch",
+                calories: 400, protein: 16, carbs: 62, fat: 10,
+                ingredients: ["1 cup brown rice", "Avocado", "Cucumber", "Carrots", "Edamame", "Sesame seeds", "Soy sauce"],
+                instructions: "Cook rice. Arrange rice in bowl. Top with vegetables and edamame. Drizzle with soy sauce and sesame.",
+                prepTime: 20, servings: 1
+            ),
+            MealData(
+                name: "Vegan Chickpea Salad Sandwich",
+                category: "lunch",
+                calories: 380, protein: 20, carbs: 48, fat: 12,
+                ingredients: ["1 cup chickpeas", "Vegan mayo", "Celery", "Onion", "Whole grain bread", "Lettuce", "Tomato"],
+                instructions: "Mash chickpeas. Mix with mayo, celery, and onion. Spread on bread with lettuce and tomato.",
+                prepTime: 10, servings: 1
+            ),
+            MealData(
+                name: "Vegan Pad Thai",
+                category: "lunch",
+                calories: 440, protein: 18, carbs: 68, fat: 12,
+                ingredients: ["Rice noodles", "Tofu", "Bean sprouts", "Carrots", "Peanuts", "Lime", "Tamarind sauce"],
+                instructions: "Cook noodles. Stir-fry tofu and vegetables. Toss with sauce. Top with peanuts and lime.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Vegan Mediterranean Bowl",
+                category: "lunch",
+                calories: 400, protein: 16, carbs: 55, fat: 14,
+                ingredients: ["1 cup couscous", "Chickpeas", "Tomatoes", "Cucumber", "Olives", "Tahini", "Lemon"],
+                instructions: "Cook couscous. Combine with chickpeas and vegetables. Drizzle with tahini and lemon.",
+                prepTime: 15, servings: 1
+            ),
+            
+            // Vegan Dinner (10 more)
+            MealData(
+                name: "Vegan Mushroom Risotto",
+                category: "dinner",
+                calories: 420, protein: 14, carbs: 68, fat: 12,
+                ingredients: ["1 cup arborio rice", "Mushrooms", "Vegetable broth", "White wine", "Nutritional yeast", "Herbs"],
+                instructions: "Sauté mushrooms. Add rice and wine. Gradually add broth, stirring. Finish with nutritional yeast.",
+                prepTime: 35, servings: 2
+            ),
+            MealData(
+                name: "Vegan Stuffed Bell Peppers",
+                category: "dinner",
+                calories: 380, protein: 18, carbs: 58, fat: 10,
+                ingredients: ["2 bell peppers", "1 cup cooked quinoa", "Black beans", "Corn", "Salsa", "Vegan cheese"],
+                instructions: "Hollow peppers. Mix quinoa, beans, and corn. Stuff peppers. Top with salsa and cheese. Bake at 375°F for 30 minutes.",
+                prepTime: 40, servings: 2
+            ),
+            MealData(
+                name: "Vegan Spaghetti with Lentil Bolognese",
+                category: "dinner",
+                calories: 440, protein: 22, carbs: 72, fat: 8,
+                ingredients: ["Whole wheat spaghetti", "Lentils", "Tomato sauce", "Onion", "Garlic", "Herbs"],
+                instructions: "Cook pasta. Sauté onion and garlic. Add lentils and tomato sauce. Simmer 20 minutes. Serve over pasta.",
+                prepTime: 30, servings: 2
+            ),
+            MealData(
+                name: "Vegan Thai Green Curry",
+                category: "dinner",
+                calories: 400, protein: 16, carbs: 58, fat: 14,
+                ingredients: ["Tofu", "Green curry paste", "Coconut milk", "Vegetables", "1 cup brown rice", "Basil"],
+                instructions: "Sauté tofu and vegetables. Add curry paste and coconut milk. Simmer 15 minutes. Serve over rice with basil.",
+                prepTime: 30, servings: 2
+            ),
+            MealData(
+                name: "Vegan Cauliflower Steak",
+                category: "dinner",
+                calories: 360, protein: 14, carbs: 42, fat: 18,
+                ingredients: ["1 large cauliflower", "2 tbsp olive oil", "Herbs", "Quinoa", "Roasted vegetables"],
+                instructions: "Slice cauliflower into steaks. Roast at 400°F for 25 minutes. Serve with quinoa and vegetables.",
+                prepTime: 30, servings: 1
+            ),
+            MealData(
+                name: "Vegan Tempeh Tacos",
+                category: "dinner",
+                calories: 420, protein: 24, carbs: 52, fat: 12,
+                ingredients: ["200g tempeh", "Corn tortillas", "Black beans", "Salsa", "Avocado", "Cabbage slaw"],
+                instructions: "Marinate and cook tempeh. Warm tortillas. Fill with tempeh, beans, salsa, avocado, and slaw.",
+                prepTime: 25, servings: 1
+            ),
+            MealData(
+                name: "Vegan Zucchini Noodles with Pesto",
+                category: "dinner",
+                calories: 380, protein: 12, carbs: 28, fat: 28,
+                ingredients: ["2 large zucchinis", "Basil pesto (vegan)", "Cherry tomatoes", "Pine nuts", "Nutritional yeast"],
+                instructions: "Spiralize zucchini. Toss with pesto and tomatoes. Top with pine nuts and nutritional yeast.",
+                prepTime: 15, servings: 1
+            ),
+            MealData(
+                name: "Vegan Chili",
+                category: "dinner",
+                calories: 400, protein: 20, carbs: 62, fat: 8,
+                ingredients: ["Black beans", "Kidney beans", "Tomatoes", "Onion", "Bell pepper", "Chili spices"],
+                instructions: "Sauté vegetables. Add beans, tomatoes, and spices. Simmer 30 minutes until thick.",
+                prepTime: 40, servings: 2
+            ),
+            MealData(
+                name: "Vegan Sweet Potato Curry",
+                category: "dinner",
+                calories: 420, protein: 14, carbs: 68, fat: 12,
+                ingredients: ["Sweet potatoes", "Chickpeas", "Coconut milk", "Curry spices", "1 cup brown rice", "Spinach"],
+                instructions: "Cook sweet potatoes and chickpeas in coconut milk with spices. Add spinach. Serve over rice.",
+                prepTime: 35, servings: 2
+            ),
+            MealData(
+                name: "Vegan Eggplant Parmesan",
+                category: "dinner",
+                calories: 440, protein: 18, carbs: 58, fat: 16,
+                ingredients: ["Eggplant", "Marinara sauce", "Vegan cheese", "Breadcrumbs", "Herbs"],
+                instructions: "Slice and bread eggplant. Layer with sauce and cheese. Bake at 375°F for 30 minutes.",
+                prepTime: 45, servings: 2
             )
         ])
         
@@ -720,6 +994,57 @@ struct FallbackDataService {
             Exercise(name: "Pilates Core", duration: 25, calories: 100, type: "strength", instructions: "Perform pilates exercises focusing on core. Move slowly and controlled. Focus on form.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["core", "flexibility"], equipment: ["mat"]),
             Exercise(name: "Mobility Flow", duration: 15, calories: 50, type: "flexibility", instructions: "Move through joint mobility exercises. Focus on range of motion. Move slowly.", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "flexibility"], equipment: ["none"]),
             Exercise(name: "Yin Yoga", duration: 45, calories: 80, type: "flexibility", instructions: "Hold passive stretches for 3-5 minutes each. Focus on relaxation. Breathe deeply.", sets: nil, reps: "3-5 minutes per pose", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "flexibility"], equipment: ["mat"])
+        ])
+        
+        // Additional workouts to reach 100+ (40+ more workouts)
+        workouts.append(contentsOf: [
+            // More Cardio (10)
+            Exercise(name: "Treadmill Incline Walk", duration: 30, calories: 200, type: "cardio", instructions: "Walk on treadmill at 5-8% incline. Maintain steady pace. Keep posture upright.", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["legs", "cardio"], equipment: ["treadmill"]),
+            Exercise(name: "Stationary Bike", duration: 30, calories: 250, type: "cardio", instructions: "Cycle at moderate resistance. Maintain steady pace. Adjust resistance as needed.", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["legs", "cardio"], equipment: ["stationary bike"]),
+            Exercise(name: "Mountain Biking", duration: 45, calories: 400, type: "cardio", instructions: "Ride on trails or paths. Vary terrain. Maintain control and balance.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["legs", "cardio"], equipment: ["mountain bike"]),
+            Exercise(name: "Water Aerobics", duration: 30, calories: 180, type: "cardio", instructions: "Perform aerobic exercises in water. Use water resistance. Low impact on joints.", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "cardio"], equipment: ["pool"]),
+            Exercise(name: "Zumba", duration: 45, calories: 350, type: "cardio", instructions: "Follow dance fitness routine. Move to music. Have fun and stay active!", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "cardio"], equipment: ["none"]),
+            Exercise(name: "Aerobics Class", duration: 45, calories: 320, type: "cardio", instructions: "Follow aerobics routine. Keep moving continuously. Follow instructor cues.", sets: nil, reps: "continuous", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "cardio"], equipment: ["none"]),
+            Exercise(name: "Step Aerobics", duration: 30, calories: 280, type: "cardio", instructions: "Step up and down on platform. Follow routine. Keep core engaged.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["legs", "cardio"], equipment: ["step platform"]),
+            Exercise(name: "Cross Country Skiing", duration: 45, calories: 450, type: "cardio", instructions: "Ski using cross country technique. Maintain rhythm. Full body workout.", sets: nil, reps: "continuous", restTime: nil, difficulty: "advanced", muscleGroups: ["full body", "cardio"], equipment: ["skis"]),
+            Exercise(name: "Hiking", duration: 60, calories: 350, type: "cardio", instructions: "Hike on trails. Vary pace and terrain. Enjoy nature while exercising.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["legs", "cardio"], equipment: ["none"]),
+            Exercise(name: "Tennis", duration: 45, calories: 380, type: "cardio", instructions: "Play tennis singles or doubles. Move quickly. Focus on form and strategy.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "cardio"], equipment: ["tennis racket"]),
+            
+            // More Strength (15)
+            Exercise(name: "Barbell Squats", duration: 20, calories: 120, type: "strength", instructions: "Stand with feet shoulder-width. Lower with barbell on shoulders. Drive through heels to stand.", sets: 4, reps: "8-10", restTime: 90, difficulty: "advanced", muscleGroups: ["legs", "glutes"], equipment: ["barbell"]),
+            Exercise(name: "Bench Press", duration: 20, calories: 100, type: "strength", instructions: "Lie on bench. Lower barbell to chest. Press up. Keep core engaged.", sets: 4, reps: "8-10", restTime: 90, difficulty: "advanced", muscleGroups: ["chest", "triceps"], equipment: ["barbell", "bench"]),
+            Exercise(name: "Pull-ups", duration: 15, calories: 80, type: "strength", instructions: "Hang from bar. Pull body up until chin over bar. Lower with control.", sets: 3, reps: "as many as possible", restTime: 90, difficulty: "advanced", muscleGroups: ["back", "biceps"], equipment: ["pull-up bar"]),
+            Exercise(name: "Dips", duration: 12, calories: 60, type: "strength", instructions: "Support body on parallel bars. Lower by bending arms. Push back up.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["triceps", "shoulders"], equipment: ["parallel bars"]),
+            Exercise(name: "Leg Curls", duration: 15, calories: 70, type: "strength", instructions: "Curl weight with legs. Lower with control. Keep core engaged.", sets: 3, reps: "12-15", restTime: 60, difficulty: "intermediate", muscleGroups: ["hamstrings"], equipment: ["leg curl machine"]),
+            Exercise(name: "Cable Crossovers", duration: 12, calories: 60, type: "strength", instructions: "Pull cables across body. Squeeze chest. Control the movement.", sets: 3, reps: "12-15", restTime: 60, difficulty: "intermediate", muscleGroups: ["chest"], equipment: ["cable machine"]),
+            Exercise(name: "Face Pulls", duration: 10, calories: 40, type: "strength", instructions: "Pull cable to face level. Squeeze shoulder blades. Control the return.", sets: 3, reps: "15-20", restTime: 45, difficulty: "beginner", muscleGroups: ["shoulders", "back"], equipment: ["cable machine"]),
+            Exercise(name: "Cable Rows", duration: 15, calories: 80, type: "strength", instructions: "Pull cable to lower chest. Squeeze shoulder blades. Lower with control.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["back", "biceps"], equipment: ["cable machine"]),
+            Exercise(name: "Leg Extensions", duration: 12, calories: 60, type: "strength", instructions: "Extend legs with weight. Lower with control. Don't lock knees.", sets: 3, reps: "12-15", restTime: 60, difficulty: "beginner", muscleGroups: ["quadriceps"], equipment: ["leg extension machine"]),
+            Exercise(name: "Cable Flyes", duration: 12, calories: 65, type: "strength", instructions: "Fly cables together. Squeeze chest. Control the movement.", sets: 3, reps: "10-12", restTime: 60, difficulty: "intermediate", muscleGroups: ["chest"], equipment: ["cable machine"]),
+            Exercise(name: "Tricep Pushdowns", duration: 10, calories: 45, type: "strength", instructions: "Push cable down. Keep elbows still. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["triceps"], equipment: ["cable machine"]),
+            Exercise(name: "Cable Curls", duration: 10, calories: 40, type: "strength", instructions: "Curl cable to shoulders. Keep elbows still. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["biceps"], equipment: ["cable machine"]),
+            Exercise(name: "Cable Lateral Raises", duration: 10, calories: 35, type: "strength", instructions: "Raise cable to side. Keep slight bend in elbows. Lower with control.", sets: 3, reps: "12-15", restTime: 45, difficulty: "beginner", muscleGroups: ["shoulders"], equipment: ["cable machine"]),
+            Exercise(name: "Cable Crunches", duration: 10, calories: 40, type: "strength", instructions: "Curl down with cable. Squeeze abs. Return with control.", sets: 3, reps: "15-20", restTime: 45, difficulty: "beginner", muscleGroups: ["core"], equipment: ["cable machine"]),
+            Exercise(name: "Cable Woodchoppers", duration: 12, calories: 50, type: "strength", instructions: "Rotate cable diagonally. Engage core. Alternate sides.", sets: 3, reps: "12 each side", restTime: 45, difficulty: "intermediate", muscleGroups: ["core", "obliques"], equipment: ["cable machine"]),
+            
+            // More Core (10)
+            Exercise(name: "Ab Wheel Rollout", duration: 10, calories: 50, type: "strength", instructions: "Roll wheel forward. Keep core engaged. Return to start.", sets: 3, reps: "10-12", restTime: 60, difficulty: "advanced", muscleGroups: ["core"], equipment: ["ab wheel"]),
+            Exercise(name: "Hanging Leg Raises", duration: 12, calories: 60, type: "strength", instructions: "Hang from bar. Raise legs to 90 degrees. Lower with control.", sets: 3, reps: "10-12", restTime: 60, difficulty: "advanced", muscleGroups: ["core"], equipment: ["pull-up bar"]),
+            Exercise(name: "Dragon Flag", duration: 10, calories: 55, type: "strength", instructions: "Lie on bench. Raise body to vertical. Lower with control. Advanced movement.", sets: 3, reps: "5-8", restTime: 90, difficulty: "advanced", muscleGroups: ["core"], equipment: ["bench"]),
+            Exercise(name: "L-Sit Hold", duration: 8, calories: 40, type: "strength", instructions: "Support body on parallel bars. Raise legs to L position. Hold as long as possible.", sets: 3, reps: "hold for time", restTime: 60, difficulty: "advanced", muscleGroups: ["core"], equipment: ["parallel bars"]),
+            Exercise(name: "Pallof Press", duration: 10, calories: 45, type: "strength", instructions: "Press cable away from body. Resist rotation. Hold briefly. Return.", sets: 3, reps: "12 each side", restTime: 45, difficulty: "intermediate", muscleGroups: ["core"], equipment: ["cable machine"]),
+            Exercise(name: "Turkish Get-Up", duration: 15, calories: 70, type: "strength", instructions: "Complex movement from lying to standing with weight. Focus on form and control.", sets: 3, reps: "5 each side", restTime: 90, difficulty: "advanced", muscleGroups: ["full body", "core"], equipment: ["kettlebell"]),
+            Exercise(name: "Farmer's Walk", duration: 10, calories: 60, type: "strength", instructions: "Carry heavy weights. Walk forward. Keep core engaged. Maintain posture.", sets: 3, reps: "30-50 meters", restTime: 60, difficulty: "intermediate", muscleGroups: ["core", "grip"], equipment: ["dumbbells"]),
+            Exercise(name: "Suitcase Carry", duration: 10, calories: 50, type: "strength", instructions: "Carry weight on one side. Walk forward. Resist lateral flexion.", sets: 3, reps: "30 meters each side", restTime: 60, difficulty: "intermediate", muscleGroups: ["core", "obliques"], equipment: ["dumbbell"]),
+            Exercise(name: "Plank to Down Dog", duration: 10, calories: 45, type: "strength", instructions: "Start in plank. Push hips up to down dog. Return to plank. Repeat.", sets: 3, reps: "10-12", restTime: 45, difficulty: "intermediate", muscleGroups: ["core", "shoulders"], equipment: ["mat"]),
+            Exercise(name: "Side Plank with Rotation", duration: 10, calories: 50, type: "strength", instructions: "Hold side plank. Rotate torso. Return. Alternate sides.", sets: 3, reps: "10 each side", restTime: 45, difficulty: "intermediate", muscleGroups: ["core", "obliques"], equipment: ["mat"]),
+            
+            // More Flexibility/Yoga (5)
+            Exercise(name: "Power Yoga", duration: 45, calories: 200, type: "flexibility", instructions: "Dynamic yoga flow. Build strength and flexibility. Move with breath.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "flexibility"], equipment: ["mat"]),
+            Exercise(name: "Hot Yoga", duration: 60, calories: 300, type: "flexibility", instructions: "Yoga in heated room. Increased flexibility. Stay hydrated.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "flexibility"], equipment: ["mat"]),
+            Exercise(name: "Vinyasa Flow", duration: 30, calories: 150, type: "flexibility", instructions: "Flow through yoga poses. Link movement with breath. Smooth transitions.", sets: nil, reps: "continuous", restTime: nil, difficulty: "intermediate", muscleGroups: ["full body", "flexibility"], equipment: ["mat"]),
+            Exercise(name: "Restorative Yoga", duration: 45, calories: 60, type: "flexibility", instructions: "Gentle, supported poses. Focus on relaxation. Hold poses 5-10 minutes.", sets: nil, reps: "5-10 minutes per pose", restTime: nil, difficulty: "beginner", muscleGroups: ["full body", "flexibility"], equipment: ["mat", "props"]),
+            Exercise(name: "Ashtanga Yoga", duration: 60, calories: 250, type: "flexibility", instructions: "Traditional yoga sequence. Challenging poses. Build strength and flexibility.", sets: nil, reps: "continuous", restTime: nil, difficulty: "advanced", muscleGroups: ["full body", "flexibility"], equipment: ["mat"])
         ])
         
         return workouts

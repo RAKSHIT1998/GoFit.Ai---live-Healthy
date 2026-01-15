@@ -147,30 +147,63 @@ struct ForgotPasswordView: View {
     }
     
     private func handleForgotPassword() {
+        // Validate email before submitting
+        guard isValidEmail else {
+            errorMessage = "Please enter a valid email address"
+            return
+        }
+        
+        // Prevent multiple simultaneous requests
+        guard !isLoading else {
+            return
+        }
+        
         errorMessage = nil
         successMessage = nil
         isLoading = true
         
         Task {
             do {
-                try await AuthService.shared.forgotPassword(email: email)
+                let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                try await AuthService.shared.forgotPassword(email: trimmedEmail)
                 await MainActor.run {
                     isLoading = false
                     showingSuccess = true
+                    successMessage = "Password reset link sent! Please check your email."
                     email = ""
                 }
             } catch {
                 await MainActor.run {
                     isLoading = false
-                    if let nsError = error as NSError? {
+                    if let urlError = error as? URLError {
+                        switch urlError.code {
+                        case .notConnectedToInternet:
+                            errorMessage = "No internet connection. Please check your network and try again."
+                        case .timedOut:
+                            errorMessage = "Connection timed out. Please check your internet connection and try again."
+                        case .cannotFindHost:
+                            errorMessage = "Cannot reach server. Please check your connection and try again."
+                        case .networkConnectionLost:
+                            errorMessage = "Network connection lost. Please try again."
+                        case .cancelled:
+                            // Don't show error for cancelled requests
+                            return
+                        default:
+                            errorMessage = "Network error: \(urlError.localizedDescription)"
+                        }
+                    } else if let nsError = error as NSError? {
                         if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
                             errorMessage = message
                         } else {
-                            errorMessage = error.localizedDescription
+                            errorMessage = error.localizedDescription.isEmpty ? "Failed to send reset email. Please try again." : error.localizedDescription
                         }
                     } else {
-                        errorMessage = error.localizedDescription
+                        errorMessage = error.localizedDescription.isEmpty ? "Failed to send reset email. Please try again." : error.localizedDescription
                     }
+                    
+                    #if DEBUG
+                    print("❌ Forgot password error: \(errorMessage ?? "Unknown error")")
+                    #endif
                 }
             }
         }

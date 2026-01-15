@@ -125,6 +125,131 @@ router.post('/feedback', authMiddleware, async (req, res) => {
 });
 
 /**
+ * Build dietary restrictions text for prompt
+ */
+function buildDietaryRestrictions(dietaryPreferences) {
+  if (!dietaryPreferences || dietaryPreferences.length === 0) {
+    return '';
+  }
+  
+  const restrictions = [];
+  
+  if (dietaryPreferences.includes('vegan')) {
+    restrictions.push(
+      '⚠️ CRITICAL: USER IS VEGAN - ABSOLUTELY NO animal products:\n' +
+      '   - NO meat (beef, pork, chicken, turkey, lamb, fish, seafood, etc.)\n' +
+      '   - NO eggs (in any form: scrambled, boiled, fried, etc.)\n' +
+      '   - NO dairy (milk, cheese, butter, yogurt, cream, etc.)\n' +
+      '   - NO honey or bee products\n' +
+      '   - NO animal-derived ingredients (gelatin, lard, etc.)\n' +
+      '   - ONLY plant-based foods are allowed\n' +
+      '   - Use plant-based protein: legumes, tofu, tempeh, seitan, nuts, seeds, quinoa, etc.'
+    );
+  } else if (dietaryPreferences.includes('vegetarian')) {
+    restrictions.push(
+      '⚠️ USER IS VEGETARIAN - NO meat or fish:\n' +
+      '   - NO meat (beef, pork, chicken, turkey, lamb, etc.)\n' +
+      '   - NO fish or seafood\n' +
+      '   - Eggs and dairy products ARE allowed'
+    );
+  }
+  
+  if (dietaryPreferences.includes('keto')) {
+    restrictions.push('⚠️ USER IS ON KETO - Very low carb (under 20g net carbs/day), high fat, moderate protein');
+  }
+  
+  if (dietaryPreferences.includes('paleo')) {
+    restrictions.push('⚠️ USER IS ON PALEO - No grains, legumes, dairy, or processed foods. Focus on meat, fish, eggs, vegetables, fruits, nuts.');
+  }
+  
+  if (dietaryPreferences.includes('low_carb')) {
+    restrictions.push('⚠️ USER PREFERS LOW CARB - Limit carbohydrates, focus on protein and healthy fats');
+  }
+  
+  if (dietaryPreferences.includes('mediterranean')) {
+    restrictions.push('⚠️ USER PREFERS MEDITERRANEAN DIET - Focus on vegetables, fruits, whole grains, olive oil, fish, moderate wine');
+  }
+  
+  return restrictions.length > 0 ? `- DIETARY RESTRICTIONS (MANDATORY - MUST BE STRICTLY ENFORCED):\n${restrictions.map(r => `  ${r}`).join('\n')}` : '';
+}
+
+/**
+ * Check if a meal item violates dietary preferences
+ */
+function violatesDietaryPreference(mealItem, dietaryPreferences) {
+  if (!dietaryPreferences || dietaryPreferences.length === 0) {
+    return false;
+  }
+  
+  const mealName = (mealItem.name || '').toLowerCase();
+  const ingredients = (mealItem.ingredients || []).map(i => i.toLowerCase()).join(' ');
+  const allText = `${mealName} ${ingredients}`.toLowerCase();
+  
+  // Non-vegan items
+  const nonVeganItems = [
+    'beef', 'pork', 'chicken', 'turkey', 'lamb', 'fish', 'salmon', 'tuna', 'shrimp', 'crab', 'lobster',
+    'egg', 'eggs', 'scrambled', 'fried egg', 'boiled egg', 'omelet',
+    'milk', 'cheese', 'butter', 'yogurt', 'cream', 'dairy', 'whey', 'casein',
+    'honey', 'gelatin', 'lard', 'bacon', 'sausage', 'ham', 'pepperoni'
+  ];
+  
+  // Non-vegetarian items (meat and fish, but allow eggs/dairy)
+  const nonVegetarianItems = [
+    'beef', 'pork', 'chicken', 'turkey', 'lamb', 'fish', 'salmon', 'tuna', 'shrimp', 'crab', 'lobster',
+    'bacon', 'sausage', 'ham', 'pepperoni', 'meat', 'poultry', 'seafood'
+  ];
+  
+  if (dietaryPreferences.includes('vegan')) {
+    // Check for any non-vegan items
+    for (const item of nonVeganItems) {
+      if (allText.includes(item)) {
+        return true;
+      }
+    }
+  } else if (dietaryPreferences.includes('vegetarian')) {
+    // Check for meat/fish but allow eggs/dairy
+    for (const item of nonVegetarianItems) {
+      if (allText.includes(item)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Filter meal plan to remove items that violate dietary preferences
+ */
+function filterMealPlanByDietaryPreferences(mealPlan, dietaryPreferences) {
+  if (!mealPlan || !dietaryPreferences || dietaryPreferences.length === 0) {
+    return mealPlan;
+  }
+  
+  const filtered = {
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+    snacks: []
+  };
+  
+  // Filter each meal category
+  ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(category => {
+    if (mealPlan[category] && Array.isArray(mealPlan[category])) {
+      filtered[category] = mealPlan[category].filter(meal => {
+        const violates = violatesDietaryPreference(meal, dietaryPreferences);
+        if (violates) {
+          console.log(`⚠️ Filtered out non-compliant meal: ${meal.name} (violates ${dietaryPreferences.join(', ')})`);
+        }
+        return !violates;
+      });
+    }
+  });
+  
+  return filtered;
+}
+
+/**
  * Generate personalized meal and workout recommendations using OpenAI (ChatGPT)
  * 
  * This function:
@@ -232,6 +357,9 @@ async function generateRecommendation(user) {
   }
 
   // Generate meal plan with OpenAI - Enhanced prompt with ML insights
+  // Build dietary restrictions section with explicit rules
+  const dietaryRestrictions = buildDietaryRestrictions(context.user.dietaryPreferences);
+  
   const prompt = `Generate a comprehensive, personalized daily meal and workout plan for a user with the following profile:
 
 USER PROFILE (COMPREHENSIVE - ALL ONBOARDING DATA):
@@ -239,6 +367,7 @@ USER PROFILE (COMPREHENSIVE - ALL ONBOARDING DATA):
 - Goals: ${context.user.goals}
 - Activity Level: ${context.user.activityLevel}
 - Dietary Preferences: ${context.user.dietaryPreferences.join(', ') || 'None specified'}
+${dietaryRestrictions}
 - Allergies/Restrictions: ${context.user.allergies.join(', ') || 'None'}
 - Current Weight: ${context.user.weightKg} kg
 - Height: ${context.user.heightCm} cm
@@ -279,6 +408,37 @@ RECENT MEAL HISTORY (last 5 meals):
 ${JSON.stringify(context.recentMeals.slice(0, 5), null, 2)}
 
 INSTRUCTIONS:
+0. **CRITICAL - DIETARY RESTRICTIONS MUST BE STRICTLY ENFORCED**: 
+   ${context.user.dietaryPreferences.includes('vegan') ? 
+     '⚠️ USER IS VEGAN - ABSOLUTELY NO animal products allowed. This means:\n' +
+     '   - NO meat (beef, pork, chicken, turkey, lamb, fish, seafood, etc.)\n' +
+     '   - NO eggs (in any form)\n' +
+     '   - NO dairy (milk, cheese, butter, yogurt, cream, etc.)\n' +
+     '   - NO honey or bee products\n' +
+     '   - NO animal-derived ingredients (gelatin, lard, etc.)\n' +
+     '   - ONLY plant-based foods are allowed\n' +
+     '   - If you suggest ANY animal product, the recommendation is INVALID and must be rejected.\n' +
+     '   - Use plant-based protein sources: legumes, tofu, tempeh, seitan, nuts, seeds, quinoa, etc.\n' :
+     context.user.dietaryPreferences.includes('vegetarian') ?
+     '⚠️ USER IS VEGETARIAN - NO meat or fish allowed, but eggs and dairy are OK.\n' +
+     '   - NO meat (beef, pork, chicken, turkey, lamb, etc.)\n' +
+     '   - NO fish or seafood\n' +
+     '   - Eggs and dairy products ARE allowed\n' :
+     ''}
+   ${context.user.dietaryPreferences.includes('keto') ? 
+     '⚠️ USER IS ON KETO - Very low carb (under 20g net carbs per day), high fat, moderate protein.\n' :
+     ''}
+   ${context.user.dietaryPreferences.includes('paleo') ? 
+     '⚠️ USER IS ON PALEO - No grains, legumes, dairy, or processed foods. Focus on meat, fish, eggs, vegetables, fruits, nuts.\n' :
+     ''}
+   ${context.user.dietaryPreferences.includes('low_carb') ? 
+     '⚠️ USER PREFERS LOW CARB - Limit carbohydrates, focus on protein and healthy fats.\n' :
+     ''}
+   ${context.user.dietaryPreferences.includes('mediterranean') ? 
+     '⚠️ USER PREFERS MEDITERRANEAN DIET - Focus on vegetables, fruits, whole grains, olive oil, fish, moderate wine.\n' :
+     ''}
+   These dietary restrictions are MANDATORY and non-negotiable. Every meal must comply 100%.
+
 1. **PRIORITIZE ALL ONBOARDING DATA**: Use ALL the comprehensive onboarding data collected during signup to create highly personalized recommendations:
    - **Workout Preferences**: Incorporate their preferred workout types (${context.user.workoutPreferences.join(', ') || 'general fitness'}) into the workout plan
    - **Favorite Cuisines**: Include meals from their favorite cuisines (${context.user.favoriteCuisines.join(', ') || 'varied'}) in meal suggestions - this is critical for user satisfaction
@@ -649,6 +809,39 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           recommendationData.mealPlan[mealType] = [];
         }
       });
+      
+      // CRITICAL: Filter out meals that violate dietary preferences (especially vegan)
+      if (user.dietaryPreferences && user.dietaryPreferences.length > 0) {
+        const originalCount = {
+          breakfast: recommendationData.mealPlan.breakfast?.length || 0,
+          lunch: recommendationData.mealPlan.lunch?.length || 0,
+          dinner: recommendationData.mealPlan.dinner?.length || 0,
+          snacks: recommendationData.mealPlan.snacks?.length || 0
+        };
+        
+        recommendationData.mealPlan = filterMealPlanByDietaryPreferences(
+          recommendationData.mealPlan,
+          user.dietaryPreferences
+        );
+        
+        const filteredCount = {
+          breakfast: recommendationData.mealPlan.breakfast?.length || 0,
+          lunch: recommendationData.mealPlan.lunch?.length || 0,
+          dinner: recommendationData.mealPlan.dinner?.length || 0,
+          snacks: recommendationData.mealPlan.snacks?.length || 0
+        };
+        
+        const totalRemoved = 
+          (originalCount.breakfast - filteredCount.breakfast) +
+          (originalCount.lunch - filteredCount.lunch) +
+          (originalCount.dinner - filteredCount.dinner) +
+          (originalCount.snacks - filteredCount.snacks);
+        
+        if (totalRemoved > 0) {
+          console.log(`⚠️ Filtered out ${totalRemoved} meal(s) that violated dietary preferences: ${user.dietaryPreferences.join(', ')}`);
+          console.log(`📊 Meal counts - Before: ${JSON.stringify(originalCount)}, After: ${JSON.stringify(filteredCount)}`);
+        }
+      }
     }
     
     // Final validation: Ensure exercises is an array before saving

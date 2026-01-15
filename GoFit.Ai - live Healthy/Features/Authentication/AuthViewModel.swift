@@ -125,12 +125,16 @@ final class AuthViewModel: ObservableObject {
             self.name = me.name
             // Update local state with fetched data
             saveLocalState()
+            // Also save to LocalUserStore
+            LocalUserStore.shared.updateBasicInfo(name: me.name, email: me.email, weightKg: self.weightKg, heightCm: self.heightCm)
         } catch {
             // If /me fails, still mark as logged in but log the error
             print("⚠️ Failed to fetch user profile after login: \(error.localizedDescription)")
             // Use email from login form as fallback
             self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
             saveLocalState()
+            // Also save to LocalUserStore
+            LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
             // Don't throw - login was successful, profile fetch is secondary
         }
     }
@@ -178,6 +182,12 @@ final class AuthViewModel: ObservableObject {
             self.name = me.name
             // Update local state with fetched data
             saveLocalState()
+            // Also save to LocalUserStore
+            if let onboardingData = onboardingData {
+                LocalUserStore.shared.updateOnboardingData(onboardingData, userId: me.id)
+            } else {
+                LocalUserStore.shared.updateBasicInfo(name: me.name, email: me.email, weightKg: self.weightKg, heightCm: self.heightCm)
+            }
             print("✅ User profile fetched successfully. User ID: \(me.id)")
         } catch {
             // If /me fails, use the data from signup form
@@ -186,6 +196,12 @@ final class AuthViewModel: ObservableObject {
             self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
             self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
             saveLocalState()
+            // Also save to LocalUserStore
+            if let onboardingData = onboardingData {
+                LocalUserStore.shared.updateOnboardingData(onboardingData)
+            } else {
+                LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
+            }
             // Don't throw - signup was successful, profile fetch is secondary
         }
     }
@@ -196,6 +212,8 @@ final class AuthViewModel: ObservableObject {
         self.isLoggedIn = false
         self.userId = nil
         saveLocalState()
+        // Clear LocalUserStore on logout (optional - you may want to keep data for offline access)
+        // LocalUserStore.shared.clearProfile()
     }
     
     // Sign in with Apple
@@ -291,6 +309,8 @@ final class AuthViewModel: ObservableObject {
                 self.email = me.email
                 self.name = me.name
                 saveLocalState()
+                // Also update LocalUserStore
+                LocalUserStore.shared.updateBasicInfo(name: me.name, email: me.email, weightKg: self.weightKg, heightCm: self.heightCm)
                 print("✅ User profile refreshed successfully")
             }
         } catch {

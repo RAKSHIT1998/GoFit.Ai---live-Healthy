@@ -402,11 +402,20 @@ struct AuthView: View {
     
     private var isFormValid: Bool {
         if isLoginMode {
-            return !email.isEmpty && !password.isEmpty && Validators.isValidEmail(email)
+            return !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && 
+                   !password.isEmpty && 
+                   Validators.isValidEmail(email.trimmingCharacters(in: .whitespacesAndNewlines))
         } else {
-            return !name.isEmpty && !email.isEmpty && !password.isEmpty && 
-                   password == confirmPassword && password.count >= 8 &&
-                   Validators.isValidEmail(email)
+            // For signup, check both name from onboarding and form input
+            let effectiveName = !auth.name.isEmpty ? auth.name : name
+            let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            return !effectiveName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                   !trimmedEmail.isEmpty &&
+                   !password.isEmpty &&
+                   password == confirmPassword &&
+                   password.count >= 8 &&
+                   Validators.isValidEmail(trimmedEmail)
         }
     }
     
@@ -417,15 +426,21 @@ struct AuthView: View {
         // Validate form before submitting
         guard isFormValid else {
             if isLoginMode {
-                if email.isEmpty || password.isEmpty {
+                let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmedEmail.isEmpty || password.isEmpty {
                     errorMessage = "Please fill in all fields"
-                } else if !Validators.isValidEmail(email) {
+                } else if !Validators.isValidEmail(trimmedEmail) {
                     errorMessage = "Please enter a valid email address"
                 }
             } else {
-                if name.isEmpty {
+                let effectiveName = !auth.name.isEmpty ? auth.name : name
+                let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if effectiveName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     errorMessage = "Name is required"
-                } else if email.isEmpty || !Validators.isValidEmail(email) {
+                } else if trimmedEmail.isEmpty {
+                    errorMessage = "Email is required"
+                } else if !Validators.isValidEmail(trimmedEmail) {
                     errorMessage = "Please enter a valid email address"
                 } else if password.isEmpty {
                     errorMessage = "Password is required"
@@ -438,12 +453,18 @@ struct AuthView: View {
             return
         }
         
+        // Prevent multiple simultaneous requests
+        guard !isLoading else {
+            return
+        }
+        
         isLoading = true
         
         Task {
             do {
                 if isLoginMode {
-                    try await auth.login(email: email, password: password)
+                    let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    try await auth.login(email: trimmedEmail, password: password)
                     await MainActor.run {
                         isLoading = false
                         // Clear form on success
@@ -453,7 +474,11 @@ struct AuthView: View {
                 } else {
                     // Use name from onboarding if available, otherwise use form input
                     let signupName = !auth.name.isEmpty ? auth.name : name
-                    try await auth.signup(name: signupName, email: email, password: password)
+                    let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    
+                    try await auth.signup(name: signupName.trimmingCharacters(in: .whitespacesAndNewlines), 
+                                        email: trimmedEmail, 
+                                        password: password)
                     // After successful signup, initialize trial and show paywall
                     await MainActor.run {
                         isLoading = false
@@ -483,6 +508,10 @@ struct AuthView: View {
                             errorMessage = "Cannot reach server. Please check your connection and try again."
                         case .networkConnectionLost:
                             errorMessage = "Network connection lost. Please try again."
+                        case .cancelled:
+                            // Don't show error for cancelled requests
+                            isLoading = false
+                            return
                         default:
                             errorMessage = "Network error: \(urlError.localizedDescription)"
                         }
@@ -493,7 +522,9 @@ struct AuthView: View {
                             errorMessage = "Account created successfully. Please sign in to continue."
                         } else if let message = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
                             // Check if it's a duplicate email error and suggest login
-                            if !isLoginMode && (message.lowercased().contains("already exists") || message.lowercased().contains("user with this email")) {
+                            if !isLoginMode && (message.lowercased().contains("already exists") || 
+                                              message.lowercased().contains("user with this email") ||
+                                              message.lowercased().contains("email already registered")) {
                                 errorMessage = "An account with this email already exists. Please sign in instead."
                             } else {
                                 errorMessage = message
@@ -507,7 +538,7 @@ struct AuthView: View {
                     isLoading = false
                     // Only log errors in debug mode to avoid exposing sensitive information in production
                     #if DEBUG
-                    print("❌ Signup error: \(errorMessage ?? "Unknown error")")
+                    print("❌ Auth error: \(errorMessage ?? "Unknown error")")
                     #endif
                 }
             }
