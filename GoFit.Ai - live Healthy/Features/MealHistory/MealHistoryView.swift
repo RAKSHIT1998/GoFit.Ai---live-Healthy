@@ -2,26 +2,9 @@ import SwiftUI
 
 struct MealHistoryView: View {
     @EnvironmentObject var auth: AuthViewModel
-    @State private var meals: [MealHistoryItem] = []
-    @State private var loading = false
-    @State private var selectedDate = Date()
-    @Environment(\.dismiss) var dismiss
-    
-    struct MealHistoryItem: Identifiable {
-        let id: String
-        let date: Date
-        let items: [MealItem]
-        let totalCalories: Double
-        let mealType: String
-        
-        struct MealItem {
-            let name: String
-            let calories: Double
-            let protein: Double
-            let carbs: Double
-            let fat: Double
-        }
-    }
+    @StateObject private var logStore = LocalDailyLogStore.shared
+    @State private var selectedDate: Date = Date() // Default to current day
+    @State private var showingDailyDetails = false
     
     var body: some View {
         NavigationStack {
@@ -29,231 +12,238 @@ struct MealHistoryView: View {
                 Design.Colors.background
                     .ignoresSafeArea()
                 
-                if loading && meals.isEmpty {
-                    VStack(spacing: Design.Spacing.md) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        Text("Loading meals...")
-                            .font(Design.Typography.body)
-                            .foregroundColor(.secondary)
-                    }
-                } else if meals.isEmpty {
-                    EmptyStateView(
-                        icon: "fork.knife.circle",
-                        title: "No Meals Yet",
-                        message: "Start scanning your meals to see them here"
-                    )
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: Design.Spacing.md) {
-                            ForEach(meals) { meal in
-                                MealHistoryCard(meal: meal)
-                                    .padding(.horizontal, Design.Spacing.md)
-                            }
-                        }
+                VStack(spacing: 0) {
+                    // Scrollable calendar bar at top
+                    ScrollableCalendarBar(selectedDate: $selectedDate)
                         .padding(.vertical, Design.Spacing.md)
+                        .background(Design.Colors.cardBackground)
+                    
+                    // Main content - show today's data by default
+                    if let todayLog = logStore.getLog(for: selectedDate) {
+                        dailyContentView(log: todayLog)
+                    } else {
+                        emptyStateView
                     }
                 }
             }
             .navigationTitle("Meal History")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingDailyDetails = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(Design.Colors.primary)
                     }
-                    .foregroundColor(Design.Colors.primary)
-                    .font(Design.Typography.body)
                 }
             }
-            .task {
-                await loadMeals()
+            .sheet(isPresented: $showingDailyDetails) {
+                DailyDetailsSheet(date: selectedDate, isPresented: $showingDailyDetails)
             }
-            .refreshable {
-                await loadMeals()
+            .onChange(of: selectedDate) { oldValue, newValue in
+                // When date changes, show details sheet automatically
+                showingDailyDetails = true
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MealSaved"))) { _ in
-                Task {
-                    await loadMeals()
-                }
+            .onAppear {
+                // Ensure we're observing log changes
+                _ = logStore.logs
             }
         }
     }
     
-    // MARK: - Functions
-    func loadMeals() async {
-        loading = true
-        defer { loading = false }
-        
-        do {
-            struct MealResponse: Codable {
-                let _id: String
-                let timestamp: String
-                let items: [ItemResponse]
-                let totalCalories: Double?
-                let mealType: String?
-            }
-            
-            struct ItemResponse: Codable {
-                let name: String
-                let calories: Double?
-                let protein: Double?
-                let carbs: Double?
-                let fat: Double?
-            }
-            
-            // Force fresh fetch by adding timestamp to prevent caching
-            let endpoint = "meals/list?t=\(Date().timeIntervalSince1970)"
-            let responses: [MealResponse] = try await NetworkManager.shared.request(endpoint, method: "GET", body: nil)
-            
-            await MainActor.run {
-                meals = responses.map { response in
-                    MealHistoryItem(
-                        id: response._id,
-                        date: ISO8601DateFormatter().date(from: response.timestamp) ?? Date(),
-                        items: response.items.map { item in
-                            MealHistoryItem.MealItem(
-                                name: item.name,
-                                calories: item.calories ?? 0,
-                                protein: item.protein ?? 0,
-                                carbs: item.carbs ?? 0,
-                                fat: item.fat ?? 0
-                            )
-                        },
-                        totalCalories: response.totalCalories ?? 0,
-                        mealType: response.mealType ?? "meal"
-                    )
-                }
-            }
-        } catch {
-            // Ignore cancellation errors - they're expected when view disappears
-            if let urlError = error as? URLError, urlError.code == .cancelled {
-                // Request was cancelled (e.g., view disappeared) - this is normal
-                return
-            }
-            
-            // Only log actual errors, not cancellations
-            print("Failed to load meals: \(error)")
-            await MainActor.run {
-                // Don't clear meals on error, just log it
-            }
-        }
-    }
-}
-
-// MARK: - Meal History Card
-struct MealHistoryCard: View {
-    let meal: MealHistoryView.MealHistoryItem
-    @State private var isExpanded = false
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            Button(action: {
-                withAnimation(Design.Animation.spring) {
-                    isExpanded.toggle()
-                }
-            }) {
-                HStack {
-                    VStack(alignment: .leading, spacing: Design.Spacing.xs) {
-                        Text(meal.date.formatted(date: .abbreviated, time: .shortened))
-                            .font(Design.Typography.headline)
-                            .foregroundColor(.primary)
-                        
-                        Text(meal.mealType.capitalized)
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: Design.Spacing.xs) {
-                        Text("\(Int(meal.totalCalories))")
-                            .font(Design.Typography.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(Design.Colors.calories)
-                        Text("kcal")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.secondary)
-                        .font(Design.Typography.caption)
-                }
-                .padding(Design.Spacing.lg)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Expanded Content
-            if isExpanded {
-                Divider()
-                    .padding(.horizontal, Design.Spacing.lg)
+    // MARK: - Daily Content View
+    private func dailyContentView(log: DailyLog) -> some View {
+        ScrollView {
+            VStack(spacing: Design.Spacing.lg) {
+                // Quick summary card
+                quickSummaryCard(log: log)
                 
-                VStack(spacing: Design.Spacing.md) {
-                    ForEach(meal.items.indices, id: \.self) { index in
-                        MealItemRow(item: meal.items[index])
-                    }
-                    
-                    // Macros Summary
-                    HStack(spacing: Design.Spacing.md) {
-                        MacroBadge(label: "Protein", value: meal.items.reduce(0) { $0 + $1.protein }, color: Design.Colors.protein)
-                        MacroBadge(label: "Carbs", value: meal.items.reduce(0) { $0 + $1.carbs }, color: Design.Colors.carbs)
-                        MacroBadge(label: "Fat", value: meal.items.reduce(0) { $0 + $1.fat }, color: Design.Colors.fat)
-                    }
-                    .padding(.top, Design.Spacing.sm)
+                // Meals section
+                if !log.meals.isEmpty {
+                    mealsQuickView(log: log)
                 }
-                .padding(Design.Spacing.lg)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                
+                // Liquid intake quick view
+                if !log.liquidIntake.isEmpty {
+                    liquidQuickView(log: log)
+                }
+                
+                // Tap to see more button
+                Button {
+                    showingDailyDetails = true
+                } label: {
+                    HStack {
+                        Text("View Full Details")
+                            .font(Design.Typography.headline)
+                        Image(systemName: "chevron.right")
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(Design.Spacing.md)
+                    .background(Design.Colors.primary)
+                    .cornerRadius(Design.Radius.medium)
+                }
+                .padding(.horizontal, Design.Spacing.md)
             }
+            .padding(.vertical, Design.Spacing.md)
         }
-        .background(Design.Colors.cardBackground)
-        .cornerRadius(Design.Radius.large)
-        .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
-}
-
-// MARK: - Meal Item Row
-struct MealItemRow: View {
-    let item: MealHistoryView.MealHistoryItem.MealItem
     
-    var body: some View {
-        HStack {
-            Circle()
-                .fill(Design.Colors.primary.opacity(0.2))
-                .frame(width: 8, height: 8)
-            
-            Text(item.name)
-                .font(Design.Typography.body)
+    // MARK: - Quick Summary Card
+    private func quickSummaryCard(log: DailyLog) -> some View {
+        VStack(spacing: Design.Spacing.md) {
+            Text(formatDate(log.date))
+                .font(Design.Typography.title3)
                 .foregroundColor(.primary)
             
-            Spacer()
-            
-            Text("\(Int(item.calories)) kcal")
-                .font(Design.Typography.subheadline)
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-// MARK: - Macro Badge
-struct MacroBadge: View {
-    let label: String
-    let value: Double
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Text("\(Int(value))g")
-                .font(Design.Typography.headline)
-                .foregroundColor(color)
-            Text(label)
-                .font(Design.Typography.caption)
-                .foregroundColor(.secondary)
+            HStack(spacing: Design.Spacing.lg) {
+                VStack {
+                    Text("\(Int(log.totalCalories))")
+                        .font(Design.Typography.title)
+                        .foregroundColor(Design.Colors.calories)
+                    Text("Calories")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Divider()
+                    .frame(height: 40)
+                
+                VStack {
+                    Text(String(format: "%.1f", log.totalSugar))
+                        .font(Design.Typography.title)
+                        .foregroundColor(Design.Colors.sugar)
+                    Text("Sugar (g)")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Divider()
+                    .frame(height: 40)
+                
+                VStack {
+                    Text(String(format: "%.2f", log.totalLiquid))
+                        .font(Design.Typography.title)
+                        .foregroundColor(Design.Colors.water)
+                    Text("Water (L)")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Design.Spacing.sm)
-        .background(color.opacity(0.1))
-        .cornerRadius(Design.Radius.small)
+        .padding(Design.Spacing.lg)
+        .cardStyle()
+        .padding(.horizontal, Design.Spacing.md)
+    }
+    
+    // MARK: - Meals Quick View
+    private func mealsQuickView(log: DailyLog) -> some View {
+        VStack(alignment: .leading, spacing: Design.Spacing.md) {
+            HStack {
+                Text("Meals")
+                    .font(Design.Typography.title3)
+                    .foregroundColor(.primary)
+                Spacer()
+                Text("\(log.meals.count) logged")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            ForEach(log.meals.prefix(3).sorted(by: { $0.timestamp > $1.timestamp })) { meal in
+                HStack {
+                    Image(systemName: meal.mealType.icon)
+                        .foregroundColor(Design.Colors.primary)
+                    Text(meal.mealType.displayName)
+                        .font(Design.Typography.body)
+                    Spacer()
+                    Text("\(Int(meal.totalCalories)) kcal")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if log.meals.count > 3 {
+                Text("+ \(log.meals.count - 3) more meals")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+        }
+        .padding(Design.Spacing.md)
+        .cardStyle()
+        .padding(.horizontal, Design.Spacing.md)
+    }
+    
+    // MARK: - Liquid Quick View
+    private func liquidQuickView(log: DailyLog) -> some View {
+        VStack(alignment: .leading, spacing: Design.Spacing.md) {
+            HStack {
+                Text("Liquid Intake")
+                    .font(Design.Typography.title3)
+                    .foregroundColor(.primary)
+                Spacer()
+                Text("\(log.liquidIntake.count) entries")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            ForEach(log.liquidIntake.prefix(3).sorted(by: { $0.timestamp > $1.timestamp })) { entry in
+                HStack {
+                    Image(systemName: entry.beverageType.icon)
+                        .foregroundColor(Design.Colors.primary)
+                    Text(entry.beverageName ?? entry.beverageType.displayName)
+                        .font(Design.Typography.body)
+                    Spacer()
+                    Text(String(format: "%.2f L", entry.amount))
+                        .font(Design.Typography.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            if log.liquidIntake.count > 3 {
+                Text("+ \(log.liquidIntake.count - 3) more entries")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+        }
+        .padding(Design.Spacing.md)
+        .cardStyle()
+        .padding(.horizontal, Design.Spacing.md)
+    }
+    
+    // MARK: - Empty State
+    private var emptyStateView: some View {
+        VStack(spacing: Design.Spacing.lg) {
+            Image(systemName: "fork.knife.circle")
+                .font(.system(size: 60))
+                .foregroundColor(Design.Colors.primary.opacity(0.5))
+            
+            Text("No Data for This Date")
+                .font(Design.Typography.title2)
+                .foregroundColor(.primary)
+            
+            Text("Start logging your meals to see your history here")
+                .font(Design.Typography.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, Design.Spacing.xl)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - Helpers
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        if Calendar.current.isDateInToday(date) {
+            return "Today"
+        } else if Calendar.current.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
+        }
     }
 }
