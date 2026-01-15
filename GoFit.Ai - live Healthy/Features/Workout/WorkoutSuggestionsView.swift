@@ -60,6 +60,7 @@ struct WorkoutSuggestionsView: View {
     @State private var expandedExercise: String?
     @State private var isUsingFallback = true // Start with built-in data by default
     @State private var isRefreshing = false
+    @State private var currentRequestTask: Task<Void, Never>?
     
     var body: some View {
         NavigationStack {
@@ -557,6 +558,9 @@ struct WorkoutSuggestionsView: View {
     }
     
     private func refreshRecommendations() async {
+        // Cancel any existing request
+        currentRequestTask?.cancel()
+        
         isRefreshing = true
         defer { isRefreshing = false }
         
@@ -565,7 +569,12 @@ struct WorkoutSuggestionsView: View {
         
         // Then try AI recommendations in background (will replace built-in if successful)
         if !EnvironmentConfig.skipAuthentication {
-            await tryLoadAIRecommendations(forceRefresh: true)
+            // Create a new task and store it
+            let task = Task {
+                await tryLoadAIRecommendations(forceRefresh: true)
+            }
+            currentRequestTask = task
+            await task.value
         }
     }
     
@@ -601,7 +610,7 @@ struct WorkoutSuggestionsView: View {
         // Don't set isLoading for background refresh to avoid blocking UI
         if !forceRefresh {
             isLoading = true
-            defer { isLoading = false }
+            do { isLoading = false }
         }
         
         do {
@@ -629,7 +638,33 @@ struct WorkoutSuggestionsView: View {
                 print("✅ AI recommendations loaded successfully")
             }
         } catch {
-            print("⚠️ AI recommendations unavailable, using built-in data: \(error.localizedDescription)")
+            // Handle different error types more gracefully
+            let errorDescription: String
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .cancelled:
+                    errorDescription = "Request was cancelled"
+                    // Don't log cancellation as an error - it's expected when user refreshes quickly
+                    #if DEBUG
+                    print("ℹ️ Recommendation request was cancelled (likely due to rapid refresh)")
+                    #endif
+                    return // Exit early for cancellations
+                case .timedOut:
+                    errorDescription = "Request timed out"
+                case .notConnectedToInternet:
+                    errorDescription = "No internet connection"
+                default:
+                    errorDescription = urlError.localizedDescription
+                }
+            } else if let nsError = error as NSError? {
+                errorDescription = nsError.localizedDescription
+            } else {
+                errorDescription = error.localizedDescription
+            }
+            
+            #if DEBUG
+            print("⚠️ AI recommendations unavailable, using built-in data: \(errorDescription)")
+            #endif
             
             // If AI fails and we don't have built-in data yet, load it
             if recommendation == nil {

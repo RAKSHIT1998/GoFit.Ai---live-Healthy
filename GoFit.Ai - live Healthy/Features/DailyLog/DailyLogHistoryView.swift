@@ -21,6 +21,10 @@ struct DailyLogHistoryView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: Design.Spacing.lg) {
+                            // Calendar view
+                            CalendarProgressView(selectedDate: $selectedDate)
+                                .padding(.horizontal, Design.Spacing.md)
+                            
                             // Date selector
                             dateSelectorView
                             
