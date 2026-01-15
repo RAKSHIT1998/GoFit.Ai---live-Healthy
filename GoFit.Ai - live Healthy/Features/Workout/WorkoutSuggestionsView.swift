@@ -560,11 +560,12 @@ struct WorkoutSuggestionsView: View {
         isRefreshing = true
         defer { isRefreshing = false }
         
-        // Try AI first, fallback to built-in if it fails
+        // Always reload built-in recommendations first for instant feedback
+        await loadBuiltInRecommendations()
+        
+        // Then try AI recommendations in background (will replace built-in if successful)
         if !EnvironmentConfig.skipAuthentication {
             await tryLoadAIRecommendations(forceRefresh: true)
-        } else {
-            await loadBuiltInRecommendations()
         }
     }
     
@@ -597,19 +598,29 @@ struct WorkoutSuggestionsView: View {
     }
     
     private func tryLoadAIRecommendations(forceRefresh: Bool = false) async {
-        isLoading = true
-        defer { isLoading = false }
+        // Don't set isLoading for background refresh to avoid blocking UI
+        if !forceRefresh {
+            isLoading = true
+            defer { isLoading = false }
+        }
         
         do {
             let endpoint = forceRefresh ? "recommendations/regenerate" : "recommendations/daily"
             let method = forceRefresh ? "POST" : "GET"
             
+            // For POST requests, send empty JSON body
+            let bodyData: Data? = forceRefresh ? try? JSONSerialization.data(withJSONObject: [:]) : nil
+            
             // Simple request without retry - if it fails, we use built-in data
             let response: RecommendationResponse = try await NetworkManager.shared.request(
                 endpoint,
                 method: method,
-                body: nil
+                body: bodyData
             )
+            
+            #if DEBUG
+            print("🔄 Refresh: Received new AI recommendations")
+            #endif
             
             await MainActor.run {
                 recommendation = response
@@ -620,7 +631,7 @@ struct WorkoutSuggestionsView: View {
         } catch {
             print("⚠️ AI recommendations unavailable, using built-in data: \(error.localizedDescription)")
             
-            // If AI fails, ensure we have built-in data
+            // If AI fails and we don't have built-in data yet, load it
             if recommendation == nil {
                 await loadBuiltInRecommendations()
             } else {
