@@ -738,8 +738,8 @@ struct FallbackDataService {
         let prepTime: Int
         let servings: Int
         
-        func toMealItem() -> MealItem {
-            MealItem(
+        func toMealItem() -> RecommendationMealItem {
+            RecommendationMealItem(
                 name: name,
                 calories: calories,
                 protein: protein,

@@ -1,14 +1,15 @@
 import Foundation
+import Combine
 
 /// Local storage service for daily logs - stores up to 30 days of data
-final class LocalDailyLogStore {
+final class LocalDailyLogStore: ObservableObject {
     static let shared = LocalDailyLogStore()
     private init() {
         load()
         cleanupOldLogs()
     }
     
-    private var logs: [DailyLog] = []
+    @Published private(set) var logs: [DailyLog] = []
     private let maxDays = 30 // Keep 30 days of data
     
     private let storageURL: URL = {
@@ -24,18 +25,25 @@ final class LocalDailyLogStore {
     private func load() {
         storageLock.sync {
             guard FileManager.default.fileExists(atPath: storageURL.path) else {
-                logs = []
+                DispatchQueue.main.async {
+                    self.logs = []
+                }
                 return
             }
             do {
                 let data = try Data(contentsOf: storageURL)
-                logs = try JSONDecoder().decode([DailyLog].self, from: data)
+                let decodedLogs = try JSONDecoder().decode([DailyLog].self, from: data)
                 // Sort by date (newest first)
-                logs.sort { $0.date > $1.date }
-                print("✅ Loaded \(logs.count) daily logs from local storage")
+                let sortedLogs = decodedLogs.sorted { $0.date > $1.date }
+                DispatchQueue.main.async {
+                    self.logs = sortedLogs
+                }
+                print("✅ Loaded \(sortedLogs.count) daily logs from local storage")
             } catch {
                 print("⚠️ Failed to load daily logs: \(error)")
-                logs = []
+                DispatchQueue.main.async {
+                    self.logs = []
+                }
             }
         }
     }
@@ -66,6 +74,7 @@ final class LocalDailyLogStore {
     // MARK: - Get or Create Daily Log
     
     /// Get or create a daily log for a specific date
+    /// Note: This method should only be called from within storageLock.sync blocks
     private func getOrCreateLog(for date: Date) -> DailyLog {
         let calendar = Calendar.current
         let normalizedDate = calendar.startOfDay(for: date)
@@ -75,8 +84,10 @@ final class LocalDailyLogStore {
         }
         
         let newLog = DailyLog(date: normalizedDate)
-        logs.append(newLog)
-        logs.sort { $0.date > $1.date }
+        var updatedLogs = logs
+        updatedLogs.append(newLog)
+        updatedLogs.sort { $0.date > $1.date }
+        logs = updatedLogs // Trigger @Published
         return newLog
     }
     
@@ -87,17 +98,22 @@ final class LocalDailyLogStore {
         storageLock.sync {
             let today = Calendar.current.startOfDay(for: Date())
             let calendar = Calendar.current
+            var updatedLogs = logs
             
-            if let index = logs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: today) }) {
-                var log = logs[index]
+            if let index = updatedLogs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: today) }) {
+                var log = updatedLogs[index]
                 log.meals.append(meal)
                 log.meals.sort { $0.timestamp > $1.timestamp }
-                logs[index] = log
+                updatedLogs[index] = log
             } else {
                 var newLog = DailyLog(date: today)
                 newLog.meals.append(meal)
-                logs.append(newLog)
-                logs.sort { $0.date > $1.date }
+                updatedLogs.append(newLog)
+                updatedLogs.sort { $0.date > $1.date }
+            }
+            
+            DispatchQueue.main.async {
+                self.logs = updatedLogs
             }
             
             persist()
@@ -109,8 +125,12 @@ final class LocalDailyLogStore {
     func removeMeal(mealId: String) {
         storageLock.sync {
             let today = Calendar.current.startOfDay(for: Date())
-            if let index = logs.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-                logs[index].meals.removeAll { $0.id == mealId }
+            var updatedLogs = logs
+            if let index = updatedLogs.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+                updatedLogs[index].meals.removeAll { $0.id == mealId }
+                DispatchQueue.main.async {
+                    self.logs = updatedLogs
+                }
                 persist()
             }
         }
@@ -123,17 +143,22 @@ final class LocalDailyLogStore {
         storageLock.sync {
             let today = Calendar.current.startOfDay(for: Date())
             let calendar = Calendar.current
+            var updatedLogs = logs
             
-            if let index = logs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: today) }) {
-                var log = logs[index]
+            if let index = updatedLogs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: today) }) {
+                var log = updatedLogs[index]
                 log.liquidIntake.append(entry)
                 log.liquidIntake.sort { $0.timestamp > $1.timestamp }
-                logs[index] = log
+                updatedLogs[index] = log
             } else {
                 var newLog = DailyLog(date: today)
                 newLog.liquidIntake.append(entry)
-                logs.append(newLog)
-                logs.sort { $0.date > $1.date }
+                updatedLogs.append(newLog)
+                updatedLogs.sort { $0.date > $1.date }
+            }
+            
+            DispatchQueue.main.async {
+                self.logs = updatedLogs
             }
             
             persist()
@@ -145,8 +170,12 @@ final class LocalDailyLogStore {
     func removeLiquidIntake(entryId: String) {
         storageLock.sync {
             let today = Calendar.current.startOfDay(for: Date())
-            if let index = logs.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-                logs[index].liquidIntake.removeAll { $0.id == entryId }
+            var updatedLogs = logs
+            if let index = updatedLogs.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+                updatedLogs[index].liquidIntake.removeAll { $0.id == entryId }
+                DispatchQueue.main.async {
+                    self.logs = updatedLogs
+                }
                 persist()
             }
         }
@@ -159,16 +188,21 @@ final class LocalDailyLogStore {
         storageLock.sync {
             let normalizedDate = Calendar.current.startOfDay(for: date)
             let calendar = Calendar.current
+            var updatedLogs = logs
             
-            if let index = logs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) }) {
-                var log = logs[index]
+            if let index = updatedLogs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) }) {
+                var log = updatedLogs[index]
                 log.caloriesBurned = calories
-                logs[index] = log
+                updatedLogs[index] = log
             } else {
                 var newLog = DailyLog(date: normalizedDate)
                 newLog.caloriesBurned = calories
-                logs.append(newLog)
-                logs.sort { $0.date > $1.date }
+                updatedLogs.append(newLog)
+                updatedLogs.sort { $0.date > $1.date }
+            }
+            
+            DispatchQueue.main.async {
+                self.logs = updatedLogs
             }
             
             persist()
@@ -180,16 +214,21 @@ final class LocalDailyLogStore {
         storageLock.sync {
             let normalizedDate = Calendar.current.startOfDay(for: date)
             let calendar = Calendar.current
+            var updatedLogs = logs
             
-            if let index = logs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) }) {
-                var log = logs[index]
+            if let index = updatedLogs.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: normalizedDate) }) {
+                var log = updatedLogs[index]
                 log.steps = steps
-                logs[index] = log
+                updatedLogs[index] = log
             } else {
                 var newLog = DailyLog(date: normalizedDate)
                 newLog.steps = steps
-                logs.append(newLog)
-                logs.sort { $0.date > $1.date }
+                updatedLogs.append(newLog)
+                updatedLogs.sort { $0.date > $1.date }
+            }
+            
+            DispatchQueue.main.async {
+                self.logs = updatedLogs
             }
             
             persist()

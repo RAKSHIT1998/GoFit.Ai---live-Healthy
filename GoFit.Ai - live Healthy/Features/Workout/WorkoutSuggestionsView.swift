@@ -9,13 +9,13 @@ struct RecommendationResponse: Codable {
 }
 
 struct MealPlan: Codable {
-    let breakfast: [MealItem]
-    let lunch: [MealItem]
-    let dinner: [MealItem]
-    let snacks: [MealItem]
+    let breakfast: [RecommendationMealItem]
+    let lunch: [RecommendationMealItem]
+    let dinner: [RecommendationMealItem]
+    let snacks: [RecommendationMealItem]
 }
 
-struct MealItem: Codable {
+struct RecommendationMealItem: Codable {
     let name: String
     let calories: Double
     let protein: Double
@@ -341,7 +341,7 @@ struct WorkoutSuggestionsView: View {
         }
     }
     
-    private func mealCategory(title: String, icon: String, meals: [MealItem], color: Color) -> some View {
+    private func mealCategory(title: String, icon: String, meals: [RecommendationMealItem], color: Color) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.md) {
             if !meals.isEmpty {
                 HStack {
@@ -361,7 +361,7 @@ struct WorkoutSuggestionsView: View {
         }
     }
     
-    private func mealCard(_ meal: MealItem) -> some View {
+    private func mealCard(_ meal: RecommendationMealItem) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.md) {
             // Header
             HStack {
