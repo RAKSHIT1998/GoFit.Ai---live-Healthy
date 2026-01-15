@@ -36,24 +36,51 @@ router.get('/daily', authMiddleware, async (req, res) => {
     });
 
     if (!recommendation) {
-      // Generate new recommendation using OpenAI with all onboarding data
-      console.log('📝 No recommendation found for today, generating new one with OpenAI...');
-      console.log(`🤖 Sending user data to ChatGPT for user: ${req.user._id}`);
-      recommendation = await generateRecommendation(req.user);
-      console.log('✅ New recommendation generated successfully by ChatGPT');
+      // Check if OpenAI is configured before attempting generation
+      if (!OPENAI_API_KEY || !openai) {
+        console.warn('⚠️ OpenAI not configured - skipping AI recommendation generation');
+        // Return null or empty recommendation - client will use fallback data
+        return res.status(200).json({
+          mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+          workoutPlan: { exercises: [] },
+          hydrationGoal: { targetLiters: 2.5 },
+          insights: ['AI recommendations are not available. Using built-in recommendations.']
+        });
+      }
+      
+      // Generate new recommendation using ChatGPT (OpenAI GPT-4o) with all onboarding data
+      console.log('📝 No recommendation found for today, generating new one with ChatGPT...');
+      console.log(`🤖 Sending user data to ChatGPT (OpenAI GPT-4o) for personalized meal and workout recommendations (user: ${req.user._id})`);
+      try {
+        recommendation = await generateRecommendation(req.user);
+        console.log('✅ New personalized meal and workout recommendations generated successfully by ChatGPT (OpenAI GPT-4o)');
+      } catch (genError) {
+        console.error('❌ Failed to generate recommendation:', genError.message);
+        // Return empty recommendation - client will use fallback data
+        return res.status(200).json({
+          mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+          workoutPlan: { exercises: [] },
+          hydrationGoal: { targetLiters: 2.5 },
+          insights: ['AI recommendations are temporarily unavailable. Using built-in recommendations.']
+        });
+      }
     } else {
       console.log('✅ Found existing recommendation for today');
     }
 
     res.json(recommendation);
   } catch (error) {
-    console.error('❌ Get recommendations error:', error);
-    console.error('❌ Error stack:', error.stack);
-    const errorMessage = error.message || 'Unknown error occurred';
-    res.status(500).json({ 
-      message: 'Failed to get recommendations', 
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    console.error('❌ Get recommendations error:', error.message);
+    // Don't log full stack in production
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ Error stack:', error.stack);
+    }
+    // Return empty recommendation instead of error - client will use fallback
+    res.status(200).json({
+      mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+      workoutPlan: { exercises: [] },
+      hydrationGoal: { targetLiters: 2.5 },
+      insights: ['Recommendations are temporarily unavailable. Using built-in recommendations.']
     });
   }
 });
@@ -63,19 +90,50 @@ router.get('/daily', authMiddleware, async (req, res) => {
 // It sends ALL customer data collected during onboarding to ChatGPT for personalization
 router.post('/regenerate', authMiddleware, async (req, res) => {
   try {
-    console.log('📝 Regenerating recommendations for user:', req.user._id);
-    console.log(`🤖 Sending user data to ChatGPT for regeneration...`);
-    const recommendation = await generateRecommendation(req.user);
-    console.log('✅ Recommendations regenerated successfully by ChatGPT');
-    res.json(recommendation);
+    // Check if OpenAI is configured before attempting generation
+    if (!OPENAI_API_KEY || !openai) {
+      console.warn('⚠️ OpenAI not configured - cannot regenerate recommendations');
+      // Return empty recommendation - client will use fallback data
+      return res.status(200).json({
+        mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+        workoutPlan: { exercises: [] },
+        hydrationGoal: { targetLiters: 2.5 },
+        insights: ['AI recommendations are not available. Using built-in recommendations.']
+      });
+    }
+    
+    console.log('📝 Regenerating personalized meal and workout recommendations for user:', req.user._id);
+    console.log(`🤖 Sending user data to ChatGPT (OpenAI GPT-4o) for regeneration...`);
+    try {
+      const recommendation = await generateRecommendation(req.user);
+      console.log('✅ Personalized meal and workout recommendations regenerated successfully by ChatGPT (OpenAI GPT-4o)');
+      res.json(recommendation);
+    } catch (genError) {
+      console.error('❌ Failed to regenerate recommendation:', genError.message);
+      // Don't log full stack in production
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error stack:', genError.stack);
+      }
+      // Return empty recommendation instead of error - client will use fallback
+      res.status(200).json({
+        mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+        workoutPlan: { exercises: [] },
+        hydrationGoal: { targetLiters: 2.5 },
+        insights: ['AI recommendations are temporarily unavailable. Using built-in recommendations.']
+      });
+    }
   } catch (error) {
-    console.error('❌ Regenerate recommendations error:', error);
-    console.error('❌ Error stack:', error.stack);
-    const errorMessage = error.message || 'Unknown error occurred';
-    res.status(500).json({ 
-      message: 'Failed to regenerate recommendations', 
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    console.error('❌ Regenerate recommendations error:', error.message);
+    // Don't log full stack in production
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ Error stack:', error.stack);
+    }
+    // Return empty recommendation instead of error - client will use fallback
+    res.status(200).json({
+      mealPlan: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+      workoutPlan: { exercises: [] },
+      hydrationGoal: { targetLiters: 2.5 },
+      insights: ['Recommendations are temporarily unavailable. Using built-in recommendations.']
     });
   }
 });
@@ -185,31 +243,63 @@ function violatesDietaryPreference(mealItem, dietaryPreferences) {
   const ingredients = (mealItem.ingredients || []).map(i => i.toLowerCase()).join(' ');
   const allText = `${mealName} ${ingredients}`.toLowerCase();
   
-  // Non-vegan items
+  // Non-vegan items - comprehensive list including all variations
   const nonVeganItems = [
-    'beef', 'pork', 'chicken', 'turkey', 'lamb', 'fish', 'salmon', 'tuna', 'shrimp', 'crab', 'lobster',
-    'egg', 'eggs', 'scrambled', 'fried egg', 'boiled egg', 'omelet',
-    'milk', 'cheese', 'butter', 'yogurt', 'cream', 'dairy', 'whey', 'casein',
-    'honey', 'gelatin', 'lard', 'bacon', 'sausage', 'ham', 'pepperoni'
+    // Meats
+    'beef', 'pork', 'chicken', 'turkey', 'lamb', 'duck', 'goose', 'venison', 'bison', 'rabbit',
+    'meat', 'poultry', 'red meat', 'white meat',
+    // Fish and seafood
+    'fish', 'salmon', 'tuna', 'cod', 'haddock', 'mackerel', 'sardine', 'anchovy', 'herring',
+    'shrimp', 'prawn', 'crab', 'lobster', 'crayfish', 'mussel', 'oyster', 'clam', 'scallop',
+    'seafood', 'shellfish', 'squid', 'octopus', 'calamari',
+    // Eggs (all forms)
+    'egg', 'eggs', 'scrambled', 'fried egg', 'boiled egg', 'poached egg', 'omelet', 'omelette',
+    'frittata', 'quiche', 'egg white', 'egg yolk', 'deviled egg', 'egg salad',
+    // Dairy products
+    'milk', 'cheese', 'butter', 'yogurt', 'yoghurt', 'cream', 'sour cream', 'heavy cream',
+    'dairy', 'whey', 'casein', 'lactose', 'ghee', 'buttermilk', 'cottage cheese',
+    'mozzarella', 'cheddar', 'parmesan', 'feta', 'ricotta', 'cream cheese',
+    // Other animal products
+    'honey', 'gelatin', 'lard', 'tallow', 'rendered fat',
+    // Processed meats
+    'bacon', 'sausage', 'ham', 'pepperoni', 'salami', 'prosciutto', 'chorizo', 'bologna',
+    'hot dog', 'frankfurter', 'bratwurst', 'kielbasa', 'pastrami', 'corned beef',
+    // Broth/stock
+    'chicken broth', 'beef broth', 'fish stock', 'bone broth', 'chicken stock', 'beef stock'
   ];
   
   // Non-vegetarian items (meat and fish, but allow eggs/dairy)
   const nonVegetarianItems = [
-    'beef', 'pork', 'chicken', 'turkey', 'lamb', 'fish', 'salmon', 'tuna', 'shrimp', 'crab', 'lobster',
-    'bacon', 'sausage', 'ham', 'pepperoni', 'meat', 'poultry', 'seafood'
+    // Meats
+    'beef', 'pork', 'chicken', 'turkey', 'lamb', 'duck', 'goose', 'venison', 'bison', 'rabbit',
+    'meat', 'poultry', 'red meat', 'white meat',
+    // Fish and seafood
+    'fish', 'salmon', 'tuna', 'cod', 'haddock', 'mackerel', 'sardine', 'anchovy', 'herring',
+    'shrimp', 'prawn', 'crab', 'lobster', 'crayfish', 'mussel', 'oyster', 'clam', 'scallop',
+    'seafood', 'shellfish', 'squid', 'octopus', 'calamari',
+    // Processed meats
+    'bacon', 'sausage', 'ham', 'pepperoni', 'salami', 'prosciutto', 'chorizo', 'bologna',
+    'hot dog', 'frankfurter', 'bratwurst', 'kielbasa', 'pastrami', 'corned beef',
+    // Broth/stock
+    'chicken broth', 'beef broth', 'fish stock', 'bone broth', 'chicken stock', 'beef stock'
   ];
   
   if (dietaryPreferences.includes('vegan')) {
-    // Check for any non-vegan items
+    // Check for any non-vegan items - use word boundaries for better matching
     for (const item of nonVeganItems) {
-      if (allText.includes(item)) {
+      // Use word boundary regex to avoid false positives (e.g., "chicken" in "chickpea")
+      const regex = new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (regex.test(allText)) {
+        console.log(`🚫 Vegan violation detected: "${item}" found in "${mealName}"`);
         return true;
       }
     }
   } else if (dietaryPreferences.includes('vegetarian')) {
-    // Check for meat/fish but allow eggs/dairy
+    // Check for meat/fish but allow eggs/dairy - use word boundaries
     for (const item of nonVegetarianItems) {
-      if (allText.includes(item)) {
+      const regex = new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (regex.test(allText)) {
+        console.log(`🚫 Vegetarian violation detected: "${item}" found in "${mealName}"`);
         return true;
       }
     }
@@ -250,20 +340,27 @@ function filterMealPlanByDietaryPreferences(mealPlan, dietaryPreferences) {
 }
 
 /**
- * Generate personalized meal and workout recommendations using OpenAI (ChatGPT)
+ * Generate personalized meal and workout recommendations using ChatGPT (OpenAI GPT-4o)
+ * 
+ * This function uses ChatGPT to generate:
+ * - Personalized meal plans (breakfast, lunch, dinner, snacks) with complete recipes
+ * - Personalized workout plans (exercises with detailed instructions, sets, reps, etc.)
  * 
  * This function:
  * 1. Collects ALL customer data from onboarding (preferences, goals, lifestyle, etc.)
- * 2. Sends comprehensive user profile to OpenAI GPT-4o
- * 3. Receives personalized daily meal and workout plans
- * 4. Saves recommendations to database for daily use
+ * 2. Sends comprehensive user profile to ChatGPT (OpenAI GPT-4o)
+ * 3. Receives personalized daily meal and workout plans from ChatGPT
+ * 4. Filters meals to ensure dietary compliance (vegan/vegetarian)
+ * 5. Saves recommendations to database for daily use
  * 
  * @param {Object} user - User document with all onboarding data
- * @returns {Object} Recommendation document with meal and workout plans
+ * @returns {Object} Recommendation document with meal and workout plans generated by ChatGPT
  */
 async function generateRecommendation(user) {
-  console.log(`🤖 Starting OpenAI recommendation generation for user: ${user._id}`);
+  console.log(`🤖 Starting ChatGPT (OpenAI GPT-4o) recommendation generation for user: ${user._id}`);
   console.log(`📊 User profile: goals=${user.goals}, activityLevel=${user.activityLevel}`);
+  console.log(`🍽️ ChatGPT will generate personalized meal plan with recipes`);
+  console.log(`💪 ChatGPT will generate personalized workout plan with exercise instructions`);
   
   // Get ML insights for personalized recommendations
   let mlInsights = await mlService.getMLInsights(user._id);
@@ -408,22 +505,32 @@ RECENT MEAL HISTORY (last 5 meals):
 ${JSON.stringify(context.recentMeals.slice(0, 5), null, 2)}
 
 INSTRUCTIONS:
-0. **CRITICAL - DIETARY RESTRICTIONS MUST BE STRICTLY ENFORCED**: 
+0. **CRITICAL - DIETARY RESTRICTIONS MUST BE STRICTLY ENFORCED - THIS IS NON-NEGOTIABLE**: 
    ${context.user.dietaryPreferences.includes('vegan') ? 
-     '⚠️ USER IS VEGAN - ABSOLUTELY NO animal products allowed. This means:\n' +
-     '   - NO meat (beef, pork, chicken, turkey, lamb, fish, seafood, etc.)\n' +
-     '   - NO eggs (in any form)\n' +
-     '   - NO dairy (milk, cheese, butter, yogurt, cream, etc.)\n' +
-     '   - NO honey or bee products\n' +
-     '   - NO animal-derived ingredients (gelatin, lard, etc.)\n' +
-     '   - ONLY plant-based foods are allowed\n' +
-     '   - If you suggest ANY animal product, the recommendation is INVALID and must be rejected.\n' +
-     '   - Use plant-based protein sources: legumes, tofu, tempeh, seitan, nuts, seeds, quinoa, etc.\n' :
+     '🚫🚫🚫 USER IS VEGAN - ABSOLUTELY NO ANIMAL PRODUCTS ALLOWED. THIS IS MANDATORY. 🚫🚫🚫\n' +
+     '   - FORBIDDEN: All meat (beef, pork, chicken, turkey, lamb, duck, venison, etc.)\n' +
+     '   - FORBIDDEN: All fish and seafood (salmon, tuna, shrimp, crab, lobster, etc.)\n' +
+     '   - FORBIDDEN: All eggs (scrambled eggs, fried eggs, boiled eggs, omelets, frittatas, quiches, etc.)\n' +
+     '   - FORBIDDEN: All dairy (milk, cheese, butter, yogurt, cream, sour cream, etc.)\n' +
+     '   - FORBIDDEN: Honey, gelatin, lard, animal broths/stocks\n' +
+     '   - FORBIDDEN: Any processed foods containing animal products\n' +
+     '   - ALLOWED ONLY: Plant-based foods (vegetables, fruits, grains, legumes, nuts, seeds)\n' +
+     '   - PROTEIN SOURCES: Tofu, tempeh, seitan, legumes, lentils, chickpeas, beans, quinoa, nuts, seeds\n' +
+     '   - IF YOU SUGGEST ANY ANIMAL PRODUCT (including eggs, chicken, fish, dairy), THE ENTIRE RECOMMENDATION IS INVALID\n' +
+     '   - DOUBLE-CHECK every meal name and ingredient list before including it\n' +
+     '   - Example of FORBIDDEN meals: "Scrambled Eggs", "Chicken Salad", "Salmon Bowl", "Greek Yogurt Parfait"\n' +
+     '   - Example of ALLOWED meals: "Tofu Scramble", "Chickpea Salad", "Lentil Curry", "Oatmeal with Berries"\n' :
      context.user.dietaryPreferences.includes('vegetarian') ?
-     '⚠️ USER IS VEGETARIAN - NO meat or fish allowed, but eggs and dairy are OK.\n' +
-     '   - NO meat (beef, pork, chicken, turkey, lamb, etc.)\n' +
-     '   - NO fish or seafood\n' +
-     '   - Eggs and dairy products ARE allowed\n' :
+     '🚫 USER IS VEGETARIAN - NO MEAT OR FISH ALLOWED. THIS IS MANDATORY. 🚫\n' +
+     '   - FORBIDDEN: All meat (beef, pork, chicken, turkey, lamb, duck, etc.)\n' +
+     '   - FORBIDDEN: All fish and seafood (salmon, tuna, shrimp, crab, lobster, etc.)\n' +
+     '   - FORBIDDEN: Meat broths/stocks (chicken broth, beef broth, fish stock)\n' +
+     '   - ALLOWED: Eggs (scrambled, fried, boiled, omelets, etc.)\n' +
+     '   - ALLOWED: Dairy products (milk, cheese, butter, yogurt, etc.)\n' +
+     '   - IF YOU SUGGEST ANY MEAT OR FISH, THE ENTIRE RECOMMENDATION IS INVALID\n' +
+     '   - DOUBLE-CHECK every meal name and ingredient list before including it\n' +
+     '   - Example of FORBIDDEN meals: "Chicken Salad", "Salmon Bowl", "Beef Stir Fry"\n' +
+     '   - Example of ALLOWED meals: "Scrambled Eggs", "Cheese Pizza", "Greek Yogurt Parfait", "Vegetable Curry"\n' :
      ''}
    ${context.user.dietaryPreferences.includes('keto') ? 
      '⚠️ USER IS ON KETO - Very low carb (under 20g net carbs per day), high fat, moderate protein.\n' :
@@ -527,12 +634,14 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       throw new Error('AI recommendation service initialization failed.');
     }
     
-    // Use OpenAI GPT-4o for recommendations (high quality and reliable)
+    // Use OpenAI GPT-4o (ChatGPT) for recommendations (high quality and reliable)
     const modelPreference = process.env.OPENAI_MODEL || 'gpt-4o';
     
-    console.log(`✅ Using OpenAI model: ${modelPreference} for recommendations`);
-    console.log(`🤖 Making OpenAI API request for recommendations (user: ${user._id})...`);
+    console.log(`✅ Using ChatGPT (OpenAI ${modelPreference}) for meal and workout recommendations`);
+    console.log(`🤖 Making ChatGPT API request for personalized recommendations (user: ${user._id})...`);
     console.log(`📊 User context: goals=${user.goals}, activityLevel=${user.activityLevel}, targetCalories=${user.metrics?.targetCalories || 2000}`);
+    console.log(`🍽️ ChatGPT will generate: Personalized meal plan (breakfast, lunch, dinner, snacks)`);
+    console.log(`💪 ChatGPT will generate: Personalized workout plan (exercises with instructions)`);
     
     // Generate content with OpenAI
     const completion = await openai.chat.completions.create({
@@ -540,7 +649,26 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
       messages: [
         {
           role: 'system',
-          content: 'You are an expert nutritionist and certified personal trainer. CRITICAL JSON FORMAT REQUIREMENTS:\n1. Return ONLY valid JSON object - no markdown, no code blocks, no explanations\n2. workoutPlan.exercises MUST be a JSON array of objects, NEVER a string or JavaScript code\n3. Each exercise object must have: name, duration, calories, type, instructions, sets (or null), reps, restTime (or null), difficulty, muscleGroups (array), equipment (array)\n4. mealPlan arrays (breakfast, lunch, dinner, snacks) MUST be arrays of objects\n5. DO NOT use JavaScript string concatenation syntax like " + " or "\\n" + "\n6. Return pure, valid JSON that can be directly parsed by JSON.parse()\n7. Example: {"workoutPlan": {"exercises": [{"name": "Running", "duration": 30, "calories": 150, "type": "cardio", "instructions": "Run at moderate pace", "sets": null, "reps": "continuous", "restTime": null, "difficulty": "beginner", "muscleGroups": ["legs"], "equipment": ["none"]}]}}'
+          content: `You are an expert nutritionist and certified personal trainer. 
+
+CRITICAL DIETARY RESTRICTION REQUIREMENTS:
+${context.user.dietaryPreferences.includes('vegan') ? 
+  '🚫 USER IS VEGAN - ABSOLUTELY FORBIDDEN: meat, fish, eggs, dairy, honey, gelatin, or any animal products.\n' +
+  'ONLY plant-based foods allowed. If you suggest ANY animal product, the recommendation is INVALID.\n' :
+  context.user.dietaryPreferences.includes('vegetarian') ?
+  '🚫 USER IS VEGETARIAN - FORBIDDEN: meat, fish, seafood. ALLOWED: eggs, dairy.\n' +
+  'If you suggest ANY meat or fish, the recommendation is INVALID.\n' :
+  ''}
+You MUST strictly follow all dietary restrictions. Double-check every meal name and ingredient.
+
+CRITICAL JSON FORMAT REQUIREMENTS:
+1. Return ONLY valid JSON object - no markdown, no code blocks, no explanations
+2. workoutPlan.exercises MUST be a JSON array of objects, NEVER a string or JavaScript code
+3. Each exercise object must have: name, duration, calories, type, instructions, sets (or null), reps, restTime (or null), difficulty, muscleGroups (array), equipment (array)
+4. mealPlan arrays (breakfast, lunch, dinner, snacks) MUST be arrays of objects
+5. DO NOT use JavaScript string concatenation syntax like " + " or "\\n" + "
+6. Return pure, valid JSON that can be directly parsed by JSON.parse()
+7. Example: {"workoutPlan": {"exercises": [{"name": "Running", "duration": 30, "calories": 150, "type": "cardio", "instructions": "Run at moderate pace", "sets": null, "reps": "continuous", "restTime": null, "difficulty": "beginner", "muscleGroups": ["legs"], "equipment": ["none"]}]}}`
         },
         {
           role: 'user',
@@ -554,9 +682,10 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     
     const content = completion.choices[0]?.message?.content || '';
     
-    console.log('✅ OpenAI recommendation generation completed');
-    console.log(`📊 OpenAI response received: ${content.length} characters`);
-    console.log(`🤖 AI request successful - recommendations generated for user: ${user._id}`);
+    console.log('✅ ChatGPT recommendation generation completed successfully');
+    console.log(`📊 ChatGPT response received: ${content.length} characters`);
+    console.log(`🤖 ChatGPT API request successful - personalized meal and workout recommendations generated for user: ${user._id}`);
+    console.log(`🍽️💪 ChatGPT generated both meal plan and workout plan with detailed instructions`);
     console.log('📝 Response length:', content.length, 'characters');
     
   let recommendationData;
@@ -810,7 +939,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
         }
       });
       
-      // CRITICAL: Filter out meals that violate dietary preferences (especially vegan)
+      // CRITICAL: Filter out meals that violate dietary preferences (especially vegan/vegetarian)
       if (user.dietaryPreferences && user.dietaryPreferences.length > 0) {
         const originalCount = {
           breakfast: recommendationData.mealPlan.breakfast?.length || 0,
@@ -818,6 +947,18 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           dinner: recommendationData.mealPlan.dinner?.length || 0,
           snacks: recommendationData.mealPlan.snacks?.length || 0
         };
+        
+        // Log meals before filtering for debugging
+        if (user.dietaryPreferences.includes('vegan') || user.dietaryPreferences.includes('vegetarian')) {
+          console.log(`🔍 Checking ${user.dietaryPreferences.join(', ')} compliance before filtering...`);
+          ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(category => {
+            if (recommendationData.mealPlan[category]) {
+              recommendationData.mealPlan[category].forEach(meal => {
+                console.log(`  - ${category}: "${meal.name}"`);
+              });
+            }
+          });
+        }
         
         recommendationData.mealPlan = filterMealPlanByDietaryPreferences(
           recommendationData.mealPlan,
@@ -838,8 +979,16 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
           (originalCount.snacks - filteredCount.snacks);
         
         if (totalRemoved > 0) {
-          console.log(`⚠️ Filtered out ${totalRemoved} meal(s) that violated dietary preferences: ${user.dietaryPreferences.join(', ')}`);
+          console.log(`🚫 CRITICAL: Filtered out ${totalRemoved} meal(s) that violated ${user.dietaryPreferences.join(', ')} dietary preferences`);
           console.log(`📊 Meal counts - Before: ${JSON.stringify(originalCount)}, After: ${JSON.stringify(filteredCount)}`);
+          
+          // If all meals were filtered out, log a warning
+          if (filteredCount.breakfast === 0 && filteredCount.lunch === 0 && 
+              filteredCount.dinner === 0 && filteredCount.snacks === 0) {
+            console.error(`❌ CRITICAL: ALL meals were filtered out! AI generated non-compliant recommendations.`);
+          }
+        } else {
+          console.log(`✅ All meals comply with ${user.dietaryPreferences.join(', ')} dietary preferences`);
         }
       }
     }

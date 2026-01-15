@@ -627,6 +627,28 @@ struct WorkoutSuggestionsView: View {
                 body: bodyData
             )
             
+            // Check if response has actual recommendations or is empty (AI unavailable)
+            let hasMeals = !response.mealPlan.breakfast.isEmpty || 
+                          !response.mealPlan.lunch.isEmpty || 
+                          !response.mealPlan.dinner.isEmpty || 
+                          !response.mealPlan.snacks.isEmpty
+            let hasWorkouts = !response.workoutPlan.exercises.isEmpty
+            
+            if !hasMeals && !hasWorkouts {
+                // Empty response means AI is unavailable - use fallback data
+                #if DEBUG
+                print("ℹ️ Received empty recommendations (AI unavailable), using built-in data")
+                #endif
+                if recommendation == nil {
+                    await loadBuiltInRecommendations()
+                } else {
+                    await MainActor.run {
+                        isUsingFallback = true
+                    }
+                }
+                return
+            }
+            
             #if DEBUG
             print("🔄 Refresh: Received new AI recommendations")
             #endif
