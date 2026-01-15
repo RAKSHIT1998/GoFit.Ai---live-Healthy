@@ -6,17 +6,25 @@ struct FallbackDataService {
     static let shared = FallbackDataService()
     
     // MARK: - Get Daily Rotating Meals (50+ options, changes every day)
-    func getRandomMeals(goal: String = "maintain", count: Int = 4) -> MealPlan {
+    func getRandomMeals(goal: String = "maintain", count: Int = 4, useTimestamp: Bool = false) -> MealPlan {
         let allMeals = getAllMeals(goal: goal)
         
-        // Use day of year as seed for consistent daily rotation
-        let calendar = Calendar.current
-        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        // Use timestamp for refresh (different each time) or day of year for consistent daily rotation
+        let seed: UInt64
+        if useTimestamp {
+            // Use current timestamp for truly random selection on each refresh
+            seed = UInt64(Date().timeIntervalSince1970)
+        } else {
+            // Use day of year as seed for consistent daily rotation
+            let calendar = Calendar.current
+            let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+            seed = UInt64(dayOfYear)
+        }
         
-        // Create seeded random number generator for consistent daily selection
-        var generator = SeededRandomNumberGenerator(seed: UInt64(dayOfYear))
+        // Create seeded random number generator
+        var generator = SeededRandomNumberGenerator(seed: seed)
         
-        // Shuffle using seeded generator (same seed = same order for the day)
+        // Shuffle using seeded generator
         let shuffled = allMeals.shuffled(using: &generator)
         
         return MealPlan(
@@ -28,17 +36,25 @@ struct FallbackDataService {
     }
     
     // MARK: - Get Daily Rotating Workouts (50+ options, changes every day)
-    func getRandomWorkouts(activityLevel: String = "moderate", count: Int = 4) -> WorkoutPlan {
+    func getRandomWorkouts(activityLevel: String = "moderate", count: Int = 4, useTimestamp: Bool = false) -> WorkoutPlan {
         let allWorkouts = getAllWorkouts(activityLevel: activityLevel)
         
-        // Use day of year as seed for consistent daily rotation
-        let calendar = Calendar.current
-        let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        // Use timestamp for refresh (different each time) or day of year for consistent daily rotation
+        let seed: UInt64
+        if useTimestamp {
+            // Use current timestamp for truly random selection on each refresh
+            seed = UInt64(Date().timeIntervalSince1970)
+        } else {
+            // Use day of year as seed for consistent daily rotation
+            let calendar = Calendar.current
+            let dayOfYear = calendar.ordinality(of: .day, in: .year, for: Date()) ?? 1
+            seed = UInt64(dayOfYear)
+        }
         
-        // Create seeded random number generator for consistent daily selection
-        var generator = SeededRandomNumberGenerator(seed: UInt64(dayOfYear))
+        // Create seeded random number generator
+        var generator = SeededRandomNumberGenerator(seed: seed)
         
-        // Shuffle using seeded generator (same seed = same order for the day)
+        // Shuffle using seeded generator
         let shuffled = allWorkouts.shuffled(using: &generator)
         return WorkoutPlan(exercises: Array(shuffled.prefix(count)))
     }

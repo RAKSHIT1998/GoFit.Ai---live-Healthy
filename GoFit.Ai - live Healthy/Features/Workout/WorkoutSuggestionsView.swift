@@ -565,7 +565,8 @@ struct WorkoutSuggestionsView: View {
         defer { isRefreshing = false }
         
         // Always reload built-in recommendations first for instant feedback
-        await loadBuiltInRecommendations()
+        // Use forceNew=true to get different meals/workouts on each refresh
+        await loadBuiltInRecommendations(forceNew: true)
         
         // Then try AI recommendations in background (will replace built-in if successful)
         if !EnvironmentConfig.skipAuthentication {
@@ -578,13 +579,15 @@ struct WorkoutSuggestionsView: View {
         }
     }
     
-    private func loadBuiltInRecommendations() async {
+    private func loadBuiltInRecommendations(forceNew: Bool = false) async {
         let goal = auth.goal.isEmpty ? "maintain" : auth.goal
         // Use default activity level since AuthViewModel doesn't have this property
         let activityLevel = "moderate"
         
-        let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4)
-        let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4)
+        // If forceNew (refresh), use timestamp-based seed for truly random selection each time
+        // Otherwise, use day-based seed for consistent daily recommendations
+        let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4, useTimestamp: forceNew)
+        let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4, useTimestamp: forceNew)
         
         let fallbackRecommendation = RecommendationResponse(
             mealPlan: fallbackMeals,
@@ -614,11 +617,19 @@ struct WorkoutSuggestionsView: View {
         }
         
         do {
+            // For refresh, always use regenerate endpoint to force new generation
             let endpoint = forceRefresh ? "recommendations/regenerate" : "recommendations/daily"
             let method = forceRefresh ? "POST" : "GET"
             
-            // For POST requests, send empty JSON body
-            let bodyData: Data? = forceRefresh ? try? JSONSerialization.data(withJSONObject: [:]) : nil
+            // For POST requests (regenerate), send empty JSON body
+            // Add timestamp to ensure we get fresh data (no caching)
+            let bodyData: Data? = forceRefresh ? try? JSONSerialization.data(withJSONObject: ["forceNew": true, "timestamp": Date().timeIntervalSince1970]) : nil
+            
+            #if DEBUG
+            if forceRefresh {
+                print("🔄 Refreshing recommendations - requesting NEW meals and workouts from ChatGPT")
+            }
+            #endif
             
             // Simple request without retry - if it fails, we use built-in data
             let response: RecommendationResponse = try await NetworkManager.shared.request(

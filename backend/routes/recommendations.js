@@ -102,11 +102,26 @@ router.post('/regenerate', authMiddleware, async (req, res) => {
       });
     }
     
+    // CRITICAL: Delete existing recommendations for today to force new generation
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const deletedCount = await Recommendation.deleteMany({
+      userId: req.user._id,
+      date: { $gte: today }
+    });
+    
+    if (deletedCount.deletedCount > 0) {
+      console.log(`🗑️ Deleted ${deletedCount.deletedCount} existing recommendation(s) to force regeneration`);
+    }
+    
     console.log('📝 Regenerating personalized meal and workout recommendations for user:', req.user._id);
     console.log(`🤖 Sending user data to ChatGPT (OpenAI GPT-4o) for regeneration...`);
+    console.log(`🔄 This will generate completely NEW meals and workouts (not cached)`);
     try {
-      const recommendation = await generateRecommendation(req.user);
+      const recommendation = await generateRecommendation(req.user, true); // Pass forceNew=true
       console.log('✅ Personalized meal and workout recommendations regenerated successfully by ChatGPT (OpenAI GPT-4o)');
+      console.log(`🆕 New recommendations generated with fresh meals and workouts`);
       res.json(recommendation);
     } catch (genError) {
       console.error('❌ Failed to regenerate recommendation:', genError.message);
@@ -1077,7 +1092,39 @@ CRITICAL JSON FORMAT REQUIREMENTS:
     };
   }
 
-  // Save recommendation with ML metadata
+  // Delete any existing recommendation for today before saving new one (if forceNew or if one exists)
+  if (forceNew) {
+    await Recommendation.deleteMany({
+      userId: user._id,
+      date: { $gte: today }
+    });
+    console.log(`🗑️ Deleted existing recommendations before saving new ones (forceNew=true)`);
+  } else {
+    // Check if recommendation exists and update it instead of creating duplicate
+    const existing = await Recommendation.findOne({
+      userId: user._id,
+      date: { $gte: today }
+    });
+    
+    if (existing) {
+      // Update existing recommendation with new ChatGPT-generated content
+      existing.mealPlan = recommendationData.mealPlan;
+      existing.workoutPlan = recommendationData.workoutPlan;
+      existing.hydrationGoal = recommendationData.hydrationGoal;
+      existing.insights = recommendationData.insights || [];
+      existing.aiVersion = process.env.OPENAI_MODEL || 'gpt-4o';
+      existing.mlMetadata = {
+        userType: context.user.userType,
+        usedFavoriteFoods: context.user.favoriteFoods.slice(0, 3),
+        adaptedForUserType: true
+      };
+      await existing.save();
+      console.log(`✅ Updated existing recommendation with new ChatGPT-generated meals and workouts`);
+      return existing;
+    }
+  }
+
+  // Save new recommendation with ML metadata
   const recommendation = new Recommendation({
     userId: user._id,
     date: today,
@@ -1097,7 +1144,7 @@ CRITICAL JSON FORMAT REQUIREMENTS:
 
   await recommendation.save();
   
-  console.log('✅ Recommendation saved with ML insights');
+  console.log('✅ New recommendation saved with fresh ChatGPT-generated meals and workouts');
 
   return recommendation;
   } catch (openaiError) {
