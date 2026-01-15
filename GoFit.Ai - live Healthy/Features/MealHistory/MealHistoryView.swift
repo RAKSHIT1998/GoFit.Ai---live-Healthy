@@ -44,10 +44,6 @@ struct MealHistoryView: View {
             .sheet(isPresented: $showingDailyDetails) {
                 DailyDetailsSheet(date: selectedDate, isPresented: $showingDailyDetails)
             }
-            .onChange(of: selectedDate) { oldValue, newValue in
-                // When date changes, show details sheet automatically
-                showingDailyDetails = true
-            }
             .onAppear {
                 // Ensure we're observing log changes
                 _ = logStore.logs
