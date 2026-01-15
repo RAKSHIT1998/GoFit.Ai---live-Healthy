@@ -41,9 +41,21 @@ final class LocalDailyLogStore {
     }
     
     private func persist() {
-        storageLock.async {
+        // This method is called from within sync blocks, so we need to persist asynchronously
+        // to avoid deadlocks. The data is already captured by the caller's sync block context.
+        // We'll encode and write on a background queue to avoid blocking.
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            
+            // Capture current state synchronously
+            let logsToPersist: [DailyLog]
+            self.storageLock.sync {
+                logsToPersist = self.logs
+            }
+            
+            // Persist outside the lock
             do {
-                let data = try JSONEncoder().encode(self.logs)
+                let data = try JSONEncoder().encode(logsToPersist)
                 try data.write(to: self.storageURL, options: [.atomic])
             } catch {
                 print("⚠️ Failed to persist daily logs: \(error)")

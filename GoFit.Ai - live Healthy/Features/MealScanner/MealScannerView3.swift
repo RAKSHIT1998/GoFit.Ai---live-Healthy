@@ -718,8 +718,8 @@ struct MealScannerView3: View {
                 carbs: item.carbs,
                 fat: item.fat,
                 sugar: item.sugar,
-                portionSize: item.qtyText.isEmpty ? nil : item.qtyText,
-                quantity: item.qtyText.isEmpty ? nil : item.qtyText
+                portionSize: nil, // portionSize is for standardized portion (not available in EditableParsedItem)
+                quantity: item.qtyText.isEmpty ? nil : item.qtyText // quantity is the user-entered text like "1 cup" or "200g"
             )
         }
         
