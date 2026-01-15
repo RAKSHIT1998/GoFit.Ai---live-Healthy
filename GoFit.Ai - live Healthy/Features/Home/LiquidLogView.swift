@@ -173,6 +173,18 @@ struct LiquidLogView: View {
                 body: bodyData
             )
             
+            // Also save to daily log store for historical tracking
+            let beverageTypeEnum = LiquidEntry.BeverageType(rawValue: beverageType) ?? .water
+            let liquidEntry = LiquidEntry(
+                timestamp: Date(),
+                amount: amount,
+                beverageType: beverageTypeEnum,
+                beverageName: beverageName.isEmpty ? nil : beverageName,
+                calories: calculateCalories(),
+                sugar: calculateSugar()
+            )
+            LocalDailyLogStore.shared.addLiquidIntake(liquidEntry)
+            
             // Success - show alert and dismiss
             await MainActor.run {
                 showSuccess = true

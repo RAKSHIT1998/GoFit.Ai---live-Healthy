@@ -86,7 +86,7 @@ struct HomeDashboardView: View {
                 MealScannerView3().environmentObject(auth)
             }
             .sheet(isPresented: $showingHistory) {
-                MealHistoryView().environmentObject(auth)
+                DailyLogHistoryView().environmentObject(auth)
             }
             .sheet(isPresented: $showingFasting) {
                 FastingView()

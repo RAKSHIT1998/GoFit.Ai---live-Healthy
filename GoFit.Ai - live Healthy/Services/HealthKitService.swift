@@ -102,8 +102,13 @@ class HealthKitService: ObservableObject {
                 return
             }
             
+            let steps = Int(sum.doubleValue(for: HKUnit.count()))
+            
+            // Update daily log store
+            LocalDailyLogStore.shared.updateSteps(steps)
+            
             Task { @MainActor in
-                self.todaySteps = Int(sum.doubleValue(for: HKUnit.count()))
+                self.todaySteps = steps
             }
         }
         
@@ -123,8 +128,13 @@ class HealthKitService: ObservableObject {
                 return
             }
             
+            let calories = sum.doubleValue(for: HKUnit.kilocalorie())
+            
+            // Update daily log store
+            LocalDailyLogStore.shared.updateCaloriesBurned(calories)
+            
             Task { @MainActor in
-                self.todayActiveCalories = sum.doubleValue(for: HKUnit.kilocalorie())
+                self.todayActiveCalories = calories
             }
         }
         

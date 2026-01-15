@@ -709,6 +709,33 @@ struct MealScannerView3: View {
         // Store locally IMMEDIATELY for instant UI update
         LocalMealCache.shared.addMeal(cachedMeal)
         
+        // Also save to daily log store for historical tracking
+        let mealItems = parsedItems.map { item in
+            MealItem(
+                name: item.name,
+                calories: item.calories,
+                protein: item.protein,
+                carbs: item.carbs,
+                fat: item.fat,
+                sugar: item.sugar,
+                portionSize: item.qtyText.isEmpty ? nil : item.qtyText,
+                quantity: item.qtyText.isEmpty ? nil : item.qtyText
+            )
+        }
+        
+        let loggedMeal = LoggedMeal(
+            timestamp: Date(),
+            mealType: .snack, // Can be enhanced to allow user selection
+            items: mealItems,
+            totalCalories: totalCalories,
+            totalProtein: totalProtein,
+            totalCarbs: totalCarbs,
+            totalFat: totalFat,
+            totalSugar: totalSugar
+        )
+        
+        LocalDailyLogStore.shared.addMeal(loggedMeal)
+        
         // Post notification to refresh UI immediately
         await MainActor.run {
             NotificationCenter.default.post(name: NSNotification.Name("MealSaved"), object: nil)
