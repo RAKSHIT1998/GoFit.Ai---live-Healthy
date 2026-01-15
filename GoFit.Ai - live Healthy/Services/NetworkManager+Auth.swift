@@ -6,6 +6,42 @@ final class NetworkManager {
     private init() {}
 
     let baseURL = URL(string: EnvironmentConfig.apiBaseURL)!
+    
+    // MARK: - Error Extraction Helpers
+    private func extractErrorFromHTML(_ html: String, statusCode: Int) -> String {
+        // Handle specific status codes with user-friendly messages
+        switch statusCode {
+        case 503:
+            if html.contains("Could not find host") || html.contains("Cloudflare") {
+                return "Server is temporarily unavailable. The service may be down for maintenance. Please try again later or use offline features."
+            }
+            return "Service temporarily unavailable. Please try again later."
+        case 502:
+            return "Bad gateway. The server is experiencing issues. Please try again later."
+        case 504:
+            return "Gateway timeout. The server took too long to respond. Please try again."
+        case 500:
+            return "Internal server error. Please try again later."
+        case 404:
+            return "Endpoint not found. Please check your connection."
+        case 401:
+            return "Authentication required. Please sign in again."
+        case 403:
+            return "Access forbidden. You don't have permission to access this resource."
+        default:
+            // Try to extract error message from HTML if possible
+            if let titleRange = html.range(of: "<title>", options: .caseInsensitive),
+               let titleEndRange = html.range(of: "</title>", options: .caseInsensitive, range: titleRange.upperBound..<html.endIndex) {
+                let title = String(html[titleRange.upperBound..<titleEndRange.lowerBound])
+                if !title.isEmpty && title.count < 200 {
+                    return title
+                }
+            }
+            
+            // Fallback to generic message
+            return "Network request failed (Status \(statusCode)). Please check your internet connection and try again."
+        }
+    }
 
     // Generic JSON request with Bearer token (if present)
     func request<T: Decodable>(_ path: String, method: String = "GET", body: Data? = nil) async throws -> T {
@@ -36,13 +72,15 @@ final class NetworkManager {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
+        req.timeoutInterval = 60.0 // 60 second timeout
+        
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let httpResponse = resp as? HTTPURLResponse, 200...299 ~= httpResponse.statusCode else {
             // try to decode error message from JSON response
             let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
             var errorMessage = "Request failed with status code \(statusCode)"
             
-            // Try to parse JSON error response
+            // Try to parse JSON error response first
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 if let message = errorJson["message"] as? String {
                     errorMessage = message
@@ -50,7 +88,19 @@ final class NetworkManager {
                     errorMessage = error
                 }
             } else if let errStr = String(data: data, encoding: .utf8), !errStr.isEmpty {
-                errorMessage = errStr
+                // Check if response is HTML (like Cloudflare error pages)
+                if errStr.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<!DOCTYPE") || errStr.contains("<html") {
+                    // Extract meaningful error from HTML
+                    errorMessage = extractErrorFromHTML(errStr, statusCode: statusCode)
+                } else {
+                    // Regular text error, but limit length to avoid huge error messages
+                    let maxLength = 500
+                    if errStr.count > maxLength {
+                        errorMessage = String(errStr.prefix(maxLength)) + "..."
+                    } else {
+                        errorMessage = errStr
+                    }
+                }
             }
             
             throw NSError(domain: "NetworkError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
@@ -79,13 +129,27 @@ final class NetworkManager {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
+        req.timeoutInterval = 60.0 // 60 second timeout
+        
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let httpResponse = resp as? HTTPURLResponse, 200...299 ~= httpResponse.statusCode else {
             let statusCode = (resp as? HTTPURLResponse)?.statusCode ?? -1
-            if let errStr = String(data: data, encoding: .utf8) {
-                throw NSError(domain: "NetworkError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errStr])
+            var errorMessage = "Request failed with status code \(statusCode)"
+            
+            if let errStr = String(data: data, encoding: .utf8), !errStr.isEmpty {
+                // Check if response is HTML
+                if errStr.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<!DOCTYPE") || errStr.contains("<html") {
+                    errorMessage = extractErrorFromHTML(errStr, statusCode: statusCode)
+                } else {
+                    // Limit length for text errors
+                    let maxLength = 500
+                    errorMessage = errStr.count > maxLength ? String(errStr.prefix(maxLength)) + "..." : errStr
+                }
+            } else {
+                errorMessage = extractErrorFromHTML("", statusCode: statusCode)
             }
-            throw URLError(.badServerResponse)
+            
+            throw NSError(domain: "NetworkError", code: statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])

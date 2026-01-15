@@ -257,17 +257,38 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
+    // Normalize email (trim and lowercase) - must match registration format
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Find user by normalized email
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log('❌ Login failed: User not found');
+      console.log('❌ Login failed: User not found for email:', normalizedEmail.substring(0, 10) + '...');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if user has a password (Apple-only users don't have passwords)
+    if (!user.passwordHash) {
+      console.log('❌ Login failed: User has no password (Apple-only account)');
+      return res.status(401).json({ message: 'This account was created with Apple Sign In. Please use Apple Sign In to log in.' });
+    }
+
+    // Normalize password (trim) - must match registration format
+    // Note: We trim but don't reject empty passwords here since validation happens in comparePassword
+    const normalizedPassword = password.trim();
+    
     // Check password
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await user.comparePassword(normalizedPassword);
     if (!isMatch) {
-      console.log('❌ Login failed: Invalid password');
+      console.log('❌ Login failed: Invalid password for user:', user._id.toString());
+      // Additional debug logging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Debug: Password hash exists:', !!user.passwordHash);
+        console.log('🔍 Debug: Password hash length:', user.passwordHash?.length || 0);
+      }
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -495,7 +516,9 @@ router.post('/apple', async (req, res) => {
 
     // New user - check if email already exists
     if (email) {
-      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      // Normalize email to match registration format (trim + lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+      const existingUser = await User.findOne({ email: normalizedEmail });
       if (existingUser) {
         // Link Apple ID to existing account
         existingUser.appleId = userIdentifier;
@@ -534,7 +557,7 @@ router.post('/apple', async (req, res) => {
     
     user = new User({
       name: name || 'Apple User',
-      email: email ? email.toLowerCase() : `${userIdentifier}@apple.privaterelay.app`,
+      email: email ? email.trim().toLowerCase() : `${userIdentifier}@apple.privaterelay.app`,
       appleId: userIdentifier,
       // No passwordHash for Apple users
       goals: goals || 'maintain',
@@ -722,7 +745,9 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    // Normalize email to match registration format (trim + lowercase)
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     
     // Don't reveal if user exists or not (security best practice)
     if (!user) {

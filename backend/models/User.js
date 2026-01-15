@@ -210,7 +210,25 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   if (!this.passwordHash) {
     return false;
   }
-  return await bcrypt.compare(candidatePassword, this.passwordHash);
+  
+  // Validate that password hash is a valid bcrypt hash
+  // Bcrypt hashes start with $2a$, $2b$, or $2y$
+  if (!this.passwordHash.startsWith('$2')) {
+    console.error('⚠️ Invalid password hash format for user:', this._id.toString());
+    return false;
+  }
+  
+  // Validate candidate password is not empty
+  if (!candidatePassword || candidatePassword.length === 0) {
+    return false;
+  }
+  
+  try {
+    return await bcrypt.compare(candidatePassword, this.passwordHash);
+  } catch (error) {
+    console.error('❌ Error comparing password:', error);
+    return false;
+  }
 };
 
 // Remove password from JSON output
