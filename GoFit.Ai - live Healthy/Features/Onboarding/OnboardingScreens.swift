@@ -1339,10 +1339,15 @@ struct OnboardingSignupView: View {
                     
                     // Initialize trial for new user after successful signup
                     purchases.initializeTrialForNewUser()
-                    
-                    // Small delay to ensure state is updated before showing paywall
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        showingPaywall = true
+                }
+                
+                // Show paywall after signup with a small delay to ensure state is updated
+                // Do this on main thread after a brief delay
+                await MainActor.run {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if auth.isLoggedIn && !showingPaywall {
+                            showingPaywall = true
+                        }
                     }
                 }
             } catch {

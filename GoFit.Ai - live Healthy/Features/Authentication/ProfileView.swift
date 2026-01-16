@@ -81,6 +81,18 @@ struct ProfileView: View {
             .sheet(isPresented: $showingTargetSettings) {
                 TargetSettingsView().environmentObject(auth)
             }
+            .onAppear {
+                // Refresh subscription status when profile appears
+                Task {
+                    await purchases.checkTrialAndSubscriptionStatus()
+                }
+            }
+            .onChange(of: purchases.subscriptionStatus) { oldValue, newValue in
+                // Refresh UI when subscription status changes
+            }
+            .onChange(of: purchases.trialDaysRemaining) { oldValue, newValue in
+                // Refresh UI when trial days remaining changes
+            }
             .sheet(isPresented: $showingShareProgress) {
                 ShareProgressView(
                     calories: "1,450", // TODO: Get actual calories from backend
