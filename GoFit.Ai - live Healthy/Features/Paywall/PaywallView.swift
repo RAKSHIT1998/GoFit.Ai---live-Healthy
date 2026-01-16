@@ -164,18 +164,25 @@ struct PaywallView: View {
                 }
                 .padding()
             } else {
-                // Show both monthly and yearly plans
+                // Show both monthly and yearly plans with subscription details
                 ForEach(purchases.products, id: \.id) { product in
                     let planType: PlanType = product.id == PlanType.monthly.id ? .monthly : .yearly
                     let isSelected = selectedPlan == planType
                     
-                    PlanCard(
-                        product: product,
-                        type: planType,
-                        isSelected: isSelected
-                    ) {
-                        withAnimation(.spring()) {
-                            selectedPlan = planType
+                    VStack(spacing: Design.Spacing.sm) {
+                        PlanCard(
+                            product: product,
+                            type: planType,
+                            isSelected: isSelected
+                        ) {
+                            withAnimation(.spring()) {
+                                selectedPlan = planType
+                            }
+                        }
+                        
+                        // Display subscription details for selected plan (Apple requirement)
+                        if isSelected {
+                            subscriptionDetailsView(product: product, planType: planType)
                         }
                     }
                 }
@@ -226,36 +233,101 @@ struct PaywallView: View {
         .padding(.horizontal)
     }
 
-    // MARK: - Terms
+    // MARK: - Terms & Subscription Info
     private var terms: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Design.Spacing.md) {
+            // Required Subscription Information (Apple Guidelines 3.1.2)
             if let product = purchases.getProduct(id: selectedPlan.id) {
-                VStack(spacing: 8) {
-                    // Prominent 3-day free trial badge
-                    HStack(spacing: 6) {
-                        Image(systemName: "gift.fill")
-                            .font(.title3)
-                            .foregroundColor(Design.Colors.primary)
-                        Text("3-Day Free Trial")
-                            .font(Design.Typography.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(Design.Colors.primary)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Design.Colors.primary.opacity(0.1))
-                    .cornerRadius(12)
+                VStack(spacing: Design.Spacing.sm) {
+                    // Subscription Title
+                    Text("GoFit.Ai Premium")
+                        .font(Design.Typography.headline)
+                        .foregroundColor(.primary)
                     
-                    Text("Then \(product.displayPrice)/\(selectedPlan.periodText)")
+                    // Subscription Length
+                    Text("Auto-renewable subscription")
                         .font(Design.Typography.subheadline)
                         .foregroundColor(.secondary)
                     
+                    // Subscription Period
+                    Text("\(selectedPlan.periodText.capitalized) subscription")
+                        .font(Design.Typography.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    // Price Information
+                    VStack(spacing: 4) {
+                        // Prominent 3-day free trial badge
+                        HStack(spacing: 6) {
+                            Image(systemName: "gift.fill")
+                                .font(.title3)
+                                .foregroundColor(Design.Colors.primary)
+                            Text("3-Day Free Trial")
+                                .font(Design.Typography.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(Design.Colors.primary)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Design.Colors.primary.opacity(0.1))
+                        .cornerRadius(12)
+                        
+                        Text("Then \(product.displayPrice)/\(selectedPlan.periodText)")
+                            .font(Design.Typography.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        // Price per unit if applicable
+                        if selectedPlan == .yearly {
+                            let monthlyPrice = product.price / 12.0
+                            let formatter = NumberFormatter()
+                            formatter.numberStyle = .currency
+                            formatter.locale = Locale.current
+                            if let monthlyPriceString = formatter.string(from: NSDecimalNumber(decimal: monthlyPrice)) {
+                                Text("\(monthlyPriceString) per month")
+                                    .font(Design.Typography.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, Design.Spacing.sm)
+                    
                     Text("Cancel anytime in Settings")
-                        .font(.caption2)
+                        .font(Design.Typography.caption)
                         .foregroundColor(.secondary)
                 }
+                .padding(Design.Spacing.md)
+                .background(Design.Colors.cardBackground)
+                .cornerRadius(Design.Radius.medium)
             }
-
+            
+            // Required Links (Apple Guidelines 3.1.2)
+            VStack(spacing: Design.Spacing.sm) {
+                // Terms of Use (EULA) Link
+                Link(destination: URL(string: "https://gofit.ai/terms")!) {
+                    HStack {
+                        Text("Terms of Use")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(Design.Colors.primary)
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption)
+                            .foregroundColor(Design.Colors.primary)
+                    }
+                }
+                
+                // Privacy Policy Link
+                Link(destination: URL(string: "https://gofit.ai/privacy")!) {
+                    HStack {
+                        Text("Privacy Policy")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(Design.Colors.primary)
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption)
+                            .foregroundColor(Design.Colors.primary)
+                    }
+                }
+            }
+            .padding(.vertical, Design.Spacing.sm)
+            
+            // Restore Purchases
             Button("Restore Purchases") {
                 Task { 
                     do {
@@ -265,12 +337,66 @@ struct PaywallView: View {
                     }
                 }
             }
-            .font(.caption)
+            .font(Design.Typography.caption)
             .foregroundColor(.secondary)
         }
+        .padding(.horizontal, Design.Spacing.md)
         .padding(.top, Design.Spacing.sm)
     }
 
+    // MARK: - Subscription Details (Required by Apple)
+    private func subscriptionDetailsView(product: Product, planType: PlanType) -> some View {
+        VStack(alignment: .leading, spacing: Design.Spacing.xs) {
+            // Title
+            Text("Subscription Details")
+                .font(Design.Typography.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            // Subscription length
+            HStack {
+                Text("Length:")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+                Text("\(planType.periodText.capitalized)")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.primary)
+            }
+            
+            // Price
+            HStack {
+                Text("Price:")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.secondary)
+                Text("\(product.displayPrice) per \(planType.periodText)")
+                    .font(Design.Typography.caption)
+                    .foregroundColor(.primary)
+            }
+            
+            // Price per unit (for yearly)
+            if planType == .yearly {
+                let monthlyPrice = product.price / 12.0
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .currency
+                formatter.locale = Locale.current
+                if let monthlyPriceString = formatter.string(from: NSDecimalNumber(decimal: monthlyPrice)) {
+                    HStack {
+                        Text("Price per month:")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                        Text(monthlyPriceString)
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Design.Spacing.sm)
+        .background(Design.Colors.secondaryBackground)
+        .cornerRadius(Design.Radius.small)
+    }
+    
     private func purchase() async {
         loading = true
         error = nil
