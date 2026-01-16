@@ -116,6 +116,11 @@ class PurchaseManager: ObservableObject {
         return max(0, days)
     }
     
+    // Public method to check if user is in trial (for UI display)
+    var isInTrial: Bool {
+        return isTrialActive() || subscriptionStatus == .trial
+    }
+    
     func checkTrialAndSubscriptionStatus() async {
         // First, check if user is logged in - if not, don't check subscription
         guard AuthService.shared.readToken() != nil else {

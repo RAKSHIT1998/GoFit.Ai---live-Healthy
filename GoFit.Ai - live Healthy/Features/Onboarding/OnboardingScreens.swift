@@ -1221,23 +1221,24 @@ struct OnboardingSignupView: View {
             // 1. User just logged in (newValue is true, oldValue was false)
             // 2. This is NOT from the login button (isLoginFromSignup is false)
             // 3. Paywall is not already showing
-            // 4. Onboarding data exists (indicating a new signup)
             if newValue && !oldValue && !isLoginFromSignup && !showingPaywall {
-                // Only initialize trial and show paywall for NEW signups
-                // Check if onboardingData exists to confirm this is a new signup
-                if auth.onboardingData != nil {
+                // Check if this is a new signup by checking if trial hasn't been initialized yet
+                // OR if onboardingData exists (indicating a new signup)
+                let isNewSignup = purchases.getTrialStartDate() == nil || auth.onboardingData != nil
+                
+                if isNewSignup {
                     // Initialize trial for new user
                     purchases.initializeTrialForNewUser()
-                    
-                    // Show paywall after signup (if not already showing)
-                    // Small delay to ensure state is properly updated
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        showingPaywall = true
-                    }
                     
                     // Mark onboarding as complete
                     auth.didFinishOnboarding = true
                     auth.saveLocalState()
+                    
+                    // Show paywall after signup (if not already showing)
+                    // Small delay to ensure state is properly updated and signup view is dismissed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showingPaywall = true
+                    }
                 } else {
                     // Existing user logged in - just mark onboarding as complete if needed
                     // but don't show paywall or initialize trial

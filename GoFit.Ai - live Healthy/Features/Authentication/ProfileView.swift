@@ -410,10 +410,74 @@ struct ProfileView: View {
     // MARK: - Subscription
     private var subscriptionSection: some View {
         SettingsSection(title: "Subscription") {
-            if purchases.hasActiveSubscription {
-                Text("Premium Active")
-                    .font(.headline)
+            // Check if user has active PAID subscription (not trial)
+            if purchases.subscriptionStatus == .active && !purchases.isTrialActive() {
+                // User has active paid subscription
+                VStack(alignment: .leading, spacing: Design.Spacing.xs) {
+                    HStack {
+                        Image(systemName: "crown.fill")
+                            .foregroundColor(.yellow)
+                            .font(.title3)
+                        Text("Premium Active")
+                            .font(Design.Typography.headline)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    if let subscription = purchases.currentSubscription,
+                       let expirationDate = subscription.expirationDate {
+                        Text("Renews: \(formatDate(expirationDate))")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("You have full access to all premium features")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, Design.Spacing.xs)
+            } else if purchases.isTrialActive() {
+                // User is in trial period
+                VStack(alignment: .leading, spacing: Design.Spacing.sm) {
+                    HStack {
+                        Image(systemName: "gift.fill")
+                            .foregroundColor(Design.Colors.primary)
+                            .font(.title3)
+                        Text("Trial User")
+                            .font(Design.Typography.headline)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    if let daysRemaining = purchases.getTrialDaysRemaining() {
+                        Text("\(daysRemaining) day\(daysRemaining == 1 ? "" : "s") left in your free trial")
+                            .font(Design.Typography.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Free trial active")
+                            .font(Design.Typography.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        HStack {
+                            Text("Subscribe Now")
+                                .font(Design.Typography.subheadline)
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "arrow.right.circle.fill")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, Design.Spacing.md)
+                        .padding(.vertical, Design.Spacing.sm)
+                        .background(Design.Colors.primaryGradient)
+                        .cornerRadius(Design.Radius.medium)
+                    }
+                    .padding(.top, Design.Spacing.xs)
+                }
+                .padding(.vertical, Design.Spacing.xs)
             } else {
+                // No subscription or trial expired
                 Button {
                     showingPaywall = true
                 } label: {
