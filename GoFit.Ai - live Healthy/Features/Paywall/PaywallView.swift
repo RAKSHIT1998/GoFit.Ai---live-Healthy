@@ -277,14 +277,12 @@ struct PaywallView: View {
                         
                         // Price per unit if applicable
                         if selectedPlan == .yearly {
-                            let monthlyPrice = product.price / 12.0
-                            let formatter = NumberFormatter()
-                            formatter.numberStyle = .currency
-                            formatter.locale = Locale.current
-                            if let monthlyPriceString = formatter.string(from: NSDecimalNumber(decimal: monthlyPrice)) {
-                                Text("\(monthlyPriceString) per month")
-                                    .font(Design.Typography.caption)
-                                    .foregroundColor(.secondary)
+                            Group {
+                                if let monthlyPriceString = formatMonthlyPrice(from: product.price) {
+                                    Text("\(monthlyPriceString) per month")
+                                        .font(Design.Typography.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
@@ -344,6 +342,15 @@ struct PaywallView: View {
         .padding(.top, Design.Spacing.sm)
     }
 
+    // MARK: - Helper Functions
+    private func formatMonthlyPrice(from yearlyPrice: Decimal) -> String? {
+        let monthlyPrice = yearlyPrice / 12.0
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale.current
+        return formatter.string(from: NSDecimalNumber(decimal: monthlyPrice))
+    }
+    
     // MARK: - Subscription Details (Required by Apple)
     private func subscriptionDetailsView(product: Product, planType: PlanType) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.xs) {
@@ -375,18 +382,16 @@ struct PaywallView: View {
             
             // Price per unit (for yearly)
             if planType == .yearly {
-                let monthlyPrice = product.price / 12.0
-                let formatter = NumberFormatter()
-                formatter.numberStyle = .currency
-                formatter.locale = Locale.current
-                if let monthlyPriceString = formatter.string(from: NSDecimalNumber(decimal: monthlyPrice)) {
-                    HStack {
-                        Text("Price per month:")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
-                        Text(monthlyPriceString)
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.primary)
+                Group {
+                    if let monthlyPriceString = formatMonthlyPrice(from: product.price) {
+                        HStack {
+                            Text("Price per month:")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                            Text(monthlyPriceString)
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.primary)
+                        }
                     }
                 }
             }
