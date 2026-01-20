@@ -300,7 +300,7 @@ struct PaywallView: View {
             // Required Links (Apple Guidelines 3.1.2)
             VStack(spacing: Design.Spacing.sm) {
                 // Terms of Use (EULA) Link - Must be functional
-                if let termsURL = URL(string: "https://gofit.ai/terms") {
+                if let termsURL = URL(string: "https://gofitai.org/terms-and-conditions") {
                     Link(destination: termsURL) {
                         HStack(spacing: 4) {
                             Text("Terms of Use")
@@ -317,14 +317,14 @@ struct PaywallView: View {
                         .font(Design.Typography.caption)
                         .foregroundColor(Design.Colors.primary)
                         .onTapGesture {
-                            if let url = URL(string: "https://gofit.ai/terms") {
+                            if let url = URL(string: "https://gofitai.org/terms-and-conditions") {
                                 UIApplication.shared.open(url)
                             }
                         }
                 }
                 
                 // Privacy Policy Link - Must be functional
-                if let privacyURL = URL(string: "https://gofit.ai/privacy") {
+                if let privacyURL = URL(string: "https://gofitai.org/privacy-policy") {
                     Link(destination: privacyURL) {
                         HStack(spacing: 4) {
                             Text("Privacy Policy")
@@ -341,7 +341,7 @@ struct PaywallView: View {
                         .font(Design.Typography.caption)
                         .foregroundColor(Design.Colors.primary)
                         .onTapGesture {
-                            if let url = URL(string: "https://gofit.ai/privacy") {
+                            if let url = URL(string: "https://gofitai.org/privacy-policy") {
                                 UIApplication.shared.open(url)
                             }
                         }

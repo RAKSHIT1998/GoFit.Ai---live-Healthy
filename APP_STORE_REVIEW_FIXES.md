@@ -22,14 +22,14 @@
 - ✅ Length of subscription: Monthly/Yearly (displayed)
 - ✅ Price of subscription: Shown with product.displayPrice
 - ✅ Price per unit: Monthly price calculated for yearly plan
-- ✅ Functional link to Terms of Use: https://gofit.ai/terms
-- ✅ Functional link to Privacy Policy: https://gofit.ai/privacy
+- ✅ Functional link to Terms of Use: https://gofitai.org/terms-and-conditions
+- ✅ Functional link to Privacy Policy: https://gofitai.org/privacy-policy
 
 **Action Required in App Store Connect:**
 
 1. **Privacy Policy Link:**
    - Go to App Store Connect → Your App → App Privacy
-   - Add Privacy Policy URL: `https://gofit.ai/privacy`
+   - Add Privacy Policy URL: `https://gofitai.org/privacy-policy`
    - Ensure the link is functional and accessible
 
 2. **Terms of Use (EULA) Link:**
@@ -40,13 +40,13 @@
    - Option B: Use Custom EULA
      - Go to App Store Connect → Your App → App Information
      - Add custom EULA in the EULA field
-     - Ensure Terms of Use link in app description: `https://gofit.ai/terms`
+     - Ensure Terms of Use link in app description: `https://gofitai.org/terms-and-conditions`
 
 3. **App Description Update:**
    Add the following to your App Description in App Store Connect:
    ```
-   Terms of Use: https://gofit.ai/terms
-   Privacy Policy: https://gofit.ai/privacy
+   Terms of Use: https://gofitai.org/terms-and-conditions
+   Privacy Policy: https://gofitai.org/privacy-policy
    ```
 
 ## Implementation Details
@@ -67,14 +67,14 @@
 7. **Cancellation:** "Cancel anytime in Settings"
 
 ### Links
-- Terms of Use: `https://gofit.ai/terms` (must be functional)
-- Privacy Policy: `https://gofit.ai/privacy` (must be functional)
+- Terms of Use: `https://gofitai.org/terms-and-conditions` (must be functional)
+- Privacy Policy: `https://gofitai.org/privacy-policy` (must be functional)
 
 ## Next Steps
 
 1. **Create/Host Terms and Privacy Pages:**
-   - Ensure `https://gofit.ai/terms` is live and accessible
-   - Ensure `https://gofit.ai/privacy` is live and accessible
+   - Ensure `https://gofitai.org/terms-and-conditions` is live and accessible
+   - Ensure `https://gofitai.org/privacy-policy` is live and accessible
    - Both pages should be mobile-friendly
 
 2. **Submit IAP Products:**
