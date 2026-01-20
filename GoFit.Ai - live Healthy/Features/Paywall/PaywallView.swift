@@ -299,28 +299,52 @@ struct PaywallView: View {
             
             // Required Links (Apple Guidelines 3.1.2)
             VStack(spacing: Design.Spacing.sm) {
-                // Terms of Use (EULA) Link
-                Link(destination: URL(string: "https://gofit.ai/terms")!) {
-                    HStack {
-                        Text("Terms of Use")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(Design.Colors.primary)
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.caption)
-                            .foregroundColor(Design.Colors.primary)
+                // Terms of Use (EULA) Link - Must be functional
+                if let termsURL = URL(string: "https://gofit.ai/terms") {
+                    Link(destination: termsURL) {
+                        HStack(spacing: 4) {
+                            Text("Terms of Use")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(Design.Colors.primary)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption2)
+                                .foregroundColor(Design.Colors.primary)
+                        }
                     }
+                } else {
+                    // Fallback if URL is invalid
+                    Text("Terms of Use")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(Design.Colors.primary)
+                        .onTapGesture {
+                            if let url = URL(string: "https://gofit.ai/terms") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
                 }
                 
-                // Privacy Policy Link
-                Link(destination: URL(string: "https://gofit.ai/privacy")!) {
-                    HStack {
-                        Text("Privacy Policy")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(Design.Colors.primary)
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.caption)
-                            .foregroundColor(Design.Colors.primary)
+                // Privacy Policy Link - Must be functional
+                if let privacyURL = URL(string: "https://gofit.ai/privacy") {
+                    Link(destination: privacyURL) {
+                        HStack(spacing: 4) {
+                            Text("Privacy Policy")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(Design.Colors.primary)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption2)
+                                .foregroundColor(Design.Colors.primary)
+                        }
                     }
+                } else {
+                    // Fallback if URL is invalid
+                    Text("Privacy Policy")
+                        .font(Design.Typography.caption)
+                        .foregroundColor(Design.Colors.primary)
+                        .onTapGesture {
+                            if let url = URL(string: "https://gofit.ai/privacy") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
                 }
             }
             .padding(.vertical, Design.Spacing.sm)

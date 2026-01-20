@@ -53,14 +53,19 @@ final class AuthViewModel: ObservableObject {
                 // User data already loaded from local state, just verify token is still valid
                 // Try to refresh profile in background (non-blocking)
                 // Use low priority to not block UI
+                // Use forceLogoutOn401=true only on app launch to check if token is still valid
                 Task(priority: .utility) {
-                    await refreshUserProfile()
+                    // Add a small delay to ensure token is fully loaded
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    await refreshUserProfile(forceLogoutOn401: true)
                 }
             } else {
                 // No local user data, try to fetch from backend
                 // Use low priority to not block UI
                 Task(priority: .utility) {
-                    await refreshUserProfile()
+                    // Add a small delay to ensure token is fully loaded
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    await refreshUserProfile(forceLogoutOn401: true)
                 }
             }
         } else {
@@ -120,6 +125,9 @@ final class AuthViewModel: ObservableObject {
         AuthService.shared.saveToken(token)
         
         // Fetch user profile to get complete user data
+        // Add a small delay to ensure token is fully saved and backend is ready
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
         do {
             let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             self.userId = me.id
@@ -138,6 +146,11 @@ final class AuthViewModel: ObservableObject {
             // Also save to LocalUserStore
             LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
             // Don't throw - login was successful, profile fetch is secondary
+            // Try to refresh profile in background later (non-blocking, won't log out on error)
+            Task(priority: .utility) {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
+                await refreshUserProfile(forceLogoutOn401: false) // Don't log out on 401 immediately after login
+            }
         }
     }
 
@@ -176,6 +189,9 @@ final class AuthViewModel: ObservableObject {
         AuthService.shared.saveToken(token)
         
         // Fetch user profile to get complete user data (including userId from database)
+        // Add a small delay to ensure token is fully saved and backend is ready
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
         do {
             print("🔵 Fetching user profile from backend...")
             let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
@@ -205,6 +221,11 @@ final class AuthViewModel: ObservableObject {
                 LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
             }
             // Don't throw - signup was successful, profile fetch is secondary
+            // Try to refresh profile in background later (non-blocking, won't log out on error)
+            Task(priority: .utility) {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
+                await refreshUserProfile(forceLogoutOn401: false) // Don't log out on 401 immediately after signup
+            }
         }
     }
 
@@ -242,6 +263,9 @@ final class AuthViewModel: ObservableObject {
         }
         
         // Fetch user profile
+        // Add a small delay to ensure token is fully saved and backend is ready
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
         do {
             let me: UserProfile = try await NetworkManager.shared.request("auth/me", method: "GET", body: nil)
             self.userId = me.id
@@ -257,6 +281,11 @@ final class AuthViewModel: ObservableObject {
             // Still save state with what we have
             saveLocalState()
             // Don't throw - Apple Sign In was successful, profile fetch is secondary
+            // Try to refresh profile in background later (non-blocking, won't log out on error)
+            Task(priority: .utility) {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
+                await refreshUserProfile(forceLogoutOn401: false) // Don't log out on 401 immediately after Apple Sign In
+            }
         }
     }
     
@@ -286,7 +315,9 @@ final class AuthViewModel: ObservableObject {
     }
     
     // Refresh user profile from backend
-    func refreshUserProfile() async {
+    // forceLogoutOn401: Only set to true when explicitly checking token validity (e.g., on app launch)
+    // Set to false when called immediately after login to avoid logging out on transient errors
+    func refreshUserProfile(forceLogoutOn401: Bool = false) async {
         guard !EnvironmentConfig.skipAuthentication, isLoggedIn else { return }
         
         // Check if token exists before attempting refresh
@@ -332,9 +363,16 @@ final class AuthViewModel: ObservableObject {
                 }
                 
                 if isUnauthorized {
-                    print("❌ Token expired or invalid (401). Logging out user.")
-                    await MainActor.run {
-                        self.logout()
+                    // Only log out if explicitly requested (e.g., on app launch with existing token)
+                    // Don't log out immediately after login - might be a transient backend issue
+                    if forceLogoutOn401 {
+                        print("❌ Token expired or invalid (401). Logging out user.")
+                        await MainActor.run {
+                            self.logout()
+                        }
+                    } else {
+                        print("⚠️ Token validation failed (401) but not logging out - may be transient error")
+                        // User stays logged in - might be a backend timing issue
                     }
                 } else {
                     // For network errors, timeouts, server errors (500, 503, etc.), don't log out
