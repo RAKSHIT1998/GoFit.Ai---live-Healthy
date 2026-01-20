@@ -143,8 +143,9 @@ final class AuthViewModel: ObservableObject {
             // Use email from login form as fallback
             self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
             saveLocalState()
-            // Also save to LocalUserStore
-            LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
+            // Only update email in LocalUserStore - don't update name/weight/height as we don't have them from login form
+            // This prevents corrupting stored user profile with stale data from previous authentication flows
+            LocalUserStore.shared.updateBasicInfo(email: self.email)
             // Don't throw - login was successful, profile fetch is secondary
             // Try to refresh profile in background later (non-blocking, won't log out on error)
             Task(priority: .utility) {
