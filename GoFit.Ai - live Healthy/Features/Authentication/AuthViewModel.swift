@@ -211,7 +211,8 @@ final class AuthViewModel: ObservableObject {
             saveLocalState()
             // Also save to LocalUserStore
             if let onboardingData = onboardingData {
-                LocalUserStore.shared.updateOnboardingData(onboardingData, userId: me.id)
+                // Preserve email from fetched profile
+                LocalUserStore.shared.updateOnboardingData(onboardingData, userId: me.id, email: self.email)
             } else {
                 LocalUserStore.shared.updateBasicInfo(name: me.name, email: me.email, weightKg: self.weightKg, heightCm: self.heightCm)
             }
@@ -225,7 +226,8 @@ final class AuthViewModel: ObservableObject {
             saveLocalState()
             // Also save to LocalUserStore
             if let onboardingData = onboardingData {
-                LocalUserStore.shared.updateOnboardingData(onboardingData)
+                // Preserve email from signup form
+                LocalUserStore.shared.updateOnboardingData(onboardingData, email: self.email)
             } else {
                 LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
             }
@@ -308,11 +310,12 @@ final class AuthViewModel: ObservableObject {
             // Save to LocalUserStore - check if onboardingData exists first
             if let onboardingData = onboardingData {
                 // Save comprehensive onboarding data if available
-                LocalUserStore.shared.updateOnboardingData(onboardingData)
-            } else if !self.email.isEmpty {
-                // Create a minimal profile with only the email we know
+                // Preserve email from Apple Sign In result (don't overwrite with empty string)
+                LocalUserStore.shared.updateOnboardingData(onboardingData, email: self.email.isEmpty ? nil : self.email)
+            } else if !self.email.isEmpty || !self.name.isEmpty {
+                // Create a minimal profile with name and email from Apple Sign In
                 // Profile was already cleared above, so this creates a fresh profile instead of merging with old data
-                LocalUserStore.shared.updateBasicInfo(email: self.email)
+                LocalUserStore.shared.updateBasicInfo(name: self.name.isEmpty ? nil : self.name, email: self.email.isEmpty ? nil : self.email)
             }
             // Don't throw - Apple Sign In was successful, profile fetch is secondary
             // Try to refresh profile in background later (non-blocking, won't log out on error)

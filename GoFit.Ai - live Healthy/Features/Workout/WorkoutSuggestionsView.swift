@@ -584,9 +584,13 @@ struct WorkoutSuggestionsView: View {
         // Use default activity level since AuthViewModel doesn't have this property
         let activityLevel = "moderate"
         
+        // Get dietary preferences from auth (if available)
+        let dietaryPreferences = auth.dietPrefs
+        
         // If forceNew (refresh), use timestamp-based seed for truly random selection each time
         // Otherwise, use day-based seed for consistent daily recommendations
-        let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4, useTimestamp: forceNew)
+        // Filter meals based on dietary preferences (vegan/vegetarian)
+        let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4, useTimestamp: forceNew, dietaryPreferences: dietaryPreferences)
         let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4, useTimestamp: forceNew)
         
         let fallbackRecommendation = RecommendationResponse(

@@ -178,11 +178,11 @@ final class LocalUserStore: ObservableObject {
         }
     }
     
-    func updateOnboardingData(_ onboardingData: OnboardingData, userId: String? = nil) {
+    func updateOnboardingData(_ onboardingData: OnboardingData, userId: String? = nil, email: String? = nil) {
         storageLock.sync {
             let profile = UserProfileData(
                 userId: userId,
-                email: "", // Email comes from auth
+                email: email ?? "", // Use provided email or empty string (email comes from auth)
                 name: onboardingData.name,
                 weightKg: onboardingData.weightKg,
                 heightCm: onboardingData.heightCm,

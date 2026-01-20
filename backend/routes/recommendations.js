@@ -260,61 +260,93 @@ function violatesDietaryPreference(mealItem, dietaryPreferences) {
   
   // Non-vegan items - comprehensive list including all variations
   const nonVeganItems = [
-    // Meats
+    // Meats - all types and variations
     'beef', 'pork', 'chicken', 'turkey', 'lamb', 'duck', 'goose', 'venison', 'bison', 'rabbit',
-    'meat', 'poultry', 'red meat', 'white meat',
-    // Fish and seafood
+    'meat', 'poultry', 'red meat', 'white meat', 'ground beef', 'ground pork', 'ground turkey',
+    'chicken breast', 'chicken thigh', 'chicken wing', 'chicken leg', 'chicken drumstick',
+    'pork chop', 'pork loin', 'pork shoulder', 'beef steak', 'beef roast', 'beef burger',
+    'turkey breast', 'turkey leg', 'lamb chop', 'lamb shank', 'duck breast', 'duck leg',
+    // Fish and seafood - all types
     'fish', 'salmon', 'tuna', 'cod', 'haddock', 'mackerel', 'sardine', 'anchovy', 'herring',
     'shrimp', 'prawn', 'crab', 'lobster', 'crayfish', 'mussel', 'oyster', 'clam', 'scallop',
-    'seafood', 'shellfish', 'squid', 'octopus', 'calamari',
-    // Eggs (all forms)
-    'egg', 'eggs', 'scrambled', 'fried egg', 'boiled egg', 'poached egg', 'omelet', 'omelette',
-    'frittata', 'quiche', 'egg white', 'egg yolk', 'deviled egg', 'egg salad',
-    // Dairy products
+    'seafood', 'shellfish', 'squid', 'octopus', 'calamari', 'tilapia', 'trout', 'bass',
+    'halibut', 'snapper', 'grouper', 'swordfish', 'mahi mahi', 'sea bass',
+    // Eggs - all forms and variations (CRITICAL for vegan)
+    'egg', 'eggs', 'scrambled', 'scrambled egg', 'scrambled eggs', 'fried egg', 'fried eggs',
+    'boiled egg', 'boiled eggs', 'poached egg', 'poached eggs', 'omelet', 'omelette',
+    'frittata', 'quiche', 'egg white', 'egg whites', 'egg yolk', 'egg yolks',
+    'deviled egg', 'deviled eggs', 'egg salad', 'egg sandwich', 'egg wrap',
+    'sunny side up', 'over easy', 'over hard', 'soft boiled', 'hard boiled',
+    // Dairy products - all types
     'milk', 'cheese', 'butter', 'yogurt', 'yoghurt', 'cream', 'sour cream', 'heavy cream',
     'dairy', 'whey', 'casein', 'lactose', 'ghee', 'buttermilk', 'cottage cheese',
-    'mozzarella', 'cheddar', 'parmesan', 'feta', 'ricotta', 'cream cheese',
+    'mozzarella', 'cheddar', 'parmesan', 'feta', 'ricotta', 'cream cheese', 'swiss cheese',
+    'goat cheese', 'blue cheese', 'brie', 'camembert', 'gouda', 'provolone',
     // Other animal products
-    'honey', 'gelatin', 'lard', 'tallow', 'rendered fat',
-    // Processed meats
+    'honey', 'gelatin', 'lard', 'tallow', 'rendered fat', 'beeswax',
+    // Processed meats - all types
     'bacon', 'sausage', 'ham', 'pepperoni', 'salami', 'prosciutto', 'chorizo', 'bologna',
-    'hot dog', 'frankfurter', 'bratwurst', 'kielbasa', 'pastrami', 'corned beef',
-    // Broth/stock
-    'chicken broth', 'beef broth', 'fish stock', 'bone broth', 'chicken stock', 'beef stock'
+    'hot dog', 'hotdog', 'frankfurter', 'bratwurst', 'kielbasa', 'pastrami', 'corned beef',
+    'deli meat', 'lunch meat', 'cold cut', 'cold cuts', 'jerky', 'beef jerky', 'turkey jerky',
+    // Broth/stock - all types
+    'chicken broth', 'beef broth', 'fish stock', 'bone broth', 'chicken stock', 'beef stock',
+    'pork broth', 'turkey broth', 'meat broth', 'animal broth'
   ];
   
   // Non-vegetarian items (meat and fish, but allow eggs/dairy)
   const nonVegetarianItems = [
-    // Meats
+    // Meats - all types and variations (CRITICAL for vegetarian)
     'beef', 'pork', 'chicken', 'turkey', 'lamb', 'duck', 'goose', 'venison', 'bison', 'rabbit',
-    'meat', 'poultry', 'red meat', 'white meat',
-    // Fish and seafood
+    'meat', 'poultry', 'red meat', 'white meat', 'ground beef', 'ground pork', 'ground turkey',
+    'chicken breast', 'chicken thigh', 'chicken wing', 'chicken leg', 'chicken drumstick',
+    'pork chop', 'pork loin', 'pork shoulder', 'beef steak', 'beef roast', 'beef burger',
+    'turkey breast', 'turkey leg', 'lamb chop', 'lamb shank', 'duck breast', 'duck leg',
+    // Fish and seafood - all types
     'fish', 'salmon', 'tuna', 'cod', 'haddock', 'mackerel', 'sardine', 'anchovy', 'herring',
     'shrimp', 'prawn', 'crab', 'lobster', 'crayfish', 'mussel', 'oyster', 'clam', 'scallop',
-    'seafood', 'shellfish', 'squid', 'octopus', 'calamari',
-    // Processed meats
+    'seafood', 'shellfish', 'squid', 'octopus', 'calamari', 'tilapia', 'trout', 'bass',
+    'halibut', 'snapper', 'grouper', 'swordfish', 'mahi mahi', 'sea bass',
+    // Processed meats - all types
     'bacon', 'sausage', 'ham', 'pepperoni', 'salami', 'prosciutto', 'chorizo', 'bologna',
-    'hot dog', 'frankfurter', 'bratwurst', 'kielbasa', 'pastrami', 'corned beef',
-    // Broth/stock
-    'chicken broth', 'beef broth', 'fish stock', 'bone broth', 'chicken stock', 'beef stock'
+    'hot dog', 'hotdog', 'frankfurter', 'bratwurst', 'kielbasa', 'pastrami', 'corned beef',
+    'deli meat', 'lunch meat', 'cold cut', 'cold cuts', 'jerky', 'beef jerky', 'turkey jerky',
+    // Broth/stock - all types
+    'chicken broth', 'beef broth', 'fish stock', 'bone broth', 'chicken stock', 'beef stock',
+    'pork broth', 'turkey broth', 'meat broth', 'animal broth'
   ];
   
   if (dietaryPreferences.includes('vegan')) {
     // Check for any non-vegan items - use word boundaries for better matching
+    // Also check for partial matches in meal names (e.g., "chicken salad" should be caught even if "chicken" appears as part of a phrase)
     for (const item of nonVeganItems) {
       // Use word boundary regex to avoid false positives (e.g., "chicken" in "chickpea")
-      const regex = new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-      if (regex.test(allText)) {
+      // But also check for the item as a standalone word or at word boundaries
+      const escapedItem = item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedItem}\\b`, 'i');
+      
+      // Also check if the item appears in common meal name patterns
+      // e.g., "chicken salad", "beef stir fry", "scrambled eggs"
+      const phrasePattern = new RegExp(`(^|\\s)${escapedItem}(\\s|$)`, 'i');
+      
+      if (regex.test(allText) || phrasePattern.test(allText)) {
         console.log(`🚫 Vegan violation detected: "${item}" found in "${mealName}"`);
+        console.log(`   Full text checked: "${allText.substring(0, 200)}"`);
         return true;
       }
     }
   } else if (dietaryPreferences.includes('vegetarian')) {
     // Check for meat/fish but allow eggs/dairy - use word boundaries
+    // CRITICAL: Must catch all meat and fish variations
     for (const item of nonVegetarianItems) {
-      const regex = new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-      if (regex.test(allText)) {
+      const escapedItem = item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedItem}\\b`, 'i');
+      
+      // Also check for phrase patterns
+      const phrasePattern = new RegExp(`(^|\\s)${escapedItem}(\\s|$)`, 'i');
+      
+      if (regex.test(allText) || phrasePattern.test(allText)) {
         console.log(`🚫 Vegetarian violation detected: "${item}" found in "${mealName}"`);
+        console.log(`   Full text checked: "${allText.substring(0, 200)}"`);
         return true;
       }
     }

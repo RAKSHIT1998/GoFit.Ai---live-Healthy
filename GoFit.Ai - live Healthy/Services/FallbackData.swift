@@ -6,8 +6,15 @@ struct FallbackDataService {
     static let shared = FallbackDataService()
     
     // MARK: - Get Daily Rotating Meals (50+ options, changes every day)
-    func getRandomMeals(goal: String = "maintain", count: Int = 4, useTimestamp: Bool = false) -> MealPlan {
-        let allMeals = getAllMeals(goal: goal)
+    func getRandomMeals(goal: String = "maintain", count: Int = 4, useTimestamp: Bool = false, dietaryPreferences: [String] = []) -> MealPlan {
+        var allMeals = getAllMeals(goal: goal)
+        
+        // Filter meals based on dietary preferences
+        if !dietaryPreferences.isEmpty {
+            allMeals = allMeals.filter { meal in
+                !violatesDietaryPreference(meal: meal, dietaryPreferences: dietaryPreferences)
+            }
+        }
         
         // Use timestamp for refresh (different each time) or day of year for consistent daily rotation
         let seed: UInt64
@@ -33,6 +40,86 @@ struct FallbackDataService {
             dinner: Array(shuffled.filter { $0.category == "dinner" }.prefix(2).map { $0.toMealItem() }),
             snacks: Array(shuffled.filter { $0.category == "snack" }.prefix(2).map { $0.toMealItem() })
         )
+    }
+    
+    // MARK: - Check if meal violates dietary preferences
+    private func violatesDietaryPreference(meal: MealData, dietaryPreferences: [String]) -> Bool {
+        let mealName = meal.name.lowercased()
+        let ingredients = meal.ingredients.joined(separator: " ").lowercased()
+        let allText = "\(mealName) \(ingredients)"
+        
+        // Non-vegan items - comprehensive list
+        let nonVeganItems = [
+            // Meats
+            "beef", "pork", "chicken", "turkey", "lamb", "duck", "goose", "venison", "bison", "rabbit",
+            "meat", "poultry", "red meat", "white meat", "ground beef", "ground pork", "ground turkey",
+            "chicken breast", "chicken thigh", "chicken wing", "chicken leg", "chicken drumstick",
+            "pork chop", "pork loin", "pork shoulder", "beef steak", "beef roast", "beef burger",
+            "turkey breast", "turkey leg", "lamb chop", "lamb shank", "duck breast", "duck leg",
+            // Fish and seafood
+            "fish", "salmon", "tuna", "cod", "haddock", "mackerel", "sardine", "anchovy", "herring",
+            "shrimp", "prawn", "crab", "lobster", "crayfish", "mussel", "oyster", "clam", "scallop",
+            "seafood", "shellfish", "squid", "octopus", "calamari",
+            // Eggs (all forms) - CRITICAL for vegan
+            "egg", "eggs", "scrambled", "scrambled egg", "scrambled eggs", "fried egg", "fried eggs",
+            "boiled egg", "boiled eggs", "poached egg", "poached eggs", "omelet", "omelette",
+            "frittata", "quiche", "egg white", "egg whites", "egg yolk", "egg yolks",
+            "deviled egg", "deviled eggs", "egg salad", "egg sandwich",
+            // Dairy products
+            "milk", "cheese", "butter", "yogurt", "yoghurt", "cream", "sour cream", "heavy cream",
+            "dairy", "whey", "casein", "lactose", "ghee", "buttermilk", "cottage cheese",
+            "mozzarella", "cheddar", "parmesan", "feta", "ricotta", "cream cheese",
+            // Other animal products
+            "honey", "gelatin", "lard", "tallow", "rendered fat",
+            // Processed meats
+            "bacon", "sausage", "ham", "pepperoni", "salami", "prosciutto", "chorizo", "bologna",
+            "hot dog", "hotdog", "frankfurter", "bratwurst", "kielbasa", "pastrami", "corned beef",
+            // Broth/stock
+            "chicken broth", "beef broth", "fish stock", "bone broth", "chicken stock", "beef stock"
+        ]
+        
+        // Non-vegetarian items (meat and fish, but allow eggs/dairy)
+        let nonVegetarianItems = [
+            // Meats - CRITICAL for vegetarian
+            "beef", "pork", "chicken", "turkey", "lamb", "duck", "goose", "venison", "bison", "rabbit",
+            "meat", "poultry", "red meat", "white meat", "ground beef", "ground pork", "ground turkey",
+            "chicken breast", "chicken thigh", "chicken wing", "chicken leg", "chicken drumstick",
+            "pork chop", "pork loin", "pork shoulder", "beef steak", "beef roast", "beef burger",
+            "turkey breast", "turkey leg", "lamb chop", "lamb shank", "duck breast", "duck leg",
+            // Fish and seafood
+            "fish", "salmon", "tuna", "cod", "haddock", "mackerel", "sardine", "anchovy", "herring",
+            "shrimp", "prawn", "crab", "lobster", "crayfish", "mussel", "oyster", "clam", "scallop",
+            "seafood", "shellfish", "squid", "octopus", "calamari",
+            // Processed meats
+            "bacon", "sausage", "ham", "pepperoni", "salami", "prosciutto", "chorizo", "bologna",
+            "hot dog", "hotdog", "frankfurter", "bratwurst", "kielbasa", "pastrami", "corned beef",
+            // Broth/stock
+            "chicken broth", "beef broth", "fish stock", "bone broth", "chicken stock", "beef stock"
+        ]
+        
+        if dietaryPreferences.contains("vegan") {
+            // Check for any non-vegan items - use word boundaries to avoid false positives
+            for item in nonVeganItems {
+                // Use word boundary matching to avoid false positives (e.g., "chickpea" shouldn't match "chicken")
+                // Check if item appears as a whole word or at word boundaries
+                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: item))\\b"
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+                   regex.firstMatch(in: allText, range: NSRange(allText.startIndex..., in: allText)) != nil {
+                    return true
+                }
+            }
+        } else if dietaryPreferences.contains("vegetarian") {
+            // Check for meat/fish but allow eggs/dairy - use word boundaries
+            for item in nonVegetarianItems {
+                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: item))\\b"
+                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+                   regex.firstMatch(in: allText, range: NSRange(allText.startIndex..., in: allText)) != nil {
+                    return true
+                }
+            }
+        }
+        
+        return false
     }
     
     // MARK: - Get Daily Rotating Workouts (50+ options, changes every day)
