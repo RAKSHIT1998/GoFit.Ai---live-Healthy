@@ -298,7 +298,8 @@ final class AuthViewModel: ObservableObject {
             // Also save to LocalUserStore - check if onboardingData exists first
             if let onboardingData = onboardingData {
                 // Save comprehensive onboarding data if available
-                LocalUserStore.shared.updateOnboardingData(onboardingData, userId: me.id)
+                // Preserve email from fetched profile (don't overwrite with empty string)
+                LocalUserStore.shared.updateOnboardingData(onboardingData, userId: me.id, email: self.email)
             } else {
                 // Only save name and email - don't persist default weight/height values
                 LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email)
