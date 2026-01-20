@@ -28,25 +28,63 @@ final class AuthService {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.timeoutInterval = 30.0 // 30 second timeout
-        let body = ["email": email, "password": password]
+        
+        // Normalize email (trim and lowercase) to match backend expectations
+        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let body = ["email": normalizedEmail, "password": password]
         req.httpBody = try JSONEncoder().encode(body)
         
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        #if DEBUG
+        print("🔵 Login request to: \(url.absoluteString)")
+        print("🔵 Email (normalized): \(normalizedEmail)")
+        #endif
+        
+        let (data, resp): (Data, URLResponse)
+        do {
+            (data, resp) = try await URLSession.shared.data(for: req)
+        } catch {
+            #if DEBUG
+            print("❌ Network error during login: \(error.localizedDescription)")
+            if let urlError = error as? URLError {
+                print("❌ URLError code: \(urlError.code.rawValue)")
+            }
+            #endif
+            throw error
+        }
+        
         guard let http = resp as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
         
+        #if DEBUG
+        print("🔵 Login response status: \(http.statusCode)")
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("🔵 Login response: \(responseString)")
+        }
+        #endif
+        
         // Check for error response
         guard 200...299 ~= http.statusCode else {
             // Try to decode error message from backend
+            var errorMessage = "Login failed"
+            
             if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
                let message = errorData["message"] {
-                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
-            } else if let errorString = String(data: data, encoding: .utf8) {
-                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorString])
+                errorMessage = message
+            } else if let errorData = try? JSONDecoder().decode([String: Any].self, from: data),
+                      let message = errorData["message"] as? String {
+                errorMessage = message
+            } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
+                errorMessage = errorString
             } else {
-                throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Login failed with status code \(http.statusCode)"])
+                errorMessage = "Login failed with status code \(http.statusCode)"
             }
+            
+            #if DEBUG
+            print("❌ Login error: \(errorMessage) (Status: \(http.statusCode))")
+            #endif
+            
+            throw NSError(domain: "AuthError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
         // Decode response - backend returns { accessToken, user }
