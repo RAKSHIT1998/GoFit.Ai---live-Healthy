@@ -288,11 +288,19 @@ final class AuthViewModel: ObservableObject {
             if self.email.isEmpty {
                 self.email = me.email
             }
+            // Update local state with fetched data
             saveLocalState()
+            // Also save to LocalUserStore - create fresh profile with fetched data
+            LocalUserStore.shared.updateBasicInfo(name: self.name, email: self.email, weightKg: self.weightKg, heightCm: self.heightCm)
         } catch {
             print("⚠️ Failed to fetch user profile after Apple Sign In: \(error.localizedDescription)")
             // Still save state with what we have
             saveLocalState()
+            // Create a minimal profile with only the data we have from Apple Sign In
+            // Profile was already cleared above, so this creates a fresh profile instead of merging with old data
+            if !self.email.isEmpty {
+                LocalUserStore.shared.updateBasicInfo(email: self.email)
+            }
             // Don't throw - Apple Sign In was successful, profile fetch is secondary
             // Try to refresh profile in background later (non-blocking, won't log out on error)
             Task(priority: .utility) {
