@@ -124,6 +124,10 @@ final class AuthViewModel: ObservableObject {
         // Save token immediately to ensure persistence
         AuthService.shared.saveToken(token)
         
+        // Clear any existing profile data to prevent mixing data from different users
+        // This ensures we start fresh for the new login session
+        LocalUserStore.shared.clearProfile()
+        
         // Fetch user profile to get complete user data
         // Add a small delay to ensure token is fully saved and backend is ready
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
@@ -135,7 +139,7 @@ final class AuthViewModel: ObservableObject {
             self.name = me.name
             // Update local state with fetched data
             saveLocalState()
-            // Also save to LocalUserStore
+            // Also save to LocalUserStore - create fresh profile with fetched data
             LocalUserStore.shared.updateBasicInfo(name: me.name, email: me.email, weightKg: self.weightKg, heightCm: self.heightCm)
         } catch {
             // If /me fails, still mark as logged in but log the error
@@ -143,8 +147,8 @@ final class AuthViewModel: ObservableObject {
             // Use email from login form as fallback
             self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
             saveLocalState()
-            // Only update email in LocalUserStore - don't update name/weight/height as we don't have them from login form
-            // This prevents corrupting stored user profile with stale data from previous authentication flows
+            // Create a minimal profile with only the email we know
+            // Profile was already cleared above, so this creates a fresh profile instead of merging with old data
             LocalUserStore.shared.updateBasicInfo(email: self.email)
             // Don't throw - login was successful, profile fetch is secondary
             // Try to refresh profile in background later (non-blocking, won't log out on error)
@@ -188,6 +192,10 @@ final class AuthViewModel: ObservableObject {
         self.isLoggedIn = true
         // Save token immediately to ensure persistence
         AuthService.shared.saveToken(token)
+        
+        // Clear any existing profile data to prevent mixing data from different users
+        // This ensures we start fresh for the new signup session
+        LocalUserStore.shared.clearProfile()
         
         // Fetch user profile to get complete user data (including userId from database)
         // Add a small delay to ensure token is fully saved and backend is ready
@@ -254,6 +262,10 @@ final class AuthViewModel: ObservableObject {
         self.isLoggedIn = true
         // Save token immediately to ensure persistence
         AuthService.shared.saveToken(token)
+        
+        // Clear any existing profile data to prevent mixing data from different users
+        // This ensures we start fresh for the new Apple Sign In session
+        LocalUserStore.shared.clearProfile()
         
         // Update name and email if provided
         if let name = result.fullName, !name.isEmpty {
