@@ -218,7 +218,7 @@ struct WorkoutSuggestionsView: View {
                 ZStack {
                     Circle()
                         .fill(Design.Colors.primaryGradient)
-                        .frame(width: 40, height: 40)
+                        .frame(width: Design.Scale.value(40, textStyle: .body), height: Design.Scale.value(40, textStyle: .body))
                     Text("\(index + 1)")
                         .font(Design.Typography.headline)
                         .foregroundColor(.white)
@@ -409,7 +409,7 @@ struct WorkoutSuggestionsView: View {
                             ForEach(ingredients, id: \.self) { ingredient in
                                 HStack(spacing: Design.Spacing.sm) {
                                     Image(systemName: "circle.fill")
-                                        .font(.system(size: 6))
+                                        .font(.system(size: Design.Scale.value(6, textStyle: .caption)))
                                         .foregroundColor(Design.Colors.primary)
                                     Text(ingredient)
                                         .font(Design.Typography.body)
@@ -518,7 +518,7 @@ struct WorkoutSuggestionsView: View {
             ForEach(insights, id: \.self) { insight in
                 HStack(alignment: .top, spacing: Design.Spacing.sm) {
                     Image(systemName: "circle.fill")
-                        .font(.system(size: 6))
+                        .font(.system(size: Design.Scale.value(6, textStyle: .caption)))
                         .foregroundColor(Design.Colors.primary)
                         .padding(.top, 6)
                     Text(insight)
@@ -534,7 +534,7 @@ struct WorkoutSuggestionsView: View {
     private var emptyWorkoutState: some View {
         VStack(spacing: Design.Spacing.md) {
             Image(systemName: "figure.run")
-                .font(.system(size: 40))
+                .font(.system(size: Design.Scale.value(40, textStyle: .title3)))
                 .foregroundColor(.secondary.opacity(0.5))
             Text("No workouts available")
                 .font(Design.Typography.subheadline)

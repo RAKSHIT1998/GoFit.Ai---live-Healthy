@@ -85,7 +85,7 @@ struct FastingView: View {
             VStack(spacing: 8) {
                 if isFasting {
                     Text(timeString(from: timeRemaining))
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .font(Design.Typography.title)
                         .foregroundColor(Design.Colors.primary)
                         .animation(.easeInOut(duration: 0.2), value: timeRemaining)
 
@@ -98,7 +98,7 @@ struct FastingView: View {
                         .foregroundColor(.secondary)
 
                     Text("\(fastingWindowHours)h")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(Design.Typography.largeTitle)
                         .foregroundColor(Design.Colors.primary)
                 }
             }

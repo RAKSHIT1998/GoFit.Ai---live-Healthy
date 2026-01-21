@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Design System 2025
 struct AppDesign {
@@ -54,41 +55,52 @@ struct AppDesign {
     
     // Typography - Consistent, Modern Scale
     struct Typography {
+        // NOTE:
+        // Use text-style based fonts so everything auto-scales with Dynamic Type and different screen sizes.
+        // Avoid fixed `Font.system(size:)` which breaks accessibility and small/large devices.
+
         // Display & Titles
-        static let display = Font.system(size: 36, weight: .bold, design: .rounded)
-        static let largeTitle = Font.system(size: 32, weight: .bold, design: .rounded)
-        static let title = Font.system(size: 28, weight: .bold, design: .rounded)
-        static let title2 = Font.system(size: 24, weight: .semibold, design: .rounded)
-        static let title3 = Font.system(size: 20, weight: .semibold, design: .rounded)
-        
+        static let display = Font.system(.largeTitle, design: .rounded).weight(.bold)
+        static let largeTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
+        static let title = Font.system(.title, design: .rounded).weight(.bold)
+        static let title2 = Font.system(.title2, design: .rounded).weight(.semibold)
+        static let title3 = Font.system(.title3, design: .rounded).weight(.semibold)
+
         // Body Text
-        static let headline = Font.system(size: 18, weight: .semibold, design: .rounded)
-        static let body = Font.system(size: 16, weight: .regular, design: .rounded)
-        static let bodyBold = Font.system(size: 16, weight: .semibold, design: .rounded)
-        static let callout = Font.system(size: 15, weight: .regular, design: .rounded)
-        static let subheadline = Font.system(size: 15, weight: .medium, design: .rounded)
-        
+        static let headline = Font.system(.headline, design: .rounded).weight(.semibold)
+        static let body = Font.system(.body, design: .rounded)
+        static let bodyBold = Font.system(.body, design: .rounded).weight(.semibold)
+        static let callout = Font.system(.callout, design: .rounded)
+        static let subheadline = Font.system(.subheadline, design: .rounded).weight(.medium)
+
         // Supporting Text
-        static let footnote = Font.system(size: 13, weight: .regular, design: .rounded)
-        static let caption = Font.system(size: 12, weight: .regular, design: .rounded)
-        static let caption2 = Font.system(size: 11, weight: .regular, design: .rounded)
+        static let footnote = Font.system(.footnote, design: .rounded)
+        static let caption = Font.system(.caption, design: .rounded)
+        static let caption2 = Font.system(.caption2, design: .rounded)
     }
     
+    // Adaptive scaling helper (for spacing/radius/icon sizes that should feel consistent with text scaling)
+    struct Scale {
+        static func value(_ base: CGFloat, textStyle: UIFont.TextStyle = .body) -> CGFloat {
+            UIFontMetrics(forTextStyle: textStyle).scaledValue(for: base)
+        }
+    }
+
     // Spacing
     struct Spacing {
-        static let xs: CGFloat = 4
-        static let sm: CGFloat = 8
-        static let md: CGFloat = 16
-        static let lg: CGFloat = 24
-        static let xl: CGFloat = 32
+        static var xs: CGFloat { Scale.value(4, textStyle: .body) }
+        static var sm: CGFloat { Scale.value(8, textStyle: .body) }
+        static var md: CGFloat { Scale.value(16, textStyle: .body) }
+        static var lg: CGFloat { Scale.value(24, textStyle: .body) }
+        static var xl: CGFloat { Scale.value(32, textStyle: .body) }
     }
     
     // Corner Radius
     struct Radius {
-        static let small: CGFloat = 8
-        static let medium: CGFloat = 12
-        static let large: CGFloat = 16
-        static let xlarge: CGFloat = 24
+        static var small: CGFloat { Scale.value(8, textStyle: .body) }
+        static var medium: CGFloat { Scale.value(12, textStyle: .body) }
+        static var large: CGFloat { Scale.value(16, textStyle: .body) }
+        static var xlarge: CGFloat { Scale.value(24, textStyle: .body) }
     }
     
     // Shadows - Adaptive for Dark Mode

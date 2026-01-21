@@ -93,7 +93,7 @@ struct PaywallView: View {
     private var header: some View {
         VStack(spacing: 12) {
             Image(systemName: isBlocking ? "lock.fill" : "crown.fill")
-                .font(.system(size: 40))
+                .font(.system(size: Design.Scale.value(40, textStyle: .title2)))
                 .foregroundColor(.white)
                 .padding()
                 .background(Design.Colors.primaryGradient)

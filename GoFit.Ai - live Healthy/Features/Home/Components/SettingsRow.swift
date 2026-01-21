@@ -20,7 +20,7 @@ struct SettingsRow: View {
 
                     Image(systemName: icon)
                         .foregroundColor(iconColor)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(Design.Typography.bodyBold)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {

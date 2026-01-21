@@ -26,11 +26,12 @@ struct WeightHeightStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "figure.stand")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Your Body Stats")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -203,11 +204,12 @@ struct WorkoutPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "figure.run")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("What Workouts Do You Like?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -252,7 +254,8 @@ struct WorkoutPreferenceCard: View {
         Button(action: action) {
             VStack(spacing: 12) {
                 Image(systemName: workout.icon)
-                    .font(.system(size: 32))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(isSelected ? Design.Colors.primary : .primary)
                 
                 Text(workout.displayName)
@@ -283,11 +286,12 @@ struct FavoriteCuisinesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "fork.knife")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Favorite Cuisines?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -359,11 +363,12 @@ struct FoodPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "heart.fill")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Food Preferences?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -432,11 +437,12 @@ struct LifestyleStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "clock.fill")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Workout Time & Lifestyle")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -563,12 +569,13 @@ struct CuisinesAndFoodPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "fork.knife.circle.fill")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.bounce, value: viewModel.favoriteCuisines.count)
                 
                 Text("What Do You Love to Eat?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -650,12 +657,13 @@ struct LifestyleAndMotivationStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.pulse, value: viewModel.motivationLevel)
                 
                 Text("Tell Us About Your Lifestyle")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -732,7 +740,8 @@ struct MotivationCard: View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Text(level.emoji)
-                    .font(.system(size: 32))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                 
                 Text(level.displayName)
                     .font(.body)
@@ -766,12 +775,13 @@ struct LifestyleHabitsStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "heart.text.square.fill")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.pulse, value: viewModel.drinkingFrequency)
                 
                 Text("Lifestyle Habits")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
@@ -909,11 +919,12 @@ struct TargetWeightStep: View {
                 
                 VStack(spacing: 16) {
                     Image(systemName: "target")
-                        .font(.system(size: 60))
+                        .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                         .foregroundColor(Design.Colors.primary)
                     
                     Text("Your Target Weight")
-                        .font(.system(size: 32, weight: .bold))
+                        .font(Design.Typography.largeTitle)
+                    .minimumScaleFactor(0.85)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.center)
                     

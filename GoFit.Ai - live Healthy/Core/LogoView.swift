@@ -5,6 +5,7 @@ struct LogoView: View {
     var size: LogoSize = .large
     var showText: Bool = true
     var color: Color = Color(red: 0.1, green: 0.2, blue: 0.4) // Dark blue
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     enum LogoSize {
         case small
@@ -32,25 +33,29 @@ struct LogoView: View {
     }
     
     var body: some View {
-        VStack(spacing: size == .small ? 4 : 12) {
+        let spacing = (size == .small ? Design.Spacing.xs : Design.Spacing.md)
+
+        VStack(spacing: spacing) {
             // Running Person Icon
             ZStack {
                 // Outer circle background (optional, for contrast)
                 if size == .large || size == .xlarge {
                     Circle()
                         .fill(Color.white.opacity(0.2))
-                        .frame(width: size.iconSize + 20, height: size.iconSize + 20)
+                        .frame(width: size.iconSize + Design.Spacing.lg, height: size.iconSize + Design.Spacing.lg)
                 }
                 
                 // Running person icon
-                RunningPersonIcon(size: size.iconSize, color: color)
+                RunningPersonIcon(size: Design.Scale.value(size.iconSize, textStyle: .title2), color: color)
             }
             
             // Logo Text
             if showText {
                 Text("GoFit.Ai")
-                    .font(.system(size: size.fontSize, weight: .bold, design: .rounded))
+                    .font(Design.Typography.title)
                     .foregroundColor(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
         }
     }

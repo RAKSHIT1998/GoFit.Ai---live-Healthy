@@ -244,9 +244,10 @@ struct WelcomeStep: View {
                     .opacity(animateFeatures ? 1.0 : 0.0)
                 
                 Text("Welcome to\nGoFit.Ai")
-                    .font(.system(size: 42, weight: .bold))
+                    .font(Design.Typography.display)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.8)
                     .opacity(animateFeatures ? 1.0 : 0.0)
             }
             .padding(.bottom, 24)
@@ -339,13 +340,14 @@ struct NameStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "person.circle.fill")
-                    .font(.system(size: 80))
+                    .font(.system(size: Design.Scale.value(72, textStyle: .largeTitle)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("What's your name?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 
                 Text("We'll use this to personalize your experience")
                     .font(.body)
@@ -355,7 +357,7 @@ struct NameStep: View {
             
             TextField("Enter your name", text: $viewModel.name)
                 .textFieldStyle(.plain)
-                .font(.title2)
+                .font(Design.Typography.title2)
                 .foregroundColor(.primary)
                 .padding()
                 .background(Design.Colors.cardBackground)
@@ -396,9 +398,10 @@ struct GoalStep: View {
             
             VStack(spacing: 16) {
                 Text("What's your goal?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 
                 Text("We'll tailor your plan accordingly")
                     .font(.body)
@@ -468,9 +471,10 @@ struct ActivityStep: View {
             
             VStack(spacing: 16) {
                 Text("How active are you?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 
                 Text("This helps us calculate your calorie needs")
                     .font(.body)
@@ -540,9 +544,10 @@ struct DietaryPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Text("Dietary Preferences")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 
                 Text("Select all that apply (optional)")
                     .font(.body)
@@ -615,9 +620,10 @@ struct AllergiesStep: View {
             
         VStack(spacing: 16) {
                 Text("Any Allergies?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 
                 Text("We'll avoid these in your recommendations")
                     .font(.body)
@@ -687,13 +693,14 @@ struct FastingPreferenceStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "timer")
-                    .font(.system(size: 60))
+                    .font(.system(size: Design.Scale.value(52, textStyle: .title)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Intermittent Fasting?")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Design.Typography.largeTitle)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
                 
                 Text("Choose your preferred fasting window (optional)")
                     .font(.body)
@@ -769,11 +776,12 @@ struct PermissionsView: View {
                 
                 VStack(spacing: 16) {
                     Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 60))
+                        .font(.system(size: Design.Scale.value(52, textStyle: .title)))
                         .foregroundColor(Design.Colors.primary)
                     
                     Text("Enable Permissions")
-                        .font(.system(size: 32, weight: .bold))
+                        .font(Design.Typography.largeTitle)
+                        .minimumScaleFactor(0.85)
                     
                     Text("We need a few permissions to provide the best experience")
                         .font(.body)

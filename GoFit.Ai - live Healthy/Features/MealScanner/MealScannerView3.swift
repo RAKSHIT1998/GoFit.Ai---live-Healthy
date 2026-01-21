@@ -16,7 +16,7 @@ struct NutritionMetricCard: View {
                 .foregroundColor(color)
             
             Text(value)
-                .font(.system(size: 20, weight: .bold))
+                .font(Design.Typography.title3)
                 .foregroundColor(.primary)
             
             Text(label)
@@ -164,12 +164,12 @@ struct MealScannerView3: View {
                             // Header with success animation
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 60))
+                                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                                     .foregroundColor(Design.Colors.primary)
                                     .symbolEffect(.bounce, value: uploadResult != nil)
                                 
                                 Text("Meal Detected!")
-                                    .font(.system(size: 28, weight: .bold))
+                                    .font(Design.Typography.title)
                                     .foregroundColor(.primary)
                                 
                                 Text("\(items.count) item\(items.count == 1 ? "" : "s") found")
@@ -188,7 +188,7 @@ struct MealScannerView3: View {
                                             .foregroundColor(.white)
                                         
                                         Text(item.name)
-                                            .font(.system(size: 22, weight: .bold))
+                                            .font(Design.Typography.title2)
                                             .foregroundColor(.white)
                                         
                                         Spacer()
@@ -290,7 +290,7 @@ struct MealScannerView3: View {
                                                 .font(.title3)
                                         }
                                         Text(isUploading ? "Saving..." : "Log This Meal")
-                                            .font(.system(size: 18, weight: .semibold))
+                                            .font(Design.Typography.headline)
                                         Spacer()
                                         if !isUploading {
                                             Image(systemName: "arrow.right")
@@ -331,7 +331,8 @@ struct MealScannerView3: View {
                                         Image(systemName: "pencil.circle.fill")
                                             .font(.title3)
                                         Text("Edit Before Logging")
-                                            .font(.system(size: 16, weight: .medium))
+                                            .font(Design.Typography.body)
+                                            .fontWeight(.medium)
                                         Spacer()
                                         Image(systemName: "arrow.right")
                                             .font(.title3)
@@ -361,7 +362,7 @@ struct MealScannerView3: View {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.title3)
                                         Text("Scan Another Meal")
-                                            .font(.system(size: 18, weight: .medium))
+                                            .font(Design.Typography.headline)
                                     }
                                     .foregroundColor(.primary)
                                     .padding(18)
@@ -385,7 +386,7 @@ struct MealScannerView3: View {
                 if let err = errorMsg {
                     VStack(spacing: 12) {
                         Image(systemName: err.contains("No food") ? "photo.badge.exclamationmark" : "exclamationmark.triangle.fill")
-                            .font(.system(size: 40))
+                            .font(.system(size: Design.Scale.value(40, textStyle: .title3)))
                             .foregroundColor(err.contains("No food") ? .orange : .red)
                         
                     Text(err)

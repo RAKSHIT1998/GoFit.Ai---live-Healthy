@@ -306,7 +306,7 @@ struct DailyLogHistoryView: View {
     private var emptyStateView: some View {
         VStack(spacing: Design.Spacing.lg) {
             Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 60))
+                .font(.system(size: Design.Scale.value(60, textStyle: .title)))
                 .foregroundColor(Design.Colors.primary.opacity(0.5))
             
             Text("No Logs Yet")
@@ -324,7 +324,7 @@ struct DailyLogHistoryView: View {
     private var noDataForDateView: some View {
         VStack(spacing: Design.Spacing.md) {
             Image(systemName: "calendar")
-                .font(.system(size: 40))
+                .font(.system(size: Design.Scale.value(40, textStyle: .title3)))
                 .foregroundColor(.secondary)
             
             Text("No data for this date")

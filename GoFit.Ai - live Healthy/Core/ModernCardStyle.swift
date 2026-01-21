@@ -32,7 +32,8 @@ struct ModernCard<Content: View>: View {
 struct ModernButtonStyle: ButtonStyle {
     var backgroundColor: Color = Design.Colors.primary
     var foregroundColor: Color = .white
-    var height: CGFloat = 56
+    // Scale button height with Dynamic Type for better accessibility on all devices
+    var height: CGFloat = Design.Scale.value(56, textStyle: .body)
     var cornerRadius: CGFloat = Design.Radius.medium
     
     func makeBody(configuration: Configuration) -> some View {
@@ -53,7 +54,8 @@ struct ModernButtonStyle: ButtonStyle {
 struct ModernSecondaryButtonStyle: ButtonStyle {
     var borderColor: Color = Design.Colors.primary
     var foregroundColor: Color = Design.Colors.primary
-    var height: CGFloat = 56
+    // Scale button height with Dynamic Type for better accessibility on all devices
+    var height: CGFloat = Design.Scale.value(56, textStyle: .body)
     var cornerRadius: CGFloat = Design.Radius.medium
     
     func makeBody(configuration: Configuration) -> some View {
@@ -113,7 +115,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: Design.Spacing.lg) {
             Image(systemName: icon)
-                .font(.system(size: 64))
+                .font(.system(size: Design.Scale.value(64, textStyle: .title2)))
                 .foregroundColor(.gray.opacity(0.5))
             
             Text(title)
@@ -126,6 +128,7 @@ struct EmptyStateView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, Design.Spacing.xl)
+                .minimumScaleFactor(0.85)
             
             if let action = action, let actionTitle = actionTitle {
                 Button(action: action) {
