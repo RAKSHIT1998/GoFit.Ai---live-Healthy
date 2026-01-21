@@ -124,10 +124,10 @@ After configuring, verify products load:
 - Yearly: `com.gofitai.premium.yearly`
 
 **StoreKit Configuration File:**
-- ✅ Monthly Premium: `com.gofitai.premium.monthly` ($9.99/month, 3-day trial)
-- ✅ Yearly Premium: `com.gofitai.premium.yearly` ($79.99/year, 3-day trial)
+- ✅ Monthly Premium: `com.gofitai.premium.monthly` ($1.99/month, 3-day trial)
+- ✅ Yearly Premium: `com.gofitai.premium.yearly` ($19.99/year, 3-day trial)
 
-**Note:** The prices in the StoreKit file ($9.99/$79.99) are for testing. Your actual App Store Connect prices may differ.
+**Note:** The prices in the StoreKit file ($1.99/$19.99) match your App Store Connect pricing for testing.
 
 ## Troubleshooting
 
