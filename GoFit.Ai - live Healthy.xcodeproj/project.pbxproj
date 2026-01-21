@@ -52,9 +52,22 @@
 		B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B2484AB32EEC79A7009D604B /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live Healthy" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B2484A8C2EEC79A2009D604B /* GoFit.Ai - live Healthy */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B2484A8F2EEC79A2009D604B /* GoFit.Ai - live Healthy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B2484AB32EEC79A7009D604B /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live Healthy" target */,
+			);
 			path = "GoFit.Ai - live Healthy";
 			sourceTree = "<group>";
 		};
