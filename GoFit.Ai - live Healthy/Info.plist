@@ -6,5 +6,15 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>GoFit.ai needs camera access to take photos of your meals.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GoFit.ai needs photo library access to choose meal photos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>GoFit.ai needs to save images for your meal logs.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>GoFit.Ai needs access to your health data to track your steps, calories, heart rate, and other fitness metrics to provide personalized recommendations.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>GoFit.Ai needs permission to save your weight and water intake data to Apple Health to keep your health information synchronized.</string>
 </dict>
 </plist>
