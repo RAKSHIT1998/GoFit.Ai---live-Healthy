@@ -164,8 +164,32 @@ struct PaywallView: View {
                 }
                 .padding()
             } else {
+                let relevantProducts = purchases.products
+                    .filter { $0.id == PlanType.monthly.id || $0.id == PlanType.yearly.id }
+                    .sorted { lhs, rhs in
+                        // Prefer showing Yearly first (best value), then Monthly
+                        if lhs.id == PlanType.yearly.id { return true }
+                        if rhs.id == PlanType.yearly.id { return false }
+                        return lhs.id < rhs.id
+                    }
+
+                if relevantProducts.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.title2)
+                            .foregroundColor(.orange)
+                        Text("Products not available")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text("Please check your App Store Connect products or StoreKit configuration.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                } else {
                 // Show both monthly and yearly plans with subscription details
-                ForEach(purchases.products, id: \.id) { product in
+                ForEach(relevantProducts, id: \.id) { product in
                     let planType: PlanType = product.id == PlanType.monthly.id ? .monthly : .yearly
                     let isSelected = selectedPlan == planType
                     
@@ -185,6 +209,7 @@ struct PaywallView: View {
                             subscriptionDetailsView(product: product, planType: planType)
                         }
                     }
+                }
                 }
             }
         }

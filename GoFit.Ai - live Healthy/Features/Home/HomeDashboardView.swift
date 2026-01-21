@@ -119,13 +119,18 @@ struct HomeDashboardView: View {
                     animateCards = true
                 }
 
-                Task {
-                    await loadTargetCalories() // Load AI-calculated target calories
-                    await loadLiquidIntakeGoal() // Load custom liquid intake goal
-                    await loadSummary()
-                    await loadWaterIntake()
-                    await loadHealthData() // Load from backend first
-                    await syncHealthData() // Then sync with HealthKit
+                // Run independent loads concurrently to reduce time-to-interactive and avoid UI hitching.
+                Task(priority: .userInitiated) {
+                    async let targetCalories: Void = loadTargetCalories() // AI-calculated target calories
+                    async let liquidGoal: Void = loadLiquidIntakeGoal() // Custom liquid intake goal
+                    async let summary: Void = loadSummary()
+                    async let water: Void = loadWaterIntake()
+                    async let backendHealth: Void = loadHealthData() // Backend first
+
+                    _ = await (targetCalories, liquidGoal, summary, water, backendHealth)
+
+                    // Sync with HealthKit after baseline data is loaded.
+                    await syncHealthData()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MealSaved"))) { _ in

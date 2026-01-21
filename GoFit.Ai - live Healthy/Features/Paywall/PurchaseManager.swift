@@ -185,18 +185,30 @@ class PurchaseManager: ObservableObject {
     // MARK: - Product Loading
     func loadProducts() {
         Task {
-            await requestProducts()
+            // Avoid re-requesting products repeatedly (this can be expensive and cause UI hitching)
+            if products.isEmpty {
+                await requestProducts()
+            }
             await updateSubscriptionStatus()
         }
     }
 
     func requestProducts() async {
+        // Only fetch products for logged-in users (paywall is shown post-login/trial anyway).
+        // This avoids StoreKit/network work during app launch before auth, which can feel laggy.
+        guard AuthService.shared.readToken() != nil else {
+            return
+        }
+
         isLoading = true
         defer { isLoading = false }
 
         do {
             products = try await Product.products(for: [monthlyID, yearlyID])
             print("✅ Loaded \(products.count) products")
+            if !products.isEmpty {
+                errorMessage = nil
+            }
             
             if products.isEmpty {
                 print("⚠️ No products found. Make sure products are configured in App Store Connect or StoreKit configuration file.")
@@ -361,10 +373,14 @@ class PurchaseManager: ObservableObject {
     private func startStatusMonitoring() {
         statusUpdateTask = Task {
             while !Task.isCancelled {
-                // Only check StoreKit status locally (no backend call)
-                await updateSubscriptionStatus()
-                // Check trial status locally (no backend call)
-                await checkTrialAndSubscriptionStatus()
+                // Don’t do StoreKit/backend work if user is not logged in.
+                // This significantly reduces background work and improves perceived performance.
+                if AuthService.shared.readToken() != nil {
+                    // Only check StoreKit status locally (no backend call)
+                    await updateSubscriptionStatus()
+                    // Check trial status locally (no backend call)
+                    await checkTrialAndSubscriptionStatus()
+                }
                 // Check backend subscription status less frequently (every 5 minutes instead of 1 minute)
                 try? await Task.sleep(nanoseconds: 300_000_000_000) // Check every 5 minutes
             }

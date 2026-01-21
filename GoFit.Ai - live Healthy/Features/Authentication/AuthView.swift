@@ -19,6 +19,7 @@ struct AuthView: View {
     @State private var animateForm = false
     @State private var animateBackground = false
     @State private var showParticles = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     // Use onboarding name if available
     private var displayName: String {
@@ -36,7 +37,7 @@ struct AuthView: View {
                 .opacity(animateBackground ? 1 : 0.8)
             
             // Floating particles/shapes
-            if showParticles {
+            if showParticles && !reduceMotion {
                 FloatingParticles()
                     .opacity(0.3)
             }
@@ -623,32 +624,75 @@ struct AnimatedGradientBackground: View {
 
 // MARK: - Floating Particles (Simplified for Performance)
 struct FloatingParticles: View {
-    @State private var animate = false
+    @State private var particles: [Particle] = []
+    @State private var lastSize: CGSize = .zero
+
+    private struct Particle: Identifiable {
+        let id: Int
+        let base: CGPoint
+        let radius: CGFloat
+        let amplitude: CGSize
+        let speed: Double
+        let phase: Double
+        let opacity: Double
+    }
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                // Create a few floating circles
-                ForEach(0..<8, id: \.self) { index in
-                    Circle()
-                        .fill(Design.Colors.primary.opacity(0.15))
-                        .frame(width: CGFloat.random(in: 40...80), height: CGFloat.random(in: 40...80))
-                        .position(
-                            x: animate ? CGFloat.random(in: 0...geometry.size.width) : CGFloat.random(in: 0...geometry.size.width),
-                            y: animate ? CGFloat.random(in: 0...geometry.size.height) : CGFloat.random(in: 0...geometry.size.height)
-                        )
-                        .blur(radius: 15)
-                        .animation(
-                            .easeInOut(duration: Double.random(in: 3...6))
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.3),
-                            value: animate
-                        )
+            TimelineView(.animation) { timeline in
+                Canvas { context, size in
+                    // Very light blur once, instead of per-view blur (keeps smoothness without killing FPS)
+                    context.addFilter(.blur(radius: 6))
+
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    for p in particles {
+                        let x = p.base.x + p.amplitude.width * sin(t * p.speed + p.phase)
+                        let y = p.base.y + p.amplitude.height * cos(t * p.speed + p.phase)
+                        let rect = CGRect(x: x - p.radius, y: y - p.radius, width: p.radius * 2, height: p.radius * 2)
+                        context.fill(Path(ellipseIn: rect), with: .color(Design.Colors.primary.opacity(p.opacity)))
+                    }
                 }
+                // Keep rendering cost low
+                .drawingGroup(opaque: false, colorMode: .linear)
+            }
+            .onAppear {
+                rebuildParticlesIfNeeded(for: geometry.size)
+            }
+            .onChange(of: geometry.size) { _, newSize in
+                rebuildParticlesIfNeeded(for: newSize)
             }
         }
-        .onAppear {
-            animate = true
+    }
+
+    private func rebuildParticlesIfNeeded(for size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        // Avoid regenerating unless size meaningfully changed (prevents unnecessary churn on layout passes)
+        guard lastSize == .zero || abs(lastSize.width - size.width) > 10 || abs(lastSize.height - size.height) > 10 else {
+            return
+        }
+        lastSize = size
+
+        // Stable-ish particle set (random only once per size)
+        let count = 6
+        particles = (0..<count).map { idx in
+            let radius = CGFloat.random(in: 18...34)
+            let base = CGPoint(
+                x: CGFloat.random(in: radius...(size.width - radius)),
+                y: CGFloat.random(in: radius...(size.height - radius))
+            )
+            let amplitude = CGSize(
+                width: CGFloat.random(in: 14...42),
+                height: CGFloat.random(in: 14...42)
+            )
+            return Particle(
+                id: idx,
+                base: base,
+                radius: radius,
+                amplitude: amplitude,
+                speed: Double.random(in: 0.35...0.8),
+                phase: Double.random(in: 0...(Double.pi * 2)),
+                opacity: Double.random(in: 0.08...0.16)
+            )
         }
     }
 }
