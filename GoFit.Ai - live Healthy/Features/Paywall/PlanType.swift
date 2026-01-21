@@ -9,7 +9,7 @@ enum PlanType {
         case .monthly:
             return "com.gofitai.premium.monthly"
         case .yearly:
-            return "com.gofitai.premium.yearly"
+            return "com.gofitai.premium.yearlyy"
         }
     }
 
