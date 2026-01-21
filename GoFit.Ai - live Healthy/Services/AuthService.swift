@@ -71,7 +71,7 @@ final class AuthService {
             if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
                let message = errorData["message"] {
                 errorMessage = message
-            } else if let errorData = try? JSONDecoder().decode([String: Any].self, from: data),
+            } else if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let message = errorData["message"] as? String {
                 errorMessage = message
             } else if let errorString = String(data: data, encoding: .utf8), !errorString.isEmpty {
