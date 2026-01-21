@@ -48,26 +48,14 @@
 		B2484AA12EEC79A7009D604B /* GoFit.Ai - live HealthyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "GoFit.Ai - live HealthyTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B2484AAB2EEC79A7009D604B /* GoFit.Ai - live HealthyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "GoFit.Ai - live HealthyUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B27DDA162EEF07D70047CE53 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		B28BA76A2F20F4820002E27A /* gofit ai.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = "gofit ai.storekit"; path = "GoFit.Ai - live Healthy/gofit ai.storekit"; sourceTree = "<group>"; };
 		B2F1DFB62F068104002E1B7B /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
 		B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		B2484AB32EEC79A7009D604B /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live Healthy" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = B2484A8C2EEC79A2009D604B /* GoFit.Ai - live Healthy */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B2484A8F2EEC79A2009D604B /* GoFit.Ai - live Healthy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				B2484AB32EEC79A7009D604B /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live Healthy" target */,
-			);
 			path = "GoFit.Ai - live Healthy";
 			sourceTree = "<group>";
 		};
@@ -130,6 +118,7 @@
 		B2484A842EEC79A2009D604B = {
 			isa = PBXGroup;
 			children = (
+				B28BA76A2F20F4820002E27A /* gofit ai.storekit */,
 				B2484A8F2EEC79A2009D604B /* GoFit.Ai - live Healthy */,
 				B2484AA42EEC79A7009D604B /* GoFit.Ai - live HealthyTests */,
 				B2484AAE2EEC79A7009D604B /* GoFit.Ai - live HealthyUITests */,
