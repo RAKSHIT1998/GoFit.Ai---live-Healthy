@@ -217,7 +217,7 @@ struct MealHistoryView: View {
     private var emptyStateView: some View {
         VStack(spacing: Design.Spacing.lg) {
             Image(systemName: "fork.knife.circle")
-                .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                 .foregroundColor(Design.Colors.primary.opacity(0.5))
             
             Text("No Data for This Date")

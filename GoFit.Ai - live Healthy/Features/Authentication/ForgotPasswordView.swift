@@ -18,7 +18,7 @@ struct ForgotPasswordView: View {
                     VStack(spacing: Design.Spacing.xl) {
                         // Icon
                         Image(systemName: "lock.rotation")
-                            .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                            .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                             .foregroundColor(Design.Colors.primary)
                             .padding(.top, Design.Spacing.xl)
                         

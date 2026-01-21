@@ -26,7 +26,7 @@ struct WeightHeightStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "figure.stand")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Your Body Stats")
@@ -204,7 +204,7 @@ struct WorkoutPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "figure.run")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("What Workouts Do You Like?")
@@ -286,7 +286,7 @@ struct FavoriteCuisinesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "fork.knife")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Favorite Cuisines?")
@@ -363,7 +363,7 @@ struct FoodPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "heart.fill")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Food Preferences?")
@@ -437,7 +437,7 @@ struct LifestyleStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "clock.fill")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Workout Time & Lifestyle")
@@ -569,7 +569,7 @@ struct CuisinesAndFoodPreferencesStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "fork.knife.circle.fill")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.bounce, value: viewModel.favoriteCuisines.count)
                 
@@ -657,7 +657,7 @@ struct LifestyleAndMotivationStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.pulse, value: viewModel.motivationLevel)
                 
@@ -775,7 +775,7 @@ struct LifestyleHabitsStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "heart.text.square.fill")
-                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                     .symbolEffect(.pulse, value: viewModel.drinkingFrequency)
                 
@@ -919,7 +919,7 @@ struct TargetWeightStep: View {
                 
                 VStack(spacing: 16) {
                     Image(systemName: "target")
-                        .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                        .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                         .foregroundColor(Design.Colors.primary)
                     
                     Text("Your Target Weight")

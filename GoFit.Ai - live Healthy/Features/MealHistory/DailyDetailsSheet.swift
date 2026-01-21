@@ -216,7 +216,7 @@ struct DailyDetailsSheet: View {
     private var noDataView: some View {
         VStack(spacing: Design.Spacing.lg) {
             Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                 .foregroundColor(Design.Colors.primary.opacity(0.5))
             
             Text("No Data for This Date")

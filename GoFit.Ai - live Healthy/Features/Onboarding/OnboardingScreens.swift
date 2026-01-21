@@ -693,7 +693,7 @@ struct FastingPreferenceStep: View {
             
             VStack(spacing: 16) {
                 Image(systemName: "timer")
-                    .font(.system(size: Design.Scale.value(52, textStyle: .title)))
+                    .font(.system(size: Design.Scale.value(52, textStyle: .title1)))
                     .foregroundColor(Design.Colors.primary)
                 
                 Text("Intermittent Fasting?")
@@ -776,7 +776,7 @@ struct PermissionsView: View {
                 
                 VStack(spacing: 16) {
                     Image(systemName: "lock.shield.fill")
-                        .font(.system(size: Design.Scale.value(52, textStyle: .title)))
+                        .font(.system(size: Design.Scale.value(52, textStyle: .title1)))
                         .foregroundColor(Design.Colors.primary)
                     
                     Text("Enable Permissions")

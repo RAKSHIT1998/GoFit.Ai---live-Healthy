@@ -164,7 +164,7 @@ struct MealScannerView3: View {
                             // Header with success animation
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                                    .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                                     .foregroundColor(Design.Colors.primary)
                                     .symbolEffect(.bounce, value: uploadResult != nil)
                                 

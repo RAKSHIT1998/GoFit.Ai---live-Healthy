@@ -127,7 +127,7 @@ struct ProfileView: View {
                             .foregroundColor(.secondary)
                     } else {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: Design.Scale.value(50, textStyle: .title)))
+                            .font(.system(size: Design.Scale.value(50, textStyle: .title1)))
                             .foregroundColor(.green)
                         Text("Data exported successfully!")
                             .font(.headline)
@@ -263,7 +263,7 @@ struct ProfileView: View {
         VStack(spacing: 16) {
             Circle()
                 .fill(Design.Colors.primaryGradient)
-                .frame(width: Design.Scale.value(100, textStyle: .title), height: Design.Scale.value(100, textStyle: .title))
+                .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
                 .overlay(
                     Text(auth.name.prefix(1).uppercased())
                         .font(Design.Typography.title)

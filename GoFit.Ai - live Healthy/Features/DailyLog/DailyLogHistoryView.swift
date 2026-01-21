@@ -306,7 +306,7 @@ struct DailyLogHistoryView: View {
     private var emptyStateView: some View {
         VStack(spacing: Design.Spacing.lg) {
             Image(systemName: "calendar.badge.clock")
-                .font(.system(size: Design.Scale.value(60, textStyle: .title)))
+                .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                 .foregroundColor(Design.Colors.primary.opacity(0.5))
             
             Text("No Logs Yet")
