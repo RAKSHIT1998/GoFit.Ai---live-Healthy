@@ -328,7 +328,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"GoFit.Ai - live Healthy/Preview Content\"";
 				DEVELOPMENT_TEAM = 48TGY734WW;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
@@ -378,7 +378,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"GoFit.Ai - live Healthy/Preview Content\"";
 				DEVELOPMENT_TEAM = 48TGY734WW;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
