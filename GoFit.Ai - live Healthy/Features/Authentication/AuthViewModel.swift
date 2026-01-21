@@ -121,6 +121,12 @@ final class AuthViewModel: ObservableObject {
         let token = try await AuthService.shared.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
         self.token = token
         self.isLoggedIn = true
+        // For existing users logging in, ensure onboarding is marked as complete
+        // This prevents showing onboarding screen after successful login
+        self.didFinishOnboarding = true
+        print("✅ Login successful - isLoggedIn: \(self.isLoggedIn), didFinishOnboarding: \(self.didFinishOnboarding)")
+        // Save state immediately to ensure onboarding flag is persisted
+        saveLocalState()
         // Save token immediately to ensure persistence
         AuthService.shared.saveToken(token)
         
