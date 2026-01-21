@@ -53,6 +53,20 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B2210A9B2F210C9A002672E4 /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live HealthyTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				GoFit.storekit,
+			);
+			target = B2484AA02EEC79A7009D604B /* GoFit.Ai - live HealthyTests */;
+		};
+		B2210A9C2F210C9A002672E4 /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live HealthyUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				GoFit.storekit,
+			);
+			target = B2484AAA2EEC79A7009D604B /* GoFit.Ai - live HealthyUITests */;
+		};
 		B2484AB32EEC79A7009D604B /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live Healthy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -67,6 +81,8 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				B2484AB32EEC79A7009D604B /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live Healthy" target */,
+				B2210A9B2F210C9A002672E4 /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live HealthyTests" target */,
+				B2210A9C2F210C9A002672E4 /* Exceptions for "GoFit.Ai - live Healthy" folder in "GoFit.Ai - live HealthyUITests" target */,
 			);
 			path = "GoFit.Ai - live Healthy";
 			sourceTree = "<group>";
