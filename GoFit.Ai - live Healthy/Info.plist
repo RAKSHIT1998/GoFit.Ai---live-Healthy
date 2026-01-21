@@ -5,10 +5,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>processing</string>
 	</array>
-	<key>NSHealthShareUsageDescription</key>
-	<string>GoFit.Ai needs access to your health data to track your steps, calories, heart rate, and other fitness metrics to provide personalized recommendations.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>GoFit.Ai needs permission to save your weight and water intake data to Apple Health to keep your health information synchronized.</string>
 </dict>
 </plist>
