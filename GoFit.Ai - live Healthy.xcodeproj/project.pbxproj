@@ -332,11 +332,6 @@
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "GoFit.ai needs camera access to take photos of your meals.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "GoFit.Ai needs access to your health data to track your steps, calories, heart rate, and other fitness metrics to provide personalized recommendations.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "GoFit.Ai needs permission to save your weight and water intake data to Apple Health to keep your health information synchronized.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "GoFit.ai needs to save images for your meal logs.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "GoFit.ai needs photo library access to choose meal photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -382,11 +377,6 @@
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCameraUsageDescription = "GoFit.ai needs camera access to take photos of your meals.";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "GoFit.Ai needs access to your health data to track your steps, calories, heart rate, and other fitness metrics to provide personalized recommendations.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "GoFit.Ai needs permission to save your weight and water intake data to Apple Health to keep your health information synchronized.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "GoFit.ai needs to save images for your meal logs.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "GoFit.ai needs photo library access to choose meal photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
