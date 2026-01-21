@@ -70,7 +70,77 @@
     ]
   },
   "subscriptionGroups" : [
+    {
+      "id" : "21482008",
+      "localizations" : [
 
+      ],
+      "name" : "GoFit.Ai Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6758096730",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "internalID" : "6758096731",
+            "numberOfPeriods" : 1,
+            "paymentMode" : 0,
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "Monthly premium subscription",
+              "displayName" : "Premium Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "xomm.gofitai.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "premium monthly",
+          "subscriptionGroupID" : "21482008",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6758101906",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "internalID" : "6758101907",
+            "numberOfPeriods" : 1,
+            "paymentMode" : 0,
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "Yearly premium subscription",
+              "displayName" : "Premium Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.gofitai.premium.yearlyy",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "premium yearly",
+          "subscriptionGroupID" : "21482008",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
   ],
   "version" : {
     "major" : 4,

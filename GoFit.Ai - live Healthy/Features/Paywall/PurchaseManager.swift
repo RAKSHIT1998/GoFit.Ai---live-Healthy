@@ -16,7 +16,8 @@ class PurchaseManager: ObservableObject {
     @Published var trialDaysRemaining: Int? = nil
 
     // MARK: - Product IDs
-    let monthlyID = "com.gofitai.premium.monthly"
+    // NOTE: These must match exactly with App Store Connect Product IDs
+    let monthlyID = "xomm.gofitai.premium.monthly"
     // NOTE: App Store Connect requires this ID (yearlyy) for this account/subscription group.
     let yearlyID = "com.gofitai.premium.yearlyy"
 

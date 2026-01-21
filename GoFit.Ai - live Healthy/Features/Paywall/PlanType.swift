@@ -7,7 +7,7 @@ enum PlanType {
     var id: String {
         switch self {
         case .monthly:
-            return "com.gofitai.premium.monthly"
+            return "xomm.gofitai.premium.monthly"
         case .yearly:
             return "com.gofitai.premium.yearlyy"
         }
