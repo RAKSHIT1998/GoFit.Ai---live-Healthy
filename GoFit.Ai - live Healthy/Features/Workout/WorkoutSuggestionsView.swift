@@ -409,7 +409,7 @@ struct WorkoutSuggestionsView: View {
                             ForEach(ingredients, id: \.self) { ingredient in
                                 HStack(spacing: Design.Spacing.sm) {
                                     Image(systemName: "circle.fill")
-                                        .font(.system(size: Design.Scale.value(6, textStyle: .caption)))
+                                        .font(.system(size: Design.Scale.value(6, textStyle: .caption1)))
                                         .foregroundColor(Design.Colors.primary)
                                     Text(ingredient)
                                         .font(Design.Typography.body)
@@ -518,7 +518,7 @@ struct WorkoutSuggestionsView: View {
             ForEach(insights, id: \.self) { insight in
                 HStack(alignment: .top, spacing: Design.Spacing.sm) {
                     Image(systemName: "circle.fill")
-                        .font(.system(size: Design.Scale.value(6, textStyle: .caption)))
+                        .font(.system(size: Design.Scale.value(6, textStyle: .caption1)))
                         .foregroundColor(Design.Colors.primary)
                         .padding(.top, 6)
                     Text(insight)
