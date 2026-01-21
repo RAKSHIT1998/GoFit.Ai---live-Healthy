@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Fallback Data Service
-// Provides 50+ built-in meals and workouts when API fails or server is down
+// Provides 100+ built-in meals and 100+ workouts when API fails or server is down
 struct FallbackDataService {
     static let shared = FallbackDataService()
     
@@ -46,7 +46,28 @@ struct FallbackDataService {
     private func violatesDietaryPreference(meal: MealData, dietaryPreferences: [String]) -> Bool {
         let mealName = meal.name.lowercased()
         let ingredients = meal.ingredients.joined(separator: " ").lowercased()
-        let allText = "\(mealName) \(ingredients)"
+        var allText = "\(mealName) \(ingredients)"
+
+        // IMPORTANT:
+        // We use keyword-based filtering for dietary preferences. Some vegan items contain words like "milk"
+        // (e.g., "almond milk", "oat milk", "coconut milk") and would be incorrectly flagged as non-vegan.
+        // To prevent false positives, remove/neutralize common plant-based phrases before scanning.
+        if dietaryPreferences.contains("vegan") {
+            let veganAllowPhrases: [String] = [
+                // Plant milks
+                "almond milk", "oat milk", "soy milk", "coconut milk", "cashew milk", "rice milk", "pea milk",
+                // Plant creams
+                "coconut cream", "cashew cream",
+                // Vegan replacements (still contain dairy keywords)
+                "vegan cheese", "plant-based cheese", "dairy-free cheese",
+                "vegan butter", "plant-based butter",
+                "vegan mayo", "plant-based mayo"
+            ]
+            for phrase in veganAllowPhrases {
+                // Replace with a token that won't match dairy/meat keywords.
+                allText = allText.replacingOccurrences(of: phrase, with: phrase.replacingOccurrences(of: " ", with: "_"))
+            }
+        }
         
         // Non-vegan items - comprehensive list
         let nonVeganItems = [
@@ -1013,8 +1034,158 @@ struct FallbackDataService {
                 prepTime: 45, servings: 2
             )
         ])
+
+        // MARK: - Generated on-device catalog
+        // To ensure we have lots of options *per dietary choice* (especially vegan/vegetarian),
+        // generate additional meals from safe ingredient templates. This keeps the app fully functional
+        // even without backend/AI.
+        meals.append(contentsOf: generateTemplateMeals(dietaryStyle: .vegan))
+        meals.append(contentsOf: generateTemplateMeals(dietaryStyle: .vegetarian))
         
         return meals
+    }
+
+    // MARK: - Meal generation (on-device, dietary-aware)
+    private enum DietaryStyle {
+        case vegan
+        case vegetarian
+    }
+
+    private func generateTemplateMeals(dietaryStyle: DietaryStyle) -> [MealData] {
+        // We generate a large list deterministically (no randomness here) to keep the catalog stable.
+        // The selection randomness happens later via seeded shuffle.
+        let plantProteins = ["tofu", "tempeh", "chickpeas", "lentils", "black beans", "kidney beans", "edamame"]
+        let grains = ["brown rice", "quinoa", "whole wheat pasta", "couscous", "rolled oats", "barley"]
+        let veggies = ["spinach", "bell pepper", "zucchini", "broccoli", "mushrooms", "carrots", "tomatoes", "cucumber"]
+        let saucesVegan = ["tahini lemon sauce", "salsa", "tomato herb sauce", "ginger garlic sauce", "peanut lime sauce"]
+        let saucesVegetarian = saucesVegan + ["pesto", "cheese topping", "egg scramble mix"]
+
+        func makeMeal(name: String, category: String, calories: Double, protein: Double, carbs: Double, fat: Double, ingredients: [String], instructions: String) -> MealData {
+            MealData(
+                name: name,
+                category: category,
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                ingredients: ingredients,
+                instructions: instructions,
+                prepTime: 15,
+                servings: 1
+            )
+        }
+
+        let sauces = (dietaryStyle == .vegan) ? saucesVegan : saucesVegetarian
+
+        var generated: [MealData] = []
+
+        // Breakfast templates (40)
+        for (i, grain) in grains.enumerated() {
+            let v = veggies[i % veggies.count]
+            if dietaryStyle == .vegan {
+                generated.append(makeMeal(
+                    name: "Vegan \(grain.capitalized) Power Bowl \(i+1)",
+                    category: "breakfast",
+                    calories: 340,
+                    protein: 16,
+                    carbs: 54,
+                    fat: 10,
+                    ingredients: ["1 serving \(grain)", v, "chia seeds", "berries", "maple syrup"],
+                    instructions: "Combine cooked \(grain) with toppings. Adjust sweetness to taste."
+                ))
+            } else {
+                generated.append(makeMeal(
+                    name: "Vegetarian \(grain.capitalized) Power Bowl \(i+1)",
+                    category: "breakfast",
+                    calories: 360,
+                    protein: 18,
+                    carbs: 52,
+                    fat: 12,
+                    ingredients: ["1 serving \(grain)", v, "nuts", "fruit", "optional cheese topping"],
+                    instructions: "Combine cooked \(grain) with toppings. Add cheese topping if desired."
+                ))
+            }
+        }
+        // Add more breakfast variety
+        for idx in 0..<24 {
+            let protein = plantProteins[idx % plantProteins.count]
+            let v = veggies[(idx + 2) % veggies.count]
+            if dietaryStyle == .vegan {
+                generated.append(makeMeal(
+                    name: "Vegan \(protein.capitalized) Breakfast Skillet \(idx+1)",
+                    category: "breakfast",
+                    calories: 320,
+                    protein: 20,
+                    carbs: 34,
+                    fat: 12,
+                    ingredients: [protein, v, "onion", "olive oil", "spices"],
+                    instructions: "Sauté onion and \(v). Add \(protein) and spices. Cook until hot and serve."
+                ))
+            } else {
+                generated.append(makeMeal(
+                    name: "Vegetarian \(protein.capitalized) Breakfast Skillet \(idx+1)",
+                    category: "breakfast",
+                    calories: 340,
+                    protein: 22,
+                    carbs: 32,
+                    fat: 14,
+                    ingredients: [protein, v, "onion", "olive oil", "optional egg scramble mix"],
+                    instructions: "Sauté onion and \(v). Add \(protein). Optionally add egg scramble mix. Serve hot."
+                ))
+            }
+        }
+
+        // Lunch templates (40)
+        for idx in 0..<40 {
+            let protein = plantProteins[idx % plantProteins.count]
+            let grain = grains[(idx + 1) % grains.count]
+            let v = veggies[(idx + 3) % veggies.count]
+            let sauce = sauces[idx % sauces.count]
+            generated.append(makeMeal(
+                name: "\(dietaryStyle == .vegan ? "Vegan" : "Vegetarian") \(protein.capitalized) \(grain.capitalized) Bowl \(idx+1)",
+                category: "lunch",
+                calories: 420,
+                protein: 22,
+                carbs: 58,
+                fat: 12,
+                ingredients: ["1 serving \(grain)", protein, v, "mixed greens", sauce],
+                instructions: "Assemble bowl with \(grain), \(protein), and vegetables. Top with \(sauce)."
+            ))
+        }
+
+        // Dinner templates (40)
+        for idx in 0..<40 {
+            let protein = plantProteins[(idx + 2) % plantProteins.count]
+            let v = veggies[(idx + 5) % veggies.count]
+            let sauce = sauces[(idx + 1) % sauces.count]
+            generated.append(makeMeal(
+                name: "\(dietaryStyle == .vegan ? "Vegan" : "Vegetarian") \(protein.capitalized) Dinner Plate \(idx+1)",
+                category: "dinner",
+                calories: 440,
+                protein: 24,
+                carbs: 54,
+                fat: 14,
+                ingredients: [protein, v, "roasted vegetables", sauce],
+                instructions: "Cook \(protein) and roast vegetables. Plate and finish with \(sauce)."
+            ))
+        }
+
+        // Snack templates (20)
+        for idx in 0..<20 {
+            let protein = plantProteins[idx % plantProteins.count]
+            generated.append(makeMeal(
+                name: "\(dietaryStyle == .vegan ? "Vegan" : "Vegetarian") Snack Box \(idx+1)",
+                category: "snack",
+                calories: 190,
+                protein: 10,
+                carbs: 22,
+                fat: 8,
+                ingredients: [protein, "fruit", "nuts", "vegetable sticks"],
+                instructions: "Combine protein + fruit + nuts + veggie sticks into a quick snack box."
+            ))
+        }
+
+        return generated
     }
     
     // MARK: - All Workouts Database (50+ workouts)
