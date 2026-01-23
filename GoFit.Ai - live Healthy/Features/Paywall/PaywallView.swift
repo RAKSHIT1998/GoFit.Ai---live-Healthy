@@ -17,7 +17,7 @@ struct PaywallView: View {
         
         var id: String {
             switch self {
-            case .monthly: return "xomm.gofitai.premium.monthly"
+            case .monthly: return "com.gofitai.premium.monthlyy"
             case .yearly: return "com.gofitai.premium.yearlyy"
             }
         }

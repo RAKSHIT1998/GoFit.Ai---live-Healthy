@@ -17,7 +17,7 @@ class PurchaseManager: ObservableObject {
 
     // MARK: - Product IDs
     // NOTE: These must match exactly with App Store Connect Product IDs
-    let monthlyID = "xomm.gofitai.premium.monthly"
+    let monthlyID = "com.gofitai.premium.monthlyy"
     // NOTE: App Store Connect requires this ID (yearlyy) for this account/subscription group.
     let yearlyID = "com.gofitai.premium.yearlyy"
 

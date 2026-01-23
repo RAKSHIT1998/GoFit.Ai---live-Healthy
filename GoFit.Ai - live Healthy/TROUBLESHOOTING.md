@@ -111,6 +111,6 @@ The app should start with `GoFitAiApp.swift` which shows `RootView()`.
    - Should be iOS 16.0 or higher
 
 4. **Verify Bundle Identifier**:
-   - Should be unique (e.g., `com.rakshit.Gofit.ai.GoFit-Ai-live-Healthy`)
+   - Should be unique (e.g., `com.rakshit.gofitai`)
    - No special characters that might cause issues
 
