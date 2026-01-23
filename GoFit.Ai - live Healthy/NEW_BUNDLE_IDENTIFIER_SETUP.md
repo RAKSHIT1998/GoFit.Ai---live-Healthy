@@ -69,7 +69,7 @@ If `com.rakshit.gofitai` doesn't appear in App Store Connect:
 ### 6. Update StoreKit Configuration (if using)
 If you're using a local StoreKit configuration file for testing, the product IDs remain the same:
 - Monthly: `com.gofitai.premium.monthlyy`
-- Yearly: `com.gofitai.premium.yearlyy`
+- Yearly: `com.gofitai.premium.yearlyyy`
 
 These product IDs are independent of the bundle identifier.
 

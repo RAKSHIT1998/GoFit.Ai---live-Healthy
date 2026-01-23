@@ -3,9 +3,9 @@
 ## ⚠️ IMPORTANT: Product IDs
 Your app uses these **exact** product IDs (must match exactly in App Store Connect):
 - **Monthly**: `com.gofitai.premium.monthlyy` - $1.99/month
-- **Yearly**: `com.gofitai.premium.yearlyy` - $19.99/year
+- **Yearly**: `com.gofitai.premium.yearlyyy` - $19.99/year
 
-**Note**: The yearly ID has two 'y's at the end (`yearlyy`) - this is intentional based on your App Store Connect subscription group requirements.
+**Note**: The yearly ID has three 'y's at the end (`yearlyyy`) - this is intentional based on your App Store Connect subscription group requirements.
 
 ---
 
@@ -115,7 +115,7 @@ Repeat the same steps as Step 3, but with these differences:
 
 - **Subscription Group**: Select the **same group** (`GoFit.AI Premium`)
 - **Reference Name**: `GoFit.AI Premium Yearly`
-- **Product ID**: `com.gofitai.premium.yearlyy` ⚠️ **MUST MATCH EXACTLY** (note the double 'y')
+- **Product ID**: `com.gofitai.premium.yearlyyy` ⚠️ **MUST MATCH EXACTLY** (note the triple 'y')
 - **Subscription Duration**: Select `1 Year`
 
 ### 4.2 Pricing
@@ -179,7 +179,7 @@ Before submitting, verify:
 
 - [ ] Both subscriptions are created:
   - [ ] Monthly: `com.gofitai.premium.monthlyy` - $1.99
-  - [ ] Yearly: `com.gofitai.premium.yearlyy` - $19.99
+  - [ ] Yearly: `com.gofitai.premium.yearlyyy` - $19.99
 - [ ] Both are in the same Subscription Group (`GoFit.AI Premium`)
 - [ ] Product IDs match **exactly** with your code
 - [ ] Prices are set correctly ($1.99 monthly, $19.99 yearly)
@@ -253,7 +253,7 @@ Before submitting, verify:
 
 **Solutions:**
 1. Verify Product IDs match exactly:
-   - Code: `com.gofitai.premium.monthlyy` and `com.gofitai.premium.yearlyy`
+   - Code: `com.gofitai.premium.monthlyy` and `com.gofitai.premium.yearlyyy`
    - App Store Connect: Must be identical
 2. Check subscription status in App Store Connect (should be "Ready to Submit" or "Approved")
 3. Verify bundle identifier: `com.rakshit.gofitai`
@@ -265,7 +265,7 @@ Before submitting, verify:
 **Solutions:**
 - Ensure both subscriptions are in the **same Subscription Group**
 - Check that subscriptions are **approved** or **ready for review**
-- Verify Product IDs have no typos (especially the double 'y' in yearly: `yearlyy`)
+- Verify Product IDs have no typos (especially the triple 'y' in yearly: `yearlyyy`)
 
 ### Issue: App Review Rejection - Missing Subscription Info
 
@@ -330,7 +330,7 @@ Once subscriptions are approved:
 
 ### Product IDs (MUST MATCH EXACTLY)
 - **Monthly**: `com.gofitai.premium.monthlyy`
-- **Yearly**: `com.gofitai.premium.yearlyy`
+- **Yearly**: `com.gofitai.premium.yearlyyy`
 
 ### Prices
 - **Monthly**: $1.99 USD
@@ -353,7 +353,7 @@ Once subscriptions are approved:
 
 ⚠️ **Product IDs Must Match Exactly**
 - Any mismatch between code and App Store Connect will cause products to not load
-- Double-check the yearly ID has two 'y's: `yearlyy`
+- Double-check the yearly ID has three 'y's: `yearlyyy`
 
 ⚠️ **Subscription Group**
 - Both subscriptions MUST be in the same Subscription Group
