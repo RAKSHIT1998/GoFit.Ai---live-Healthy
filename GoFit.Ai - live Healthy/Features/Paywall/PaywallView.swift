@@ -457,19 +457,15 @@ struct PaywallView: View {
 
         do {
             try await purchases.purchase(productId: selectedPlan.id)
-            // Purchase successful - update subscription status
-            await purchases.checkTrialAndSubscriptionStatus()
+            // Purchase successful - update subscription status (non-blocking)
+            Task {
+                await purchases.checkTrialAndSubscriptionStatus()
+            }
             
             await MainActor.run {
                 loading = false
-                // Only auto-dismiss if this was a blocking paywall
-                // For non-blocking paywalls (after signup), user can dismiss manually
-                if isBlocking && (purchases.hasActiveSubscription || purchases.subscriptionStatus == .active) {
-                    // Give user a moment to see success before dismissing
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        dismiss()
-                    }
-                }
+                // Dismiss paywall immediately after successful purchase
+                dismiss()
             }
         } catch let purchaseError {
             await MainActor.run {

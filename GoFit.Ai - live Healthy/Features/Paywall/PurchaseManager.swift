@@ -229,31 +229,46 @@ class PurchaseManager: ObservableObject {
         }
 
         isLoading = true
-        defer { isLoading = false }
+        defer { 
+            isLoading = false 
+        }
 
-        let result = try await product.purchase()
+        do {
+            let result = try await product.purchase()
 
-        switch result {
-        case .success(let verification):
-            let transaction = try checkVerified(verification)
+            switch result {
+            case .success(let verification):
+                let transaction = try checkVerified(verification)
 
-            await updateSubscriptionStatus()
-            await verifyReceiptWithBackend(transaction: transaction)
-            await transaction.finish()
+                // Update subscription status first
+                await updateSubscriptionStatus()
+                
+                // Verify with backend (non-blocking - don't wait if it fails)
+                Task {
+                    await verifyReceiptWithBackend(transaction: transaction)
+                }
+                
+                // Finish transaction immediately to prevent hanging
+                await transaction.finish()
 
-            hasActiveSubscription = true
-            
-            // Recheck trial and subscription status after purchase
-            await checkTrialAndSubscriptionStatus()
+                hasActiveSubscription = true
+                
+                // Recheck trial and subscription status after purchase
+                await checkTrialAndSubscriptionStatus()
 
-        case .userCancelled:
-            throw PurchaseError.userCancelled
+            case .userCancelled:
+                throw PurchaseError.userCancelled
 
-        case .pending:
-            throw PurchaseError.pending
+            case .pending:
+                throw PurchaseError.pending
 
-        @unknown default:
-            throw PurchaseError.unknown
+            @unknown default:
+                throw PurchaseError.unknown
+            }
+        } catch {
+            // Ensure loading is cleared even if error occurs
+            isLoading = false
+            throw error
         }
     }
 
@@ -411,7 +426,7 @@ class PurchaseManager: ObservableObject {
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.timeoutInterval = 30.0
+            req.timeoutInterval = 10.0 // Reduced timeout to 10 seconds to prevent hanging
 
             guard let token = AuthService.shared.readToken()?.accessToken else {
                 print("❌ No auth token found for subscription verification")
@@ -421,6 +436,8 @@ class PurchaseManager: ObservableObject {
 
             req.httpBody = try JSONEncoder().encode(body)
             
+            // Make request with timeout (already set to 10 seconds in req.timeoutInterval)
+            // Catch timeout errors to prevent hanging
             let (data, response) = try await URLSession.shared.data(for: req)
             
             guard let httpResponse = response as? HTTPURLResponse else {

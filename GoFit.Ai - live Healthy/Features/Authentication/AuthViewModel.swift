@@ -271,6 +271,8 @@ final class AuthViewModel: ObservableObject {
         )
         self.token = token
         self.isLoggedIn = true
+        // Set didFinishOnboarding to true so user can navigate to main app
+        self.didFinishOnboarding = true
         // Save token immediately to ensure persistence
         AuthService.shared.saveToken(token)
         
