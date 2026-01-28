@@ -14,6 +14,7 @@ class PurchaseManager: ObservableObject {
     @Published var requiresSubscription = false // Blocks app access if trial expired and no subscription
     @Published var showPaywall = false // Controls paywall visibility
     @Published var trialDaysRemaining: Int? = nil
+    @Published var backendCalculatedEndDate: Date? = nil // Backend's calculated renewal date (proper 1 month/year, not Sandbox-accelerated)
 
     // MARK: - Product IDs
     // NOTE: These must match exactly with App Store Connect Product IDs
@@ -464,9 +465,34 @@ class PurchaseManager: ObservableObject {
             
             print("✅ Subscription verified successfully with backend")
             
-            // Decode response to get subscription status
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let status = json["subscriptionStatus"] as? String {
+            // Decode response to get subscription status and calculated endDate
+            struct VerifyResponse: Codable {
+                let success: Bool
+                let subscriptionStatus: String?
+                let plan: String?
+                let expiresDate: String? // StoreKit's expiresDate (Sandbox-accelerated)
+                let endDate: String? // Backend's calculated endDate (proper 1 month/year renewal)
+                let subscriptionDaysRemaining: Int?
+            }
+            
+            if let verifyResponse = try? JSONDecoder().decode(VerifyResponse.self, from: data) {
+                print("📊 Subscription status: \(verifyResponse.subscriptionStatus ?? "unknown")")
+                
+                // Parse and store backend's calculated endDate (proper renewal date, not Sandbox-accelerated)
+                // Prefer endDate (calculated) over expiresDate (StoreKit/Sandbox)
+                let dateStr = verifyResponse.endDate ?? verifyResponse.expiresDate
+                if let dateStr = dateStr {
+                    let isoFormatter = ISO8601DateFormatter()
+                    isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    if let endDate = isoFormatter.date(from: dateStr) ?? ISO8601DateFormatter().date(from: dateStr) {
+                        await MainActor.run {
+                            backendCalculatedEndDate = endDate
+                            print("📅 Backend calculated renewal date: \(endDate)")
+                        }
+                    }
+                }
+            } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let status = json["subscriptionStatus"] as? String {
                 print("📊 Subscription status: \(status)")
             }
 
@@ -603,9 +629,12 @@ class PurchaseManager: ObservableObject {
                     trialDaysRemaining = days
                 }
                 
-                // Update currentSubscription with backend's calculated endDate (proper renewal date, not Sandbox-accelerated)
+                // Store backend's calculated endDate separately (proper renewal date, not Sandbox-accelerated)
+                // This will be used in ProfileView to show the correct renewal date
                 if let backendEndDate = backendEndDate, (newStatus == .active || newStatus == .trial) {
-                    // Use backend's calculated endDate for display (1 month/year from purchase, not Sandbox date)
+                    backendCalculatedEndDate = backendEndDate
+                    
+                    // Also update currentSubscription with backend's date (but StoreKit's updateSubscriptionStatus might overwrite it)
                     let productId = currentSubscription?.productId ?? (backendResponse.subscription?.plan == "yearly" ? yearlyID : monthlyID)
                     let isInTrial = currentSubscription?.isInTrialPeriod ?? (newStatus == .trial)
                     

@@ -445,8 +445,10 @@ struct ProfileView: View {
                             .foregroundColor(.primary)
                     }
                     
-                    if let subscription = purchases.currentSubscription,
-                       let expirationDate = subscription.expirationDate {
+                    // Prefer backend's calculated endDate (proper 1 month/year renewal) over StoreKit's Sandbox-accelerated date
+                    let renewalDate = purchases.backendCalculatedEndDate ?? purchases.currentSubscription?.expirationDate
+                    
+                    if let expirationDate = renewalDate {
                         if isStoreKitTrial {
                             Text("Free trial active - Renews: \(formatDate(expirationDate))")
                                 .font(Design.Typography.caption)

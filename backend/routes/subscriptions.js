@@ -169,7 +169,8 @@ router.post('/verify', authMiddleware, async (req, res) => {
       success: true,
       subscriptionStatus: user.subscription.status,
       plan: user.subscription.plan,
-      expiresDate: expiresDate,
+      expiresDate: expiresDate, // StoreKit's expiresDate (for reference)
+      endDate: user.subscription.endDate, // Backend's calculated endDate (proper 1 month/year renewal date)
       trialDaysRemaining,
       subscriptionDaysRemaining,
       daysRemaining: isTrial ? trialDaysRemaining : subscriptionDaysRemaining,

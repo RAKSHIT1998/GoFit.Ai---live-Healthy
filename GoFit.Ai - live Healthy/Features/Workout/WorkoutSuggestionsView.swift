@@ -129,8 +129,8 @@ struct WorkoutSuggestionsView: View {
                             ProgressView()
                                 .scaleEffect(0.8)
                         } else {
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundColor(Design.Colors.primary)
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundColor(Design.Colors.primary)
                         }
                     }
                     .disabled(isRefreshing || isLoading)
@@ -171,10 +171,10 @@ struct WorkoutSuggestionsView: View {
     private var tabSelector: some View {
         HStack(spacing: 0) {
             tabButton(title: "Workouts", icon: "figure.run", isSelected: selectedTab == 0) {
-                selectedTab = 0
+                    selectedTab = 0
             }
             tabButton(title: "Meals", icon: "fork.knife", isSelected: selectedTab == 1) {
-                selectedTab = 1
+                    selectedTab = 1
             }
         }
         .background(Design.Colors.secondaryBackground)
@@ -522,8 +522,8 @@ struct WorkoutSuggestionsView: View {
                         .foregroundColor(Design.Colors.primary)
                         .padding(.top, 6)
                     Text(insight)
-                        .font(Design.Typography.body)
-                        .foregroundColor(.secondary)
+                .font(Design.Typography.body)
+                .foregroundColor(.secondary)
                 }
             }
         }
@@ -552,7 +552,7 @@ struct WorkoutSuggestionsView: View {
         await loadBuiltInRecommendations()
         
         // Then try to load AI recommendations in background
-        if !EnvironmentConfig.skipAuthentication {
+            if !EnvironmentConfig.skipAuthentication {
             await tryLoadAIRecommendations()
         }
     }

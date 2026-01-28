@@ -362,7 +362,7 @@ struct MealScannerView3: View {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.title3)
                                         Text("Scan Another Meal")
-                                            .font(Design.Typography.headline)
+                                .font(Design.Typography.headline)
                                     }
                                     .foregroundColor(.primary)
                                     .padding(18)
