@@ -124,6 +124,9 @@ class PurchaseManager: ObservableObject {
     }
     
     func checkTrialAndSubscriptionStatus() async {
+        // IMPORTANT: This method must NOT call updateSubscriptionStatus()/checkSubscriptionStatus().
+        // RootView and other observers may call it on subscriptionStatus changes; if we trigger
+        // more subscription updates from here it can create feedback loops and UI lag.
         // First, check if user is logged in - if not, don't check subscription
         guard AuthService.shared.readToken() != nil else {
             print("ℹ️ User not logged in - skipping subscription check")
@@ -134,10 +137,6 @@ class PurchaseManager: ObservableObject {
         
         // Initialize trial if needed (only for logged-in users)
         initializeTrialIfNeeded()
-        
-        // Update subscription status first (but don't call checkTrialAndSubscriptionStatus again to avoid recursion)
-        await updateSubscriptionStatus()
-        await checkSubscriptionStatus()
         
         // Check if user has active subscription (including trial from StoreKit)
         // Premium active users or users in trial can access
@@ -407,7 +406,7 @@ class PurchaseManager: ObservableObject {
                     await syncSubscriptionStatusWithBackend()
                     // Only check StoreKit status locally (no backend call)
                     await updateSubscriptionStatus()
-                    // Check trial status locally (no backend call)
+                    // Recompute access gating locally (no backend calls)
                     await checkTrialAndSubscriptionStatus()
                 }
                 // Check backend subscription status every 5 minutes

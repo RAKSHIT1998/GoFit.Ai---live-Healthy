@@ -94,21 +94,5 @@ struct RootView: View {
                 healthKit.stopPeriodicSync()
             }
         }
-        .onChange(of: purchases.hasActiveSubscription) { oldValue, newValue in
-            // When subscription becomes active, recheck trial status
-            if newValue {
-                Task {
-                    await purchases.checkTrialAndSubscriptionStatus()
-                }
-            }
-        }
-        .onChange(of: purchases.subscriptionStatus) { oldValue, newValue in
-            // When subscription status changes, recheck trial status
-            if auth.isLoggedIn {
-                Task {
-                    await purchases.checkTrialAndSubscriptionStatus()
-                }
-            }
-        }
     }
 }

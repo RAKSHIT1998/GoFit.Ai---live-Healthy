@@ -426,19 +426,16 @@ struct ProfileView: View {
     // MARK: - Subscription
     private var subscriptionSection: some View {
         SettingsSection(title: "Subscription") {
-            // PRIORITY: Check if user has active PAID subscription first
-            // If they have an active subscription (either .active or .trial from StoreKit), show premium
-            // Note: .trial status from StoreKit means they have an active subscription in trial period
-            if purchases.hasActiveSubscription {
-                // Check if this is a StoreKit trial (introductory offer) or active paid subscription
-                let isStoreKitTrial = purchases.subscriptionStatus == .trial
-                let isActivePaid = purchases.subscriptionStatus == .active
+            // IMPORTANT:
+            // - `hasActiveSubscription` means "can access premium features" (could be backend trial OR StoreKit paid/trial).
+            // - UI must distinguish Premium vs Trial using `subscriptionStatus` + StoreKit `currentSubscription`.
+            //
+            // Premium (StoreKit) = subscriptionStatus == .active (even if it's an intro free trial period).
+            // Trial (backend/local) = subscriptionStatus == .trial.
+            if purchases.subscriptionStatus == .active {
+                let isStoreKitTrial = purchases.currentSubscription?.isInTrialPeriod ?? false
                 
-                // Show premium for both active paid subscriptions and StoreKit trial subscriptions
-                // (StoreKit trial means they purchased and are in the free trial period of that subscription)
-                if isActivePaid || isStoreKitTrial {
-                    // User has active paid subscription
-                    VStack(alignment: .leading, spacing: Design.Spacing.xs) {
+                VStack(alignment: .leading, spacing: Design.Spacing.xs) {
                     HStack {
                         Image(systemName: "crown.fill")
                             .foregroundColor(.yellow)
@@ -470,11 +467,11 @@ struct ProfileView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    }
-                    .padding(.vertical, Design.Spacing.xs)
                 }
-            } else if purchases.subscriptionStatus == .trial && !purchases.hasActiveSubscription {
-                // User is in StoreKit trial period (introductory offer)
+                .padding(.vertical, Design.Spacing.xs)
+                
+            } else if purchases.subscriptionStatus == .trial {
+                // Backend/local trial (NOT a paid subscription)
                 VStack(alignment: .leading, spacing: Design.Spacing.sm) {
                     HStack {
                         Image(systemName: "gift.fill")
@@ -485,9 +482,15 @@ struct ProfileView: View {
                             .foregroundColor(.primary)
                     }
                     
-                    Text("Your free trial is active")
-                        .font(Design.Typography.subheadline)
-                        .foregroundColor(.secondary)
+                    if let days = purchases.trialDaysRemaining ?? purchases.getTrialDaysRemaining() {
+                        Text("\(max(0, days)) day\(max(0, days) == 1 ? "" : "s") left in your free trial")
+                            .font(Design.Typography.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Your free trial is active")
+                            .font(Design.Typography.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                     
                     Button {
                         showingPaywall = true
