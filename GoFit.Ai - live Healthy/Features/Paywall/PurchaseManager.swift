@@ -305,25 +305,23 @@ class PurchaseManager: ObservableObject {
                         let expiration = transaction.expirationDate ?? .distantFuture
 
                         if highestExpiration == nil || expiration > highestExpiration! {
+                            // If status.state == .subscribed, the subscription is ACTIVE (even if in trial period)
+                            // The trial period is just a promotional period - the subscription itself is active
                             highestStatus = .active
                             highestProduct = product
                             highestExpiration = expiration
 
-                            // Check if in trial period - look at transaction purchase date vs current date
+                            // Check if in trial period for informational purposes (but status is still .active)
+                            // Look at transaction purchase date vs current date
                             // If purchase was within last 3 days and has intro offer, likely in trial
-                            // Note: transaction.purchaseDate is non-optional in StoreKit 2's Transaction type
-                            // The compiler enforces this (verified by compilation error fix), so no optional binding is needed
-                            // However, we're already inside a verified transaction block, so purchaseDate is guaranteed to exist
                             let purchaseDate = transaction.purchaseDate
                             
-                            // Defensive check: Ensure purchaseDate is valid (though compiler guarantees it's non-optional)
-                            // This is extra safety in case of any edge cases or future API changes
-                            // If purchase date is in the future (shouldn't happen), skip trial check but continue processing
                             if purchaseDate <= Date() {
                                 let daysSincePurchase = Calendar.current.dateComponents([.day], from: purchaseDate, to: Date()).day ?? 0
+                                // Check if there's an introductory offer and we're still within trial period
                                 if daysSincePurchase < 3 && product.subscription?.introductoryOffer != nil {
-                                    highestStatus = .trial
                                     isInTrial = true
+                                    // Note: Status remains .active because subscription is active (just in trial period)
                                 }
                             } else {
                                 print("⚠️ Warning: Transaction purchase date is in the future: \(purchaseDate), skipping trial check")
@@ -358,6 +356,8 @@ class PurchaseManager: ObservableObject {
         }
 
         subscriptionStatus = highestStatus
+        // Active subscription includes both .active and .trial statuses
+        // But we prioritize .active for paid subscriptions
         hasActiveSubscription = (highestStatus == .active || highestStatus == .trial)
 
         if let product = highestProduct {

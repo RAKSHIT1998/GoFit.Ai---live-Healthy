@@ -14,6 +14,8 @@ struct ProfileView: View {
     @State private var showingChangePassword = false
     @State private var showingShareProgress = false
     @State private var showingTargetSettings = false
+    @State private var showingDietaryPreferences = false
+    @State private var showingDietaryPreferences = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
@@ -80,6 +82,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingTargetSettings) {
                 TargetSettingsView().environmentObject(auth)
+            }
+            .sheet(isPresented: $showingDietaryPreferences) {
+                DietaryPreferencesEditorView().environmentObject(auth)
             }
             .onAppear {
                 // Refresh subscription status when profile appears
@@ -422,10 +427,19 @@ struct ProfileView: View {
     // MARK: - Subscription
     private var subscriptionSection: some View {
         SettingsSection(title: "Subscription") {
-            // Check if user has active PAID subscription (not trial)
-            if purchases.subscriptionStatus == .active && !purchases.isTrialActive() {
-                // User has active paid subscription
-                VStack(alignment: .leading, spacing: Design.Spacing.xs) {
+            // PRIORITY: Check if user has active PAID subscription first
+            // If they have an active subscription (either .active or .trial from StoreKit), show premium
+            // Note: .trial status from StoreKit means they have an active subscription in trial period
+            if purchases.hasActiveSubscription {
+                // Check if this is a StoreKit trial (introductory offer) or active paid subscription
+                let isStoreKitTrial = purchases.subscriptionStatus == .trial
+                let isActivePaid = purchases.subscriptionStatus == .active
+                
+                // Show premium for both active paid subscriptions and StoreKit trial subscriptions
+                // (StoreKit trial means they purchased and are in the free trial period of that subscription)
+                if isActivePaid || isStoreKitTrial {
+                    // User has active paid subscription
+                    VStack(alignment: .leading, spacing: Design.Spacing.xs) {
                     HStack {
                         Image(systemName: "crown.fill")
                             .foregroundColor(.yellow)
@@ -437,14 +451,62 @@ struct ProfileView: View {
                     
                     if let subscription = purchases.currentSubscription,
                        let expirationDate = subscription.expirationDate {
-                        Text("Renews: \(formatDate(expirationDate))")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
+                        if isStoreKitTrial {
+                            Text("Free trial active - Renews: \(formatDate(expirationDate))")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("Renews: \(formatDate(expirationDate))")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                        }
                     } else {
-                        Text("You have full access to all premium features")
-                            .font(Design.Typography.caption)
-                            .foregroundColor(.secondary)
+                        if isStoreKitTrial {
+                            Text("Free trial active - You have full access to all premium features")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("You have full access to all premium features")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    }
+                    .padding(.vertical, Design.Spacing.xs)
+                }
+            } else if purchases.subscriptionStatus == .trial && !purchases.hasActiveSubscription {
+                // User is in StoreKit trial period (introductory offer)
+                VStack(alignment: .leading, spacing: Design.Spacing.sm) {
+                    HStack {
+                        Image(systemName: "gift.fill")
+                            .foregroundColor(Design.Colors.primary)
+                            .font(.title3)
+                        Text("Free Trial")
+                            .font(Design.Typography.headline)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    Text("Your free trial is active")
+                        .font(Design.Typography.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        HStack {
+                            Text("Subscribe Now")
+                                .font(Design.Typography.subheadline)
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "arrow.right.circle.fill")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, Design.Spacing.md)
+                        .padding(.vertical, Design.Spacing.sm)
+                        .background(Design.Colors.primaryGradient)
+                        .cornerRadius(Design.Radius.medium)
+                    }
+                    .padding(.top, Design.Spacing.xs)
                 }
                 .padding(.vertical, Design.Spacing.xs)
             } else if purchases.isTrialActive() {
@@ -530,6 +592,18 @@ struct ProfileView: View {
     // MARK: - Preferences
     private var preferencesSection: some View {
         SettingsSection(title: "Preferences") {
+            // Dietary Preferences
+            SettingsRow(
+                icon: "leaf.fill",
+                iconColor: .green,
+                title: "Dietary Preferences",
+                subtitle: dietaryPreferencesSubtitle,
+                showChevron: true,
+                action: {
+                    showingDietaryPreferences = true
+                }
+            )
+            
             Menu {
                 Button("Metric") {
                     unitsPreference = "metric"
@@ -569,6 +643,23 @@ struct ProfileView: View {
                     showChevron: true
                 )
             }
+        }
+    }
+    
+    private var dietaryPreferencesSubtitle: String {
+        if auth.dietPrefs.isEmpty {
+            return "None selected"
+        } else {
+            let displayNames: [String: String] = [
+                "vegan": "Vegan",
+                "vegetarian": "Vegetarian",
+                "keto": "Keto",
+                "paleo": "Paleo",
+                "mediterranean": "Mediterranean",
+                "low_carb": "Low Carb"
+            ]
+            let names = auth.dietPrefs.compactMap { displayNames[$0] }
+            return names.joined(separator: ", ")
         }
     }
 
