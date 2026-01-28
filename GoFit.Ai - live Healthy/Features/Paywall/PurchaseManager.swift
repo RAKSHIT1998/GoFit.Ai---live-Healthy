@@ -570,14 +570,26 @@ class PurchaseManager: ObservableObject {
                 newStatus = .free
             }
             
-            // Update trial days remaining from backend
-            let backendTrialDays = backendResponse.trialDaysRemaining ?? backendResponse.daysRemaining
+            // Update trial days remaining from backend.
+            //
+            // Bugfix:
+            // Backend can return `trialDaysRemaining: 0` (non-nil) for paid subscribers while also
+            // returning `daysRemaining: X` or `subscriptionDaysRemaining: X`. Using `??` would treat
+            // 0 as a "real" trial value and overwrite local/real trial info with 0.
+            //
+            // Only write `trialDaysRemaining` when the backend says the user is actually in trial.
+            let backendTrialDays: Int? = {
+                if backendResponse.isInTrial == true {
+                    return backendResponse.trialDaysRemaining ?? backendResponse.daysRemaining
+                }
+                return nil
+            }()
             
             await MainActor.run {
                 hasActiveSubscription = backendResponse.hasActiveSubscription
                 subscriptionStatus = newStatus
                 
-                // Update trial days remaining if provided
+                // Update trial days remaining only if backend indicates trial
                 if let days = backendTrialDays {
                     trialDaysRemaining = days
                 }

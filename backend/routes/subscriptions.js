@@ -299,6 +299,22 @@ router.post('/sync', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    // Bugfix:
+    // Some users may not have `subscription` initialized yet (older accounts / edge cases).
+    // Avoid crashing with "Cannot read property 'status' of undefined".
+    if (!user.subscription) {
+      user.subscription = {
+        status: 'free',
+        plan: null,
+        startDate: null,
+        endDate: null,
+        trialEndDate: null,
+        appleTransactionId: null,
+        appleOriginalTransactionId: null,
+        cancelledAt: null
+      };
+    }
     
     const now = new Date();
     let statusChanged = false;
