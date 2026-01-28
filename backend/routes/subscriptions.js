@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { sendSubscriptionThankYouEmail } from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -42,6 +43,9 @@ router.post('/verify', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    const previousStatus = user.subscription?.status || 'free';
+    const previousOriginalTx = user.subscription?.appleOriginalTransactionId || null;
     
     const expiresDateStr = transaction.expiresDate;
     const expiresDate = expiresDateStr ? new Date(expiresDateStr) : null;
@@ -112,6 +116,29 @@ router.post('/verify', authMiddleware, async (req, res) => {
     };
 
     await user.save();
+
+    // Send thank-you email on first activation (avoid spamming on every verify/renewal).
+    // We send when:
+    // - not revoked
+    // - status is trial or active (i.e. user just obtained access)
+    // - and either status changed from non-access -> access OR originalTransactionID changed.
+    const hasAccessNow = (newStatus === 'trial' || newStatus === 'active');
+    const hadAccessBefore = (previousStatus === 'trial' || previousStatus === 'active');
+    const currentOriginalTx = user.subscription.appleOriginalTransactionId || null;
+    const isFirstActivation = hasAccessNow && (!hadAccessBefore || (previousOriginalTx && currentOriginalTx && previousOriginalTx !== currentOriginalTx));
+
+    if (!isRevoked && isFirstActivation && user.email) {
+      const renewDateStr = user.subscription.endDate ? user.subscription.endDate.toDateString() : '';
+      const plan = user.subscription.plan || (productId.includes('yearly') ? 'yearly' : 'monthly');
+      const price = plan === 'yearly' ? '$19.99/year' : '$1.99/month';
+      // Fire-and-forget: we don't want email failures to break purchase verification.
+      sendSubscriptionThankYouEmail(user.email, {
+        name: user.name,
+        plan,
+        price,
+        renewDate: renewDateStr
+      }).catch(() => {});
+    }
 
     // Calculate days remaining
     const now = new Date();
