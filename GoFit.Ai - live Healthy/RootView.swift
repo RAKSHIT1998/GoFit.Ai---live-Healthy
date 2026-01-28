@@ -94,5 +94,16 @@ struct RootView: View {
                 healthKit.stopPeriodicSync()
             }
         }
+        .onChange(of: purchases.subscriptionStatus) { oldValue, newValue in
+            // Bugfix: When subscription status changes (e.g., after purchase), immediately
+            // update requiresSubscription/showPaywall to dismiss blocking paywall.
+            // This is safe because checkTrialAndSubscriptionStatus() no longer calls
+            // updateSubscriptionStatus()/checkSubscriptionStatus(), so no infinite loop.
+            if auth.isLoggedIn && oldValue != newValue {
+                Task {
+                    await purchases.checkTrialAndSubscriptionStatus()
+                }
+            }
+        }
     }
 }

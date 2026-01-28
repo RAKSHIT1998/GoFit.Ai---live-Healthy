@@ -482,8 +482,11 @@ struct ProfileView: View {
                             .foregroundColor(.primary)
                     }
                     
-                    if let days = purchases.trialDaysRemaining ?? purchases.getTrialDaysRemaining() {
-                        Text("\(max(0, days)) day\(max(0, days) == 1 ? "" : "s") left in your free trial")
+                    // Bugfix: Only use backend trialDaysRemaining for backend trials.
+                    // Don't fall back to local getTrialDaysRemaining() as it returns 3-day local trial
+                    // which may have different duration than backend trial (e.g., 7 days).
+                    if let days = purchases.trialDaysRemaining, days > 0 {
+                        Text("\(days) day\(days == 1 ? "" : "s") left in your free trial")
                             .font(Design.Typography.subheadline)
                             .foregroundColor(.secondary)
                     } else {
