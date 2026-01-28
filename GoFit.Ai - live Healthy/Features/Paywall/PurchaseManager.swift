@@ -585,6 +585,15 @@ class PurchaseManager: ObservableObject {
                 return nil
             }()
             
+            // Parse backend's endDate (calculated properly, not Sandbox-accelerated)
+            var backendEndDate: Date? = nil
+            if let endDateStr = backendResponse.subscription?.endDate {
+                // MongoDB/Mongoose serializes dates as ISO8601 strings
+                let isoFormatter = ISO8601DateFormatter()
+                isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                backendEndDate = isoFormatter.date(from: endDateStr) ?? ISO8601DateFormatter().date(from: endDateStr)
+            }
+            
             await MainActor.run {
                 hasActiveSubscription = backendResponse.hasActiveSubscription
                 subscriptionStatus = newStatus
@@ -592,6 +601,20 @@ class PurchaseManager: ObservableObject {
                 // Update trial days remaining only if backend indicates trial
                 if let days = backendTrialDays {
                     trialDaysRemaining = days
+                }
+                
+                // Update currentSubscription with backend's calculated endDate (proper renewal date, not Sandbox-accelerated)
+                if let backendEndDate = backendEndDate, (newStatus == .active || newStatus == .trial) {
+                    // Use backend's calculated endDate for display (1 month/year from purchase, not Sandbox date)
+                    let productId = currentSubscription?.productId ?? (backendResponse.subscription?.plan == "yearly" ? yearlyID : monthlyID)
+                    let isInTrial = currentSubscription?.isInTrialPeriod ?? (newStatus == .trial)
+                    
+                    currentSubscription = CurrentSubscriptionInfo(
+                        productId: productId,
+                        expirationDate: backendEndDate,
+                        isInTrialPeriod: isInTrial,
+                        renewalInfo: currentSubscription?.renewalInfo
+                    )
                 }
                 
                 // Update cache

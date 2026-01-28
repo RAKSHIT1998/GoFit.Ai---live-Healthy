@@ -63,19 +63,24 @@ router.post('/verify', authMiddleware, async (req, res) => {
     const daysSincePurchase = (new Date() - purchaseDate) / (1000 * 60 * 60 * 24);
     const isTrial = wasInTrial || (daysSincePurchase <= 3 && isActive);
     
-    // Calculate subscription end date based on plan
-    let subscriptionEndDate = expiresDate;
-    if (expiresDate) {
-      // StoreKit provides the expiration date, use it
-      subscriptionEndDate = expiresDate;
+    // Calculate subscription end date based on plan.
+    // IMPORTANT: Always calculate from purchaseDate + plan duration, not StoreKit's expiresDate.
+    // StoreKit's expiresDate in Sandbox is accelerated (same day or very short) for testing.
+    // For UI display, we want the "real" renewal date (1 month or 1 year from purchase).
+    let subscriptionEndDate = new Date(purchaseDate);
+    if (productId.includes('yearly')) {
+      subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
     } else {
-      // Fallback: calculate based on plan
-      subscriptionEndDate = new Date(purchaseDate);
-      if (productId.includes('yearly')) {
-        subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
-      } else {
-        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
-      }
+      // Monthly subscription: add 1 month
+      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+    }
+    
+    // Use StoreKit's expiresDate only as a sanity check (verify subscription is valid).
+    // But for display/calculation, always use our calculated date.
+    if (expiresDate && expiresDate > subscriptionEndDate) {
+      // If StoreKit says it expires later than our calculation, use StoreKit's date
+      // (this handles edge cases like grace periods or extended subscriptions)
+      subscriptionEndDate = expiresDate;
     }
 
     // Determine subscription status
