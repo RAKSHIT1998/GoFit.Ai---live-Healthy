@@ -15,7 +15,6 @@ struct ProfileView: View {
     @State private var showingShareProgress = false
     @State private var showingTargetSettings = false
     @State private var showingDietaryPreferences = false
-    @State private var showingDietaryPreferences = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
