@@ -89,7 +89,8 @@ const userSchema = new mongoose.Schema({
     endDate: Date,
     trialEndDate: Date,
     appleTransactionId: String,
-    appleOriginalTransactionId: String
+    appleOriginalTransactionId: String,
+    cancelledAt: Date // When subscription was cancelled (user still has access until endDate)
   },
   metrics: {
     weightKg: Number,

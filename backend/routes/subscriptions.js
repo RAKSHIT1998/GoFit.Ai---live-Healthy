@@ -74,27 +74,75 @@ router.post('/verify', authMiddleware, async (req, res) => {
       }
     }
 
-    // If user was in trial and now purchasing, transition to active
-    // If still in trial period from StoreKit, keep as trial, otherwise mark as active
-    const newStatus = isRevoked ? 'cancelled' : (isActive ? (isTrial ? 'trial' : 'active') : 'expired');
+    // Determine subscription status
+    let newStatus;
+    if (isRevoked) {
+      newStatus = 'cancelled';
+    } else if (!isActive) {
+      newStatus = 'expired';
+    } else if (isTrial) {
+      newStatus = 'trial';
+    } else {
+      newStatus = 'active'; // Premium active subscription
+    }
     
+    // Calculate trial end date
+    let trialEndDate = null;
+    if (isTrial) {
+      if (wasInTrial && user.subscription.trialEndDate) {
+        // Keep existing trial end date if user was already in trial
+        trialEndDate = user.subscription.trialEndDate;
+      } else {
+        // New trial - set end date to 3 days from purchase
+        trialEndDate = new Date(purchaseDate);
+        trialEndDate.setDate(trialEndDate.getDate() + 3);
+      }
+    }
+    
+    // Update user subscription
     user.subscription = {
       status: newStatus,
       plan: productId.includes('yearly') ? 'yearly' : 'monthly',
       startDate: purchaseDate,
       endDate: subscriptionEndDate,
-      trialEndDate: isTrial && wasInTrial ? user.subscription.trialEndDate : (isTrial ? subscriptionEndDate : null),
+      trialEndDate: trialEndDate,
       appleTransactionId: transaction.transactionID?.toString() || transactionId?.toString(),
-      appleOriginalTransactionId: transaction.originalTransactionID?.toString()
+      appleOriginalTransactionId: transaction.originalTransactionID?.toString(),
+      cancelledAt: isRevoked ? new Date() : user.subscription?.cancelledAt
     };
 
     await user.save();
+
+    // Calculate days remaining
+    const now = new Date();
+    const calculateDaysRemaining = (endDate) => {
+      if (!endDate) return 0;
+      const diff = endDate.getTime() - now.getTime();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      return Math.max(0, days);
+    };
+
+    const trialDaysRemaining = trialEndDate ? calculateDaysRemaining(trialEndDate) : 0;
+    const subscriptionDaysRemaining = subscriptionEndDate ? calculateDaysRemaining(subscriptionEndDate) : 0;
+
+    console.log(`✅ Subscription verified for user ${user._id}: ${newStatus}, Plan: ${user.subscription.plan}`);
+    if (trialDaysRemaining > 0) {
+      console.log(`   Trial days remaining: ${trialDaysRemaining}`);
+    }
+    if (subscriptionDaysRemaining > 0) {
+      console.log(`   Subscription days remaining: ${subscriptionDaysRemaining}`);
+    }
 
     res.json({
       success: true,
       subscriptionStatus: user.subscription.status,
       plan: user.subscription.plan,
-      expiresDate: expiresDate
+      expiresDate: expiresDate,
+      trialDaysRemaining,
+      subscriptionDaysRemaining,
+      daysRemaining: isTrial ? trialDaysRemaining : subscriptionDaysRemaining,
+      isPremiumActive: newStatus === 'active',
+      isInTrial: newStatus === 'trial'
     });
   } catch (error) {
     console.error('Subscription sync error:', error);
@@ -105,39 +153,108 @@ router.post('/verify', authMiddleware, async (req, res) => {
   }
 });
 
-// Get subscription status
+// Get subscription status with detailed days calculations
 router.get('/status', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     
-    if (!user || !user.subscription) {
-      return res.json({
-        hasActiveSubscription: false,
-        subscription: null
-      });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
     
     const now = new Date();
     
-    // Check if trial has expired
-    if (user.subscription.status === 'trial' && user.subscription.trialEndDate && user.subscription.trialEndDate < now) {
-      user.subscription.status = 'expired';
+    // Initialize subscription if it doesn't exist
+    if (!user.subscription) {
+      user.subscription = {
+        status: 'free',
+        plan: undefined,
+        startDate: null,
+        endDate: null,
+        trialEndDate: null,
+        appleTransactionId: null,
+        appleOriginalTransactionId: null
+      };
       await user.save();
     }
     
-    // Check if subscription has expired
-    if (user.subscription.endDate && user.subscription.endDate < now && user.subscription.status !== 'cancelled') {
-      user.subscription.status = 'expired';
-      await user.save();
+    // Calculate days remaining helper function
+    const calculateDaysRemaining = (endDate) => {
+      if (!endDate) return 0;
+      const diff = endDate.getTime() - now.getTime();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      return Math.max(0, days);
+    };
+    
+    // Check if trial has expired
+    if (user.subscription.status === 'trial' && user.subscription.trialEndDate) {
+      if (user.subscription.trialEndDate < now) {
+        // Trial expired - check if they have an active paid subscription
+        if (user.subscription.endDate && user.subscription.endDate > now) {
+          // They have an active paid subscription, transition to active
+          user.subscription.status = 'active';
+          await user.save();
+        } else {
+          // No active subscription, mark as expired
+          user.subscription.status = 'expired';
+          await user.save();
+        }
+      }
     }
+    
+    // Check if subscription has expired (but not if cancelled)
+    if (user.subscription.status === 'active' && user.subscription.endDate) {
+      if (user.subscription.endDate < now) {
+        // Subscription expired
+        user.subscription.status = 'expired';
+        await user.save();
+      }
+    }
+    
+    // Calculate days remaining for trial and subscription
+    const trialDaysRemaining = user.subscription.trialEndDate 
+      ? calculateDaysRemaining(user.subscription.trialEndDate)
+      : 0;
+    
+    const subscriptionDaysRemaining = user.subscription.endDate 
+      ? calculateDaysRemaining(user.subscription.endDate)
+      : 0;
+    
+    // Determine if user is premium (active subscription, not trial or expired)
+    const isPremiumActive = user.subscription.status === 'active';
+    const isInTrial = user.subscription.status === 'trial';
+    const isCancelled = user.subscription.status === 'cancelled';
+    const isExpired = user.subscription.status === 'expired';
+    const hasActiveSubscription = isPremiumActive || isInTrial;
 
     res.json({
-      hasActiveSubscription: ['trial', 'active'].includes(user.subscription.status),
-      subscription: user.subscription,
-      isInTrial: user.subscription.status === 'trial',
-      trialDaysRemaining: user.subscription.trialEndDate 
-        ? Math.max(0, Math.ceil((user.subscription.trialEndDate - now) / (1000 * 60 * 60 * 24)))
-        : 0
+      hasActiveSubscription,
+      isPremiumActive,
+      isInTrial,
+      isCancelled,
+      isExpired,
+      subscription: {
+        status: user.subscription.status,
+        plan: user.subscription.plan,
+        startDate: user.subscription.startDate,
+        endDate: user.subscription.endDate,
+        trialEndDate: user.subscription.trialEndDate,
+        appleTransactionId: user.subscription.appleTransactionId,
+        appleOriginalTransactionId: user.subscription.appleOriginalTransactionId
+      },
+      // Days calculations
+      trialDaysRemaining,
+      subscriptionDaysRemaining,
+      // Additional info
+      daysRemaining: isInTrial ? trialDaysRemaining : subscriptionDaysRemaining,
+      // Status details
+      statusDetails: {
+        isPremium: isPremiumActive,
+        isTrial: isInTrial,
+        isCancelled: isCancelled,
+        isExpired: isExpired,
+        canAccessPremium: hasActiveSubscription
+      }
     });
   } catch (error) {
     console.error('Get subscription status error:', error);
@@ -149,13 +266,72 @@ router.get('/status', authMiddleware, async (req, res) => {
 router.post('/cancel', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Mark subscription as cancelled
+    // Note: User still has access until endDate
     user.subscription.status = 'cancelled';
+    user.subscription.cancelledAt = new Date();
     await user.save();
 
-    res.json({ message: 'Subscription cancelled' });
+    console.log(`✅ Subscription cancelled for user ${user._id}. Access until ${user.subscription.endDate}`);
+
+    res.json({ 
+      message: 'Subscription cancelled',
+      subscription: user.subscription,
+      // Calculate days remaining until cancellation takes effect
+      daysRemaining: user.subscription.endDate 
+        ? Math.max(0, Math.ceil((user.subscription.endDate - new Date()) / (1000 * 60 * 60 * 24)))
+        : 0
+    });
   } catch (error) {
     console.error('Cancel subscription error:', error);
     res.status(500).json({ message: 'Failed to cancel subscription', error: error.message });
+  }
+});
+
+// Sync subscription status from StoreKit (called periodically)
+router.post('/sync', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    const now = new Date();
+    let statusChanged = false;
+    
+    // Auto-update expired subscriptions
+    if (user.subscription.status === 'trial' && user.subscription.trialEndDate && user.subscription.trialEndDate < now) {
+      if (user.subscription.endDate && user.subscription.endDate > now) {
+        user.subscription.status = 'active';
+        statusChanged = true;
+      } else {
+        user.subscription.status = 'expired';
+        statusChanged = true;
+      }
+    }
+    
+    if (user.subscription.status === 'active' && user.subscription.endDate && user.subscription.endDate < now) {
+      user.subscription.status = 'expired';
+      statusChanged = true;
+    }
+    
+    if (statusChanged) {
+      await user.save();
+      console.log(`🔄 Subscription status auto-updated for user ${user._id}: ${user.subscription.status}`);
+    }
+    
+    res.json({
+      success: true,
+      subscription: user.subscription,
+      statusChanged
+    });
+  } catch (error) {
+    console.error('Sync subscription error:', error);
+    res.status(500).json({ message: 'Failed to sync subscription', error: error.message });
   }
 });
 

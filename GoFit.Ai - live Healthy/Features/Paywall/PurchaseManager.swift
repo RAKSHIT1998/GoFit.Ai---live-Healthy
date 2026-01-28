@@ -140,19 +140,29 @@ class PurchaseManager: ObservableObject {
         await checkSubscriptionStatus()
         
         // Check if user has active subscription (including trial from StoreKit)
+        // Premium active users or users in trial can access
         let hasSubscription = hasActiveSubscription || subscriptionStatus == .trial || subscriptionStatus == .active
+        
+        // Check if subscription is cancelled (user still has access until endDate)
+        let isCancelled = subscriptionStatus == .cancelled
         
         // Check if local 3-day trial is still active (only if trial has been initialized)
         let localTrialActive = isTrialActive()
         
-        // Calculate trial days remaining
-        trialDaysRemaining = getTrialDaysRemaining()
+        // Calculate trial days remaining (use backend value if available, otherwise local)
+        if trialDaysRemaining == nil {
+            trialDaysRemaining = getTrialDaysRemaining()
+        }
         
-        // If user has active subscription, they can access the app
+        // If user has active subscription (premium or trial), they can access the app
         if hasSubscription {
             requiresSubscription = false
             showPaywall = false
-            print("✅ User has active subscription - access granted")
+            if isCancelled {
+                print("✅ User has cancelled subscription but still has access until expiration")
+            } else {
+                print("✅ User has active subscription - access granted")
+            }
             return
         }
         
@@ -393,13 +403,15 @@ class PurchaseManager: ObservableObject {
                 // Don’t do StoreKit/backend work if user is not logged in.
                 // This significantly reduces background work and improves perceived performance.
                 if AuthService.shared.readToken() != nil {
+                    // Sync with backend to keep subscription status up to date
+                    await syncSubscriptionStatusWithBackend()
                     // Only check StoreKit status locally (no backend call)
                     await updateSubscriptionStatus()
                     // Check trial status locally (no backend call)
                     await checkTrialAndSubscriptionStatus()
                 }
-                // Check backend subscription status less frequently (every 5 minutes instead of 1 minute)
-                try? await Task.sleep(nanoseconds: 300_000_000_000) // Check every 5 minutes
+                // Check backend subscription status every 5 minutes
+                try? await Task.sleep(nanoseconds: 300_000_000_000) // 5 minutes
             }
         }
     }
@@ -512,41 +524,80 @@ class PurchaseManager: ObservableObject {
 
             struct Response: Codable {
                 let hasActiveSubscription: Bool
-                let subscription: SubscriptionInfo?
+                let isPremiumActive: Bool?
                 let isInTrial: Bool?
+                let isCancelled: Bool?
+                let isExpired: Bool?
+                let subscription: SubscriptionInfo?
                 let trialDaysRemaining: Int?
+                let subscriptionDaysRemaining: Int?
+                let daysRemaining: Int?
+                let statusDetails: StatusDetails?
             }
             
             struct SubscriptionInfo: Codable {
                 let status: String
                 let plan: String?
+                let startDate: String?
                 let endDate: String?
+                let trialEndDate: String?
+                let appleTransactionId: String?
+                let appleOriginalTransactionId: String?
+            }
+            
+            struct StatusDetails: Codable {
+                let isPremium: Bool?
+                let isTrial: Bool?
+                let isCancelled: Bool?
+                let isExpired: Bool?
+                let canAccessPremium: Bool?
             }
 
             let backendResponse = try JSONDecoder().decode(Response.self, from: data)
             
-            // Update cache
+            // Determine subscription status from backend response
             let newStatus: SubscriptionStatus
-            if let isInTrial = backendResponse.isInTrial, isInTrial {
+            if let isCancelled = backendResponse.isCancelled, isCancelled {
+                newStatus = .cancelled
+            } else if let isExpired = backendResponse.isExpired, isExpired {
+                newStatus = .expired
+            } else if let isInTrial = backendResponse.isInTrial, isInTrial {
                 newStatus = .trial
+            } else if let isPremiumActive = backendResponse.isPremiumActive, isPremiumActive {
+                newStatus = .active
             } else if backendResponse.hasActiveSubscription {
                 newStatus = .active
             } else {
-                newStatus = .expired
+                newStatus = .free
             }
+            
+            // Update trial days remaining from backend
+            let backendTrialDays = backendResponse.trialDaysRemaining ?? backendResponse.daysRemaining
             
             await MainActor.run {
                 hasActiveSubscription = backendResponse.hasActiveSubscription
                 subscriptionStatus = newStatus
+                
+                // Update trial days remaining if provided
+                if let days = backendTrialDays {
+                    trialDaysRemaining = days
+                }
                 
                 // Update cache
                 statusCheckCache = (status: newStatus, hasActive: backendResponse.hasActiveSubscription)
                 lastStatusCheck = Date()
             }
             
-            print("✅ Subscription status from backend: \(backendResponse.hasActiveSubscription ? "Active" : "Inactive")")
-            if let daysRemaining = backendResponse.trialDaysRemaining {
-                print("📊 Trial days remaining: \(daysRemaining)")
+            print("✅ Subscription status from backend:")
+            print("   - Status: \(newStatus)")
+            print("   - Has Active: \(backendResponse.hasActiveSubscription)")
+            print("   - Is Premium: \(backendResponse.isPremiumActive ?? false)")
+            print("   - Is Cancelled: \(backendResponse.isCancelled ?? false)")
+            if let days = backendTrialDays {
+                print("   - Trial Days Remaining: \(days)")
+            }
+            if let subDays = backendResponse.subscriptionDaysRemaining {
+                print("   - Subscription Days Remaining: \(subDays)")
             }
 
         } catch {
@@ -558,6 +609,53 @@ class PurchaseManager: ObservableObject {
         }
     }
 
+    // MARK: - Backend Sync
+    private func syncSubscriptionStatusWithBackend() async {
+        do {
+            guard let token = AuthService.shared.readToken()?.accessToken else {
+                return
+            }
+            
+            let url = NetworkManager.shared.baseURL.appendingPathComponent("subscriptions/sync")
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            req.timeoutInterval = 10.0
+            
+            let (data, response) = try await URLSession.shared.data(for: req)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                return
+            }
+            
+            struct SyncResponse: Codable {
+                let success: Bool
+                let subscription: SubscriptionInfo?
+                let statusChanged: Bool
+            }
+            
+            struct SubscriptionInfo: Codable {
+                let status: String
+                let plan: String?
+                let endDate: String?
+                let trialEndDate: String?
+            }
+            
+            let syncResponse = try JSONDecoder().decode(SyncResponse.self, from: data)
+            
+            if syncResponse.statusChanged {
+                print("🔄 Subscription status changed on backend - refreshing...")
+                // Refresh subscription status after sync
+                await checkSubscriptionStatus()
+            }
+        } catch {
+            // Silently fail - this is a background sync
+            print("⚠️ Background subscription sync failed: \(error.localizedDescription)")
+        }
+    }
+    
     // MARK: - Helpers
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
