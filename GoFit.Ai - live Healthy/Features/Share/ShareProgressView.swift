@@ -140,12 +140,12 @@ struct ShareProgressView: View {
             }
             .sheet(isPresented: $showingShareSheet) {
                 if let image = shareImage {
-                    ShareSheet(activityItems: [
+                    ShareSheet(items: [
                         image,
                         "Check out my fitness progress with GoFit.Ai! 💪\n\nTrack your health and fitness with GoFit.Ai - Your AI-powered health companion.\n\n#GoFitAi #Fitness #Health #Wellness"
                     ])
                 } else {
-                    ShareSheet(activityItems: [
+                    ShareSheet(items: [
                         generateShareText()
                     ])
                 }

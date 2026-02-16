@@ -80,7 +80,7 @@ final class UserDataCache: ObservableObject {
     
     func clearUserProfile() {
         cacheLock.async {
-            self.storage.removeStoredObject(forKey: "cached_user_profile")
+            _ = self.storage.removeStoredObject(forKey: "cached_user_profile")
             DispatchQueue.main.async {
                 self.userProfile = nil
                 self.logger.storage("User profile cleared from cache")
@@ -222,7 +222,7 @@ final class UserDataCache: ObservableObject {
             DispatchQueue.main.async {
                 self.lastSyncTime = Date()
                 self.isSynced = true
-                self.storage.save(Date(), forKey: "last_sync_time")
+                _ = self.storage.save(Date(), forKey: "last_sync_time")
                 self.logger.storage("Data synced at \(self.lastSyncTime?.description ?? "unknown")")
             }
         }
@@ -236,11 +236,11 @@ final class UserDataCache: ObservableObject {
     // MARK: - Clear Cache
     func clearAllCache() {
         cacheLock.async {
-            self.storage.removeStoredObject(forKey: "cached_user_profile")
-            self.storage.removeStoredObject(forKey: "cached_workouts")
-            self.storage.removeStoredObject(forKey: "cached_meals")
-            self.storage.removeStoredObject(forKey: "cached_daily_stats")
-            self.storage.removeStoredObject(forKey: "last_sync_time")
+            _ = self.storage.removeStoredObject(forKey: "cached_user_profile")
+            _ = self.storage.removeStoredObject(forKey: "cached_workouts")
+            _ = self.storage.removeStoredObject(forKey: "cached_meals")
+            _ = self.storage.removeStoredObject(forKey: "cached_daily_stats")
+            _ = self.storage.removeStoredObject(forKey: "last_sync_time")
             
             DispatchQueue.main.async {
                 self.userProfile = nil
@@ -295,7 +295,7 @@ struct UserProfileCache: Codable {
 }
 
 struct DailyStats: Codable, Identifiable {
-    let id = UUID()
+    var id: UUID
     var date: Date
     var totalCaloriesConsumed: Double
     var totalCaloriesBurned: Double
@@ -306,6 +306,20 @@ struct DailyStats: Codable, Identifiable {
     var mealsLogged: Int
     var waterIntake: Double // in liters
     var steps: Int
+    
+    init(id: UUID = UUID(), date: Date, totalCaloriesConsumed: Double, totalCaloriesBurned: Double, protein: Double, carbs: Double, fat: Double, workoutsCompleted: Int, mealsLogged: Int, waterIntake: Double, steps: Int) {
+        self.id = id
+        self.date = date
+        self.totalCaloriesConsumed = totalCaloriesConsumed
+        self.totalCaloriesBurned = totalCaloriesBurned
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+        self.workoutsCompleted = workoutsCompleted
+        self.mealsLogged = mealsLogged
+        self.waterIntake = waterIntake
+        self.steps = steps
+    }
     
     func getCalorieDeficit() -> Double {
         return totalCaloriesBurned - totalCaloriesConsumed
