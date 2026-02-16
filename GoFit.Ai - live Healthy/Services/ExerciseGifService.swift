@@ -86,11 +86,11 @@ struct GifImageView: View {
         isLoading = true
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                let (animated, static) = try createAnimatedImage(from: gifData)
+                let (animated, staticFrame) = try self.createAnimatedImage(from: gifData)
                 DispatchQueue.main.async {
                     withAnimation {
                         self.animatedImage = animated
-                        self.staticImage = static
+                        self.staticImage = staticFrame
                         self.isLoading = false
                     }
                 }
@@ -132,8 +132,8 @@ struct GifImageView: View {
         
         // Create animated image and static (first frame) image
         let animated = UIImage.animatedImage(with: images, duration: max(duration, 1.0)) ?? images[0]
-        let static = images[0]
-        return (animated, static)
+        let staticFrame = images[0]
+        return (animated, staticFrame)
     }
 }
 
