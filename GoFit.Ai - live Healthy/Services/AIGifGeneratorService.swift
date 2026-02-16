@@ -126,26 +126,63 @@ final class AIGifGeneratorService: ObservableObject {
         return renderer.image { context in
             let ctx = context.cgContext
             
-            // Background
-            ctx.setFillColor(UIColor.systemBackground.cgColor)
-            ctx.fill(CGRect(origin: .zero, size: size))
+            // Modern gradient background
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let colors = [
+                UIColor(red: 0.95, green: 0.97, blue: 1.0, alpha: 1.0).cgColor,
+                UIColor(red: 0.85, green: 0.90, blue: 0.98, alpha: 1.0).cgColor
+            ] as CFArray
+            let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0.0, 1.0])!
+            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 0, y: size.height), options: [])
+            
+            // Draw grid pattern for reference
+            ctx.setStrokeColor(UIColor.systemGray5.cgColor)
+            ctx.setLineWidth(0.5)
+            let gridSpacing: CGFloat = 40
+            for i in stride(from: 0, through: size.width, by: gridSpacing) {
+                ctx.move(to: CGPoint(x: i, y: 0))
+                ctx.addLine(to: CGPoint(x: i, y: size.height))
+            }
+            for i in stride(from: 0, through: size.height, by: gridSpacing) {
+                ctx.move(to: CGPoint(x: 0, y: i))
+                ctx.addLine(to: CGPoint(x: size.width, y: i))
+            }
+            ctx.strokePath()
             
             // Get current pose by interpolating keyframes
             let pose = interpolatePose(at: progress, keyframes: keyframes)
             
-            // Draw stick figure
-            drawStickFigure(ctx: ctx, pose: pose, size: size, exercise: exercise)
+            // Draw shadow first
+            drawShadow(ctx: ctx, pose: pose, size: size)
             
-            // Add exercise name at bottom
+            // Draw enhanced figure
+            drawEnhancedFigure(ctx: ctx, pose: pose, size: size, exercise: exercise)
+            
+            // Add exercise name with styled background
             let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 16, weight: .semibold),
-                .foregroundColor: UIColor.label
+                .font: UIFont.systemFont(ofSize: 18, weight: .bold),
+                .foregroundColor: UIColor.white
             ]
             let text = exercise.name
             let textSize = text.size(withAttributes: attrs)
+            let padding: CGFloat = 12
+            let badgeRect = CGRect(
+                x: (size.width - textSize.width - padding * 2) / 2,
+                y: size.height - 50,
+                width: textSize.width + padding * 2,
+                height: textSize.height + padding
+            )
+            
+            // Draw badge background
+            ctx.setFillColor(UIColor.systemBlue.cgColor)
+            let badgePath = UIBezierPath(roundedRect: badgeRect, cornerRadius: 8)
+            ctx.addPath(badgePath.cgPath)
+            ctx.fillPath()
+            
+            // Draw text
             let textRect = CGRect(
-                x: (size.width - textSize.width) / 2,
-                y: size.height - 40,
+                x: badgeRect.minX + padding,
+                y: badgeRect.minY + padding / 2,
                 width: textSize.width,
                 height: textSize.height
             )
@@ -166,57 +203,77 @@ final class AIGifGeneratorService: ObservableObject {
             )
         }
         
-        // Draw body parts
-        ctx.setLineWidth(4)
-        ctx.setLineCap(.round)
+        // Save state for shadow
+        ctx.saveGState()
         
-        // Head
+        // Draw body parts with gradients and thickness
+        ctx.setLineWidth(8)
+        ctx.setLineCap(.round)
+        ctx.setLineJoin(.round)
+        
+        // Head with gradient
         let headCenter = transform(pose.head)
-        ctx.setStrokeColor(UIColor.systemBlue.cgColor)
-        ctx.addEllipse(in: CGRect(
-            x: headCenter.x - 20,
-            y: headCenter.y - 20,
-            width: 40,
-            height: 40
-        ))
+        let headRadius: CGFloat = 25
+        let headRect = CGRect(
+            x: headCenter.x - headRadius,
+            y: headCenter.y - headRadius,
+            width: headRadius * 2,
+            height: headRadius * 2
+        )
+        
+        // Head gradient (skin tone)
+        let headColorSpace = CGColorSpaceCreateDeviceRGB()
+        let headColors = [
+            UIColor(red: 0.95, green: 0.76, blue: 0.65, alpha: 1.0).cgColor,
+            UIColor(red: 0.90, green: 0.70, blue: 0.58, alpha: 1.0).cgColor
+        ] as CFArray
+        let headGradient = CGGradient(colorsSpace: headColorSpace, colors: headColors, locations: [0.0, 1.0])!
+        ctx.saveGState()
+        ctx.addEllipse(in: headRect)
+        ctx.clip()
+        ctx.drawRadialGradient(headGradient, startCenter: CGPoint(x: headCenter.x - 5, y: headCenter.y - 5), startRadius: 5, endCenter: headCenter, endRadius: headRadius, options: [])
+        ctx.restoreGState()
+        
+        // Head outline
+        ctx.setStrokeColor(UIColor(red: 0.8, green: 0.6, blue: 0.5, alpha: 1.0).cgColor)
+        ctx.setLineWidth(2)
+        ctx.addEllipse(in: headRect)
         ctx.strokePath()
         
-        // Body (torso)
-        ctx.setStrokeColor(UIColor.systemGreen.cgColor)
+        // Body (torso) - Blue athletic shirt
+        let bodyGradient = createBodyGradient()
+        ctx.setStrokeColor(UIColor.systemBlue.cgColor)
+        ctx.setLineWidth(12)
         ctx.move(to: transform(pose.neck))
         ctx.addLine(to: transform(pose.hips))
         ctx.strokePath()
         
+        // Arms - with muscle definition
+        ctx.setLineWidth(10)
+        
         // Left arm
-        ctx.setStrokeColor(UIColor.systemOrange.cgColor)
-        ctx.move(to: transform(pose.leftShoulder))
-        ctx.addLine(to: transform(pose.leftElbow))
-        ctx.addLine(to: transform(pose.leftHand))
-        ctx.strokePath()
+        drawLimb(ctx: ctx, from: transform(pose.leftShoulder), via: transform(pose.leftElbow), to: transform(pose.leftHand), color: UIColor(red: 0.95, green: 0.76, blue: 0.65, alpha: 1.0))
         
         // Right arm
-        ctx.move(to: transform(pose.rightShoulder))
-        ctx.addLine(to: transform(pose.rightElbow))
-        ctx.addLine(to: transform(pose.rightHand))
-        ctx.strokePath()
+        drawLimb(ctx: ctx, from: transform(pose.rightShoulder), via: transform(pose.rightElbow), to: transform(pose.rightHand), color: UIColor(red: 0.95, green: 0.76, blue: 0.65, alpha: 1.0))
+        
+        // Legs - Black athletic pants
+        ctx.setLineWidth(12)
         
         // Left leg
-        ctx.setStrokeColor(UIColor.systemRed.cgColor)
-        ctx.move(to: transform(pose.hips))
-        ctx.addLine(to: transform(pose.leftKnee))
-        ctx.addLine(to: transform(pose.leftFoot))
-        ctx.strokePath()
+        drawLimb(ctx: ctx, from: transform(pose.hips), via: transform(pose.leftKnee), to: transform(pose.leftFoot), color: UIColor.darkGray)
         
         // Right leg
-        ctx.move(to: transform(pose.hips))
-        ctx.addLine(to: transform(pose.rightKnee))
-        ctx.addLine(to: transform(pose.rightFoot))
-        ctx.strokePath()
+        drawLimb(ctx: ctx, from: transform(pose.hips), via: transform(pose.rightKnee), to: transform(pose.rightFoot), color: UIColor.darkGray)
         
-        // Joints (small circles)
-        ctx.setFillColor(UIColor.label.cgColor)
+        // Joints with depth
+        ctx.setFillColor(UIColor.white.cgColor)
+        ctx.setShadow(offset: CGSize(width: 1, height: 1), blur: 2, color: UIColor.black.withAlphaComponent(0.3).cgColor)
+        
         let jointRadius: CGFloat = 6
-        for point in pose.allPoints {
+        let joints = [pose.neck, pose.leftShoulder, pose.rightShoulder, pose.leftElbow, pose.rightElbow, pose.leftHand, pose.rightHand, pose.hips, pose.leftKnee, pose.rightKnee, pose.leftFoot, pose.rightFoot]
+        
+        for point in joints {
             let transformed = transform(point)
             ctx.fillEllipse(in: CGRect(
                 x: transformed.x - jointRadius,
@@ -225,6 +282,57 @@ final class AIGifGeneratorService: ObservableObject {
                 height: jointRadius * 2
             ))
         }
+        
+        ctx.restoreGState()
+    }
+    
+    private func drawLimb(ctx: CGContext, from start: CGPoint, via middle: CGPoint, to end: CGPoint, color: UIColor) {
+        // Upper segment
+        ctx.setStrokeColor(color.cgColor)
+        ctx.move(to: start)
+        ctx.addLine(to: middle)
+        ctx.strokePath()
+        
+        // Lower segment with slight shading
+        ctx.setStrokeColor(color.withAlphaComponent(0.9).cgColor)
+        ctx.move(to: middle)
+        ctx.addLine(to: end)
+        ctx.strokePath()
+    }
+    
+    private func createBodyGradient() -> CGGradient {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let colors = [
+            UIColor.systemBlue.cgColor,
+            UIColor.systemBlue.withAlphaComponent(0.8).cgColor
+        ] as CFArray
+        return CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0.0, 1.0])!
+    }
+    
+    private func drawShadow(ctx: CGContext, pose: StickFigurePose, size: CGSize) {
+        let scale = min(size.width, size.height) * 0.6
+        let offsetX = size.width / 2
+        let offsetY = size.height / 2
+        
+        func transform(_ point: CGPoint) -> CGPoint {
+            return CGPoint(
+                x: offsetX + point.x * scale,
+                y: offsetY - point.y * scale
+            )
+        }
+        
+        // Draw shadow ellipse at feet
+        let shadowY = max(transform(pose.leftFoot).y, transform(pose.rightFoot).y) + 10
+        let shadowRect = CGRect(x: offsetX - 40, y: shadowY, width: 80, height: 20)
+        
+        ctx.saveGState()
+        ctx.setFillColor(UIColor.black.withAlphaComponent(0.1).cgColor)
+        ctx.fillEllipse(in: shadowRect)
+        ctx.restoreGState()
+    }
+    
+    private func drawEnhancedFigure(ctx: CGContext, pose: StickFigurePose, size: CGSize, exercise: Exercise) {
+        drawStickFigure(ctx: ctx, pose: pose, size: size, exercise: exercise)
     }
     
     // MARK: - Keyframe Management

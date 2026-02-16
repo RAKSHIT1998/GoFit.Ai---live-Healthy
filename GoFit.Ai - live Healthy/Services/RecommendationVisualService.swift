@@ -33,19 +33,19 @@ final class RecommendationVisualService {
         
         // Strength exercises
         if nameLower.contains("push") || nameLower.contains("press") {
-            return "figure.strengthtraining"
+            return "figure.walk"
         }
         if nameLower.contains("squat") {
-            return "figure.strengthtraining"
+            return "figure.walk"
         }
         if nameLower.contains("deadlift") {
-            return "figure.strengthtraining"
+            return "figure.walk"
         }
         if nameLower.contains("pull") || nameLower.contains("chin") {
-            return "figure.strengthtraining"
+            return "figure.walk"
         }
         if nameLower.contains("dumbbell") || nameLower.contains("weight") {
-            return "figure.strengthtraining"
+            return "figure.walk"
         }
         
         // Flexibility exercises
@@ -55,7 +55,7 @@ final class RecommendationVisualService {
         
         // Core exercises
         if nameLower.contains("plank") || nameLower.contains("crunch") {
-            return "figure.strengthtraining"
+            return "figure.walk"
         }
         
         // HIIT
@@ -64,7 +64,7 @@ final class RecommendationVisualService {
         }
         
         // Default
-        return "figure.strengthtraining"
+        return "figure.walk"
     }
     
     /// Get color gradient for exercise type
@@ -266,17 +266,17 @@ final class RecommendationVisualService {
     func getMuscleGroupIcon(_ muscleGroup: String) -> String {
         let nameLower = muscleGroup.lowercased()
         
-        if nameLower.contains("chest") { return "figure.strengthtraining" }
-        if nameLower.contains("back") { return "figure.strengthtraining" }
+        if nameLower.contains("chest") { return "figure.walk" }
+        if nameLower.contains("back") { return "figure.walk" }
         if nameLower.contains("bicep") { return "figure.arms.open" }
-        if nameLower.contains("tricep") { return "figure.strengthtraining" }
-        if nameLower.contains("shoulder") { return "figure.strengthtraining" }
+        if nameLower.contains("tricep") { return "figure.walk" }
+        if nameLower.contains("shoulder") { return "figure.walk" }
         if nameLower.contains("leg") || nameLower.contains("quad") || nameLower.contains("hamstring") { return "figure.stairs" }
         if nameLower.contains("glute") || nameLower.contains("butt") { return "figure.stairs" }
         if nameLower.contains("calf") { return "figure.stairs" }
-        if nameLower.contains("core") || nameLower.contains("abs") { return "figure.strengthtraining" }
+        if nameLower.contains("core") || nameLower.contains("abs") { return "figure.walk" }
         
-        return "figure.strengthtraining"
+        return "figure.walk"
     }
     
     func getMuscleGroupColor(_ muscleGroup: String) -> Color {
