@@ -331,20 +331,8 @@ struct MealEntry: Codable, Identifiable {
     var imageURL: String?
     var notes: String?
     
-    init(name: String, calories: Double, protein: Double, carbs: Double, fat: Double, date: Date, mealType: String, imageURL: String? = nil, notes: String? = nil) {
-        self.id = UUID().uuidString
-        self.name = name
-        self.calories = calories
-        self.protein = protein
-        self.carbs = carbs
-        self.fat = fat
-        self.date = date
-        self.mealType = mealType
-        self.imageURL = imageURL
-        self.notes = notes
-    }
-    
     init(name: String, calories: Double, protein: Double, carbs: Double, fat: Double, date: Date = Date(), mealType: String = "lunch", imageURL: String? = nil, notes: String? = nil) {
+        self.id = UUID().uuidString
         self.name = name
         self.calories = calories
         self.protein = protein
