@@ -145,7 +145,7 @@ final class AppLogger {
         logLock.async {
             do {
                 let attributes = try self.fileManager.attributesOfItem(atPath: self.currentLogFile.path)
-                let fileSize = (attributes[.size] as? NSNumber)?.unsignedLongLongValue ?? 0
+                let fileSize = (attributes[.size] as? NSNumber)?.uint64Value ?? 0
                 
                 if fileSize > self.maxLogFileSize {
                     self.rotateLogs()

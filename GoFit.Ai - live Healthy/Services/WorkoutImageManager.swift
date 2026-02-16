@@ -246,7 +246,7 @@ final class WorkoutImageManager: ObservableObject {
                 for file in formFiles + photoFiles + iconFiles {
                     if let attributes = try? fileManager.attributesOfItem(atPath: file.path),
                        let fileSize = attributes[.size] as? NSNumber {
-                        totalSize += fileSize.unsignedLongLongValue
+                        totalSize += fileSize.uint64Value
                     }
                 }
                 
@@ -287,9 +287,9 @@ final class WorkoutImageManager: ObservableObject {
     /// Get total count of images
     func getImageStats() -> (formImages: Int, workoutPhotos: Int, icons: Int) {
         return imageLock.sync {
-            let formCount = (try? fileManager.contentsOfDirectory(at: exerciseFormURL).count) ?? 0
-            let photoCount = (try? fileManager.contentsOfDirectory(at: workoutPhotosURL).count) ?? 0
-            let iconCount = (try? fileManager.contentsOfDirectory(at: exerciseIconsURL).count) ?? 0
+            let formCount = (try? fileManager.contentsOfDirectory(at: exerciseFormURL, includingPropertiesForKeys: nil).count) ?? 0
+            let photoCount = (try? fileManager.contentsOfDirectory(at: workoutPhotosURL, includingPropertiesForKeys: nil).count) ?? 0
+            let iconCount = (try? fileManager.contentsOfDirectory(at: exerciseIconsURL, includingPropertiesForKeys: nil).count) ?? 0
             
             return (formCount, photoCount, iconCount)
         }

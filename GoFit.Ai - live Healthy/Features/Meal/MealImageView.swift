@@ -76,14 +76,10 @@ struct MealImageView: View {
         .onAppear {
             loadMealPhotos()
         }
-        .photosPicker(
-            isPresented: $showingPhotoPicker,
-            selection: $selectedPhoto,
-            matching: .images
-        )
-        .onChange(of: selectedPhoto) { newPhoto in
+        .onChange(of: selectedPhoto) { oldPhoto, newPhoto in
             if let photo = newPhoto {
                 saveMealPhoto(photo)
+                selectedPhoto = nil
             }
         }
     }
@@ -324,10 +320,7 @@ struct MealPhotoBrowserView: View {
                 .padding()
             }
             .navigationTitle("Meal Photos")
-            .sheet(item: Binding(
-                get: { selectedPhoto.map { $0 } },
-                set: { selectedPhoto = $0 }
-            )) { _ in
+            .sheet(isPresented: .constant(selectedPhoto != nil), onDismiss: { selectedPhoto = nil }) {
                 if let photo = selectedPhoto {
                     MealPhotoDetailView(image: photo)
                 }

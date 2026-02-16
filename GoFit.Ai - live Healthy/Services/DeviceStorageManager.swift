@@ -50,8 +50,8 @@ final class DeviceStorageManager: ObservableObject {
     private func loadStorageQuota() {
         storageLock.async {
             let attributes = try? self.fileManager.attributesOfFileSystem(forPath: self.documentsURL.path)
-            let available = (attributes?[.systemFreeSize] as? NSNumber)?.unsignedLongLongValue ?? 0
-            let total = (attributes?[.systemSize] as? NSNumber)?.unsignedLongLongValue ?? 0
+            let available = (attributes?[.systemFreeSize] as? NSNumber)?.uint64Value ?? 0
+            let total = (attributes?[.systemSize] as? NSNumber)?.uint64Value ?? 0
             let used = total - available
             
             DispatchQueue.main.async {
@@ -280,7 +280,7 @@ struct UserSettings: Codable {
 }
 
 struct WorkoutSession: Codable, Identifiable {
-    let id: String = UUID().uuidString
+    var id: String
     var name: String
     var duration: TimeInterval
     var caloriesBurned: Double
@@ -289,6 +289,7 @@ struct WorkoutSession: Codable, Identifiable {
     var notes: String?
     
     init(name: String, duration: TimeInterval, caloriesBurned: Double, exercises: [ExerciseRecord], date: Date = Date(), notes: String? = nil) {
+        self.id = UUID().uuidString
         self.name = name
         self.duration = duration
         self.caloriesBurned = caloriesBurned
@@ -299,7 +300,7 @@ struct WorkoutSession: Codable, Identifiable {
 }
 
 struct ExerciseRecord: Codable, Identifiable {
-    let id: String = UUID().uuidString
+    var id: String
     var exerciseName: String
     var sets: Int
     var reps: [Int]
@@ -308,6 +309,7 @@ struct ExerciseRecord: Codable, Identifiable {
     var imageURL: String? // reference to stored image
     
     init(exerciseName: String, sets: Int, reps: [Int], weight: Double? = nil, duration: TimeInterval? = nil, imageURL: String? = nil) {
+        self.id = UUID().uuidString
         self.exerciseName = exerciseName
         self.sets = sets
         self.reps = reps
@@ -318,7 +320,7 @@ struct ExerciseRecord: Codable, Identifiable {
 }
 
 struct MealEntry: Codable, Identifiable {
-    let id: String = UUID().uuidString
+    var id: String
     var name: String
     var calories: Double
     var protein: Double
@@ -328,6 +330,19 @@ struct MealEntry: Codable, Identifiable {
     var mealType: String // breakfast, lunch, dinner, snack
     var imageURL: String?
     var notes: String?
+    
+    init(name: String, calories: Double, protein: Double, carbs: Double, fat: Double, date: Date, mealType: String, imageURL: String? = nil, notes: String? = nil) {
+        self.id = UUID().uuidString
+        self.name = name
+        self.calories = calories
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+        self.date = date
+        self.mealType = mealType
+        self.imageURL = imageURL
+        self.notes = notes
+    }
     
     init(name: String, calories: Double, protein: Double, carbs: Double, fat: Double, date: Date = Date(), mealType: String = "lunch", imageURL: String? = nil, notes: String? = nil) {
         self.name = name

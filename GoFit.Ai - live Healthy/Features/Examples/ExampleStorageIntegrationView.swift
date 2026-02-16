@@ -104,25 +104,22 @@ struct ExampleStorageIntegrationView: View {
             HStack(spacing: 16) {
                 StatCard(
                     icon: "flame.fill",
-                    title: "Calories",
                     value: "\(Int(stats.totalCaloriesConsumed))",
-                    unit: "cal",
+                    label: "Calories",
                     color: .orange
                 )
                 
                 StatCard(
                     icon: "dumbbell.fill",
-                    title: "Workouts",
                     value: "\(stats.workoutsCompleted)",
-                    unit: "done",
+                    label: "Workouts",
                     color: .green
                 )
                 
                 StatCard(
                     icon: "fork.knife",
-                    title: "Meals",
                     value: "\(stats.mealsLogged)",
-                    unit: "logged",
+                    label: "Meals",
                     color: .red
                 )
             }
@@ -326,13 +323,9 @@ struct AddWorkoutView: View {
         
         // In production, also sync to backend
         Task {
-            do {
-                // await syncToBackend(workout)
-                cache.markSynced()
-                AppLogger.shared.logSuccess("Workout synced", category: "Workout")
-            } catch {
-                AppLogger.shared.logError(error, context: "Failed to sync workout")
-            }
+            // await syncToBackend(workout)
+            cache.markSynced()
+            AppLogger.shared.logSuccess("Workout synced", category: "Workout")
         }
         
         dismiss()

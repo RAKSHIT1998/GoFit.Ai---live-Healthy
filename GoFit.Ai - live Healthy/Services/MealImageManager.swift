@@ -281,7 +281,7 @@ final class MealImageManager: ObservableObject {
                 for file in photoFiles + foodFiles + labelFiles {
                     if let attributes = try? fileManager.attributesOfItem(atPath: file.path),
                        let fileSize = attributes[.size] as? NSNumber {
-                        totalSize += fileSize.unsignedLongLongValue
+                        totalSize += fileSize.uint64Value
                     }
                 }
                 
@@ -331,9 +331,9 @@ final class MealImageManager: ObservableObject {
     /// Get statistics on stored images
     func getImageStats() -> (mealPhotos: Int, foodItems: Int, labels: Int, totalSize: String) {
         return imageLock.sync {
-            let photoCount = (try? fileManager.contentsOfDirectory(at: mealPhotosURL).count) ?? 0
-            let foodCount = (try? fileManager.contentsOfDirectory(at: foodItemsURL).count) ?? 0
-            let labelCount = (try? fileManager.contentsOfDirectory(at: nutritionLabelsURL).count) ?? 0
+            let photoCount = (try? fileManager.contentsOfDirectory(at: mealPhotosURL, includingPropertiesForKeys: nil).count) ?? 0
+            let foodCount = (try? fileManager.contentsOfDirectory(at: foodItemsURL, includingPropertiesForKeys: nil).count) ?? 0
+            let labelCount = (try? fileManager.contentsOfDirectory(at: nutritionLabelsURL, includingPropertiesForKeys: nil).count) ?? 0
             
             return (photoCount, foodCount, labelCount, getMealImageStorageSizeString())
         }

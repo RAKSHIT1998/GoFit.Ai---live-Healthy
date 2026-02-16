@@ -54,7 +54,7 @@ struct WorkoutCardView: View {
                 }
                 .padding(.vertical, 8)
                 
-                if !workout.notes?.isEmpty ?? false {
+                if !(workout.notes?.isEmpty ?? true) {
                     Divider()
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -185,7 +185,7 @@ struct ExerciseItemView: View {
                 .foregroundColor(.gray)
         }
         .padding(8)
-        .background(Color(.systemWhite))
+        .background(Color(.systemBackground))
         .cornerRadius(8)
     }
     
