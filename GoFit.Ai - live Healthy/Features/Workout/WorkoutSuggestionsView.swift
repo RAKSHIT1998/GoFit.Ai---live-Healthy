@@ -64,6 +64,8 @@ struct WorkoutSuggestionsView: View {
     @State private var isRefreshing = false
     @State private var currentRequestTask: Task<Void, Never>?
     @State private var selectedExerciseForDemo: Exercise? // NEW: For GIF demo modal
+    @StateObject private var gifGenerator = AIGifGeneratorService.shared
+    @State private var showGifGenerationSheet = false
     
     var body: some View {
         NavigationStack {
@@ -125,18 +127,29 @@ struct WorkoutSuggestionsView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        Task { await refreshRecommendations() }
-                    }) {
-                        if isRefreshing {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(Design.Colors.primary)
+                    HStack(spacing: 12) {
+                        // Generate GIFs button
+                        Button(action: {
+                            showGifGenerationSheet = true
+                        }) {
+                            Image(systemName: "wand.and.stars")
+                                .foregroundColor(Design.Colors.primary)
                         }
+                        
+                        // Refresh button
+                        Button(action: {
+                            Task { await refreshRecommendations() }
+                        }) {
+                            if isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(Design.Colors.primary)
+                            }
+                        }
+                        .disabled(isRefreshing || isLoading)
                     }
-                    .disabled(isRefreshing || isLoading)
                 }
             }
             .task {
@@ -147,6 +160,12 @@ struct WorkoutSuggestionsView: View {
                 ExerciseDemoView(exercise: exercise)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+            // Sheet for GIF generation
+            .sheet(isPresented: $showGifGenerationSheet) {
+                if let rec = recommendation {
+                    GifGenerationView(exercises: rec.plan.exercises)
+                }
             }
         }
     }
