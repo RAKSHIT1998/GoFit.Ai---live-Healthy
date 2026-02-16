@@ -241,7 +241,6 @@ final class AIGifGeneratorService: ObservableObject {
         ctx.strokePath()
         
         // Body (torso) - Blue athletic shirt
-        let bodyGradient = createBodyGradient()
         ctx.setStrokeColor(UIColor.systemBlue.cgColor)
         ctx.setLineWidth(12)
         ctx.move(to: transform(pose.neck))

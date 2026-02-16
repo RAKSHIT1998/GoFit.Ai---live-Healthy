@@ -98,7 +98,6 @@ final class RecommendationVisualService {
         let renderer = UIGraphicsImageRenderer(size: size)
         
         let colors = getExerciseGradient(for: exerciseType)
-        let icon = getExerciseIcon(for: exerciseName)
         
         let image = renderer.image { context in
             // Background gradient
