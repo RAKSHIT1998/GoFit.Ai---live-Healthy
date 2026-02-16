@@ -299,25 +299,3 @@ class ShareService {
         rootViewController.present(activityVC, animated: true)
     }
 }
-
-// MARK: - SwiftUI Share Sheet
-struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    let applicationActivities: [UIActivity]? = nil
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(
-            activityItems: activityItems,
-            applicationActivities: applicationActivities
-        )
-        
-        // For iPad
-        if let popover = controller.popoverPresentationController {
-            popover.sourceView = UIView()
-        }
-        
-        return controller
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
