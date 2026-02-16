@@ -58,7 +58,7 @@ final class AIGifGeneratorService: ObservableObject {
                 let saveResult = gifService.saveGifData(gifData, for: exercise.name)
                 
                 switch saveResult {
-                case .success(_):
+                case .success:
                     await MainActor.run {
                         generationProgress = 1.0
                         isGenerating = false
