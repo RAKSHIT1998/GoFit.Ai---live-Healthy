@@ -202,10 +202,11 @@ struct ManualMealLogView: View {
         }
         
         // 6️⃣ SYNC TO BACKEND IN BACKGROUND (Non-blocking)
-        Task.detached(priority: .utility) { [weak self] in
+        let userId = authVM.userId
+        Task.detached(priority: .utility) {
             do {
                 let dto = validItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
-                _ = try await NetworkManager.shared.saveParsedMeal(userId: self?.authVM.userId ?? "", items: dto)
+                _ = try await NetworkManager.shared.saveParsedMeal(userId: userId, items: dto)
                 
                 await MainActor.run {
                     AppLogger.shared.meal("✅ Synced manual meal to backend: \(mealEntry.name)")

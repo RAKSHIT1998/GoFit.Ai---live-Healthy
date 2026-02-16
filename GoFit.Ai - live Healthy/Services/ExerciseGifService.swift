@@ -27,7 +27,7 @@ struct GifImageView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.gray.opacity(0.1))
-            } else if let error = error {
+            } else if error != nil {
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 30))
