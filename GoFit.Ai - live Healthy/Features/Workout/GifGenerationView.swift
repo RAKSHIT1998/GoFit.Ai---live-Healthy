@@ -43,7 +43,7 @@ struct GifGenerationView: View {
                         HStack {
                             Image(systemName: "externaldrive.fill")
                                 .foregroundColor(.secondary)
-                            Text("Storage used: \(String(format: "%.1f", gifService.getStorageUsageMB())) MB")
+                            Text("Storage used: \(String(format: "%.1f", Double(gifService.getStorageUsage()) / (1024 * 1024))) MB")
                                 .font(Design.Typography.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -277,13 +277,12 @@ struct GifGenerationView: View {
     }
     
     private func clearCache() {
-        let result = gifService.clearAllGifs()
-        switch result {
-        case .success:
+        let success = gifService.clearAllGifs()
+        if success {
             // Refresh the view
             selectedExercises.removeAll()
-        case .failure(let error):
-            print("Failed to clear cache: \(error)")
+        } else {
+            print("Failed to clear cache")
         }
     }
 }
