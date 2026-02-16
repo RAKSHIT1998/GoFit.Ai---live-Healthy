@@ -143,12 +143,79 @@ struct ManualMealLogView: View {
             return
         }
         
-        do {
-            let dto = validItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
-            _ = try await NetworkManager.shared.saveParsedMeal(userId: authVM.userId, items: dto)
+        // 1️⃣ CALCULATE TOTALS
+        let totalCals = validItems.reduce(0) { $0 + $1.calories }
+        let totalProtein = validItems.reduce(0) { $0 + $1.protein }
+        let totalCarbs = validItems.reduce(0) { $0 + $1.carbs }
+        let totalFat = validItems.reduce(0) { $0 + $1.fat }
+        let totalSugar = validItems.reduce(0) { $0 + $1.sugar }
+        
+        // 2️⃣ CREATE MEAL ENTRY FOR LOCAL CACHE
+        let mealEntry = MealEntry(
+            name: validItems.map { $0.name }.joined(separator: ", "),
+            calories: totalCals,
+            protein: totalProtein,
+            carbs: totalCarbs,
+            fat: totalFat,
+            date: Date(),
+            mealType: "manual"
+        )
+        
+        // 3️⃣ SAVE TO LOCAL CACHE IMMEDIATELY (Offline-first)
+        await MainActor.run {
+            UserDataCache.shared.addMealEntry(mealEntry)
+            AppLogger.shared.meal("💾 Saved manual meal to cache: \(mealEntry.name)")
+        }
+        
+        // 4️⃣ ALSO ADD TO DAILY LOG FOR HISTORICAL TRACKING
+        let mealItems = validItems.map { item in
+            MealItem(
+                name: item.name,
+                calories: item.calories,
+                protein: item.protein,
+                carbs: item.carbs,
+                fat: item.fat,
+                sugar: item.sugar,
+                portionSize: nil,
+                quantity: item.qtyText.isEmpty ? nil : item.qtyText
+            )
+        }
+        
+        let loggedMeal = LoggedMeal(
+            timestamp: Date(),
+            mealType: .snack, // Could enhance to allow user selection
+            items: mealItems,
+            totalCalories: totalCals,
+            totalProtein: totalProtein,
+            totalCarbs: totalCarbs,
+            totalFat: totalFat,
+            totalSugar: totalSugar
+        )
+        
+        await MainActor.run {
+            LocalDailyLogStore.shared.addMeal(loggedMeal)
+        }
+        
+        // 5️⃣ UPDATE UI IMMEDIATELY
+        await MainActor.run {
             showSuccess = true
-        } catch {
-            errorMessage = "Failed to save meal: \(error.localizedDescription)"
+        }
+        
+        // 6️⃣ SYNC TO BACKEND IN BACKGROUND (Non-blocking)
+        Task.detached(priority: .utility) { [weak self] in
+            do {
+                let dto = validItems.map { ParsedItemDTO(name: $0.name, qtyText: $0.qtyText, calories: $0.calories, protein: $0.protein, carbs: $0.carbs, fat: $0.fat, sugar: $0.sugar) }
+                _ = try await NetworkManager.shared.saveParsedMeal(userId: self?.authVM.userId ?? "", items: dto)
+                
+                await MainActor.run {
+                    AppLogger.shared.meal("✅ Synced manual meal to backend: \(mealEntry.name)")
+                }
+            } catch {
+                await MainActor.run {
+                    AppLogger.shared.logError(error, context: "Failed to sync manual meal to backend")
+                    print("⚠️ Manual meal remains in local cache, will retry on next sync")
+                }
+            }
         }
     }
 }

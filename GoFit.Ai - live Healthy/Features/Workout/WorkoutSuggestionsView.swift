@@ -43,6 +43,8 @@ struct Exercise: Codable {
     let difficulty: String?
     let muscleGroups: [String]?
     let equipment: [String]?
+    let gifUrl: String? // NEW: URL to exercise GIF animation
+    let videoUrl: String? // NEW: URL to exercise video
 }
 
 struct HydrationGoal: Codable {
@@ -61,6 +63,7 @@ struct WorkoutSuggestionsView: View {
     @State private var isUsingFallback = true // Start with built-in data by default
     @State private var isRefreshing = false
     @State private var currentRequestTask: Task<Void, Never>?
+    @State private var selectedExerciseForDemo: Exercise? // NEW: For GIF demo modal
     
     var body: some View {
         NavigationStack {
@@ -139,6 +142,12 @@ struct WorkoutSuggestionsView: View {
             .task {
                 await loadRecommendations()
             }
+            // Sheet for displaying exercise GIF demo
+            .sheet(item: $selectedExerciseForDemo) { exercise in
+                ExerciseDemoView(exercise: exercise)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
     
@@ -212,22 +221,37 @@ struct WorkoutSuggestionsView: View {
     }
     
     private func workoutCard(_ exercise: Exercise, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: Design.Spacing.md) {
-            // Header
-            HStack {
+        let visualService = RecommendationVisualService.shared
+        
+        return VStack(alignment: .leading, spacing: Design.Spacing.md) {
+            // Visual Header with Exercise Icon
+            HStack(spacing: Design.Spacing.md) {
+                // Exercise Icon with gradient background
                 ZStack {
                     Circle()
                         .fill(Design.Colors.primaryGradient)
-                        .frame(width: Design.Scale.value(40, textStyle: .body), height: Design.Scale.value(40, textStyle: .body))
-                    Text("\(index + 1)")
-                        .font(Design.Typography.headline)
+                        .frame(width: 50, height: 50)
+                    
+                    Image(systemName: visualService.getExerciseIcon(for: exercise.name))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
                 
+                // Exercise details
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(exercise.name)
-                        .font(Design.Typography.headline)
-                        .foregroundColor(.primary)
+                    HStack {
+                        Text(exercise.name)
+                            .font(Design.Typography.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text("\(index + 1)")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Design.Colors.primary.opacity(0.2))
+                            .cornerRadius(4)
+                    }
                     
                     HStack(spacing: Design.Spacing.md) {
                         Label("\(exercise.duration) min", systemImage: "clock.fill")
@@ -327,6 +351,26 @@ struct WorkoutSuggestionsView: View {
                 )
                 .tint(Design.Colors.primary)
             }
+            
+            // View Demo Button - for GIF animation
+            Button(action: {
+                selectedExerciseForDemo = exercise
+            }) {
+                HStack(spacing: Design.Spacing.sm) {
+                    Image(systemName: "play.circle.fill")
+                    Text("View Demo")
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: "arrow.right")
+                        .font(.caption)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Design.Spacing.md)
+                .padding(.vertical, Design.Spacing.sm)
+                .background(Design.Colors.primary.opacity(0.1))
+                .foregroundColor(Design.Colors.primary)
+                .cornerRadius(Design.Radius.medium)
+            }
         }
         .padding(Design.Spacing.lg)
         .cardStyle()
@@ -363,9 +407,24 @@ struct WorkoutSuggestionsView: View {
     }
     
     private func mealCard(_ meal: RecommendationMealItem) -> some View {
-        VStack(alignment: .leading, spacing: Design.Spacing.md) {
-            // Header
-            HStack {
+        let visualService = RecommendationVisualService.shared
+        let mealColor = UIColor(visualService.getMealColor(for: meal.name))
+        let mealEmoji = visualService.getMealEmoji(for: meal.name)
+        
+        return VStack(alignment: .leading, spacing: Design.Spacing.md) {
+            // Visual Header
+            HStack(spacing: Design.Spacing.md) {
+                // Meal emoji in colored circle
+                ZStack {
+                    Circle()
+                        .fill(Color(mealColor).opacity(0.2))
+                        .frame(width: 50, height: 50)
+                    
+                    Text(mealEmoji)
+                        .font(.system(size: 28))
+                }
+                
+                // Meal details
                 VStack(alignment: .leading, spacing: 4) {
                     Text(meal.name)
                         .font(Design.Typography.headline)
