@@ -6,19 +6,37 @@ import UIKit
 class NotificationService: ObservableObject {
     static let shared = NotificationService()
     
-    @Published var notificationsEnabled: Bool = false
+    @Published var notificationsEnabled: Bool = true  // DEFAULT: ON
     @Published var mealRemindersEnabled: Bool = true
     @Published var waterRemindersEnabled: Bool = true
     @Published var workoutRemindersEnabled: Bool = true
     
     private init() {
         loadSettings()
-        // Check current authorization status first
+        // Auto-request authorization on first launch (silent request)
         checkAuthorizationStatusAndSchedule()
+        // Auto-request if not yet authorized
+        requestAuthorizationIfNeeded()
     }
     
     // MARK: - Authorization
     
+    /// Silently request authorization on app launch if needed
+    private func requestAuthorizationIfNeeded() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                // If not determined yet, request permission
+                if settings.authorizationStatus == .notDetermined {
+                    print("📢 First launch - requesting notification permissions...")
+                    self.requestAuthorization()
+                }
+            }
+        }
+    }
+    
+    /// User explicitly requests notifications (from button tap)
     func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
             Task { @MainActor in
@@ -54,15 +72,66 @@ class NotificationService: ObservableObject {
                 guard let self = self else { return }
                 let wasAuthorized = self.notificationsEnabled
                 self.notificationsEnabled = settings.authorizationStatus == .authorized
-                
-                // If already authorized and notifications are enabled in settings, schedule them
-                if self.notificationsEnabled && (self.mealRemindersEnabled || self.waterRemindersEnabled || self.workoutRemindersEnabled) {
-                    print("✅ Notifications already authorized - scheduling reminders")
+        // Load with proper defaults
+        // If never set, all default to true (notifications active)
+        let hasLoadedBefore = UserDefaults.standard.object(forKey: "gofit_notif_initialized") != nil
+        
+        if !hasLoadedBefore {
+            // First time - enable all notifications by default
+            UserDefaults.standard.set(true, forKey: "gofit_notif_initialized")
+            notificationsEnabled = true
+            mealRemindersEnabled = true
+            waterRemindersEnabled = true
+            workoutRemindersEnabled = true
+            saveSettings()
+        } else {
+            // Load saved preferences
+            notificationsEnabled = UserDefaults.standard.object(forKey: "notificationsEnabled") as? Bool ?? true
+            mealRemindersEnabled = UserDefaults.standard.object(forKey: "mealRemindersEnabled") as? Bool ?? true
+            waterRemindersEnabled = UserDefaults.standard.object(forKey: "waterRemindersEnabled") as? Bool ?? true
+            workoutRemindersEnabled = UserDefaults.standard.object(forKey: "workoutRemindersEnabled") as? Bool ?? true
+        }
                     self.scheduleAllNotifications()
                 } else if !self.notificationsEnabled && wasAuthorized {
                     // Permission was revoked, clear notifications
                     UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                 }
+        UserDefaults.standard.set(mealRemindersEnabled, forKey: "mealRemindersEnabled")
+        UserDefaults.standard.set(waterRemindersEnabled, forKey: "waterRemindersEnabled")
+        UserDefaults.standard.set(workoutRemindersEnabled, forKey: "workoutRemindersEnabled")
+        UserDefaults.standard.synchronize()
+        
+        // Log notification status
+        let status = """
+        🔔 Notification Settings Updated:
+           All: \(notificationsEnabled ? "✅ ON" : "❌ OFF")
+           Meals: \(mealRemindersEnabled ? "✅ ON" : "❌ OFF")
+           Water: \(waterRemindersEnabled ? "✅ ON" : "❌ OFF")
+           Workouts: \(workoutRemindersEnabled ? "✅ ON" : "❌ OFF")
+        """
+        print(status)
+        AppLogger.shared.storage(status)
+    }
+    
+    /// Enable ALL notifications (called from settings)
+    func enableAllNotifications() {
+        notificationsEnabled = true
+        mealRemindersEnabled = true
+        waterRemindersEnabled = true
+        workoutRemindersEnabled = true
+        saveSettings()
+        scheduleAllNotifications()
+    }
+    
+    /// Disable ALL notifications (called from settings)
+    func disableAllNotifications() {
+        notificationsEnabled = false
+        mealRemindersEnabled = false
+        waterRemindersEnabled = false
+        workoutRemindersEnabled = false
+        saveSettings()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    }
             }
         }
     }
