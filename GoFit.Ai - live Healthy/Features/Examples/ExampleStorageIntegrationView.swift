@@ -254,39 +254,6 @@ struct ExampleStorageIntegrationView: View {
     }
 }
 
-/// Simple stat card component
-struct StatCard: View {
-    let icon: String
-    let title: String
-    let value: String
-    let unit: String
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.headline)
-                .fontWeight(.bold)
-            
-            Text(unit)
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            Text(title)
-                .font(.caption2)
-                .foregroundColor(.gray)
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.systemWhite))
-        .cornerRadius(12)
-    }
-}
-
 /// Example of adding a workout with logging
 struct AddWorkoutView: View {
     @Environment(\.dismiss) var dismiss
