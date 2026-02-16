@@ -55,22 +55,20 @@ final class AIGifGeneratorService: ObservableObject {
                 
                 // Step 4: Save to device (80%)
                 await MainActor.run { generationProgress = 0.8 }
-                let saveResult = gifService.saveGifData(gifData, for: exercise.name)
+                let saveSuccess = gifService.saveGifData(gifData, for: exercise.name)
                 
-                switch saveResult {
-                case .success:
+                if saveSuccess {
                     await MainActor.run {
                         generationProgress = 1.0
                         isGenerating = false
                     }
                     completion(.success(gifData))
-                    
-                case .failure(let error):
+                } else {
                     await MainActor.run {
                         isGenerating = false
-                        lastError = error.localizedDescription
+                        lastError = "Failed to save GIF to device"
                     }
-                    completion(.failure(.saveFailed(error.localizedDescription)))
+                    completion(.failure(.saveFailed("Failed to save GIF to device")))
                 }
                 
             } catch let error as AIGifError {
