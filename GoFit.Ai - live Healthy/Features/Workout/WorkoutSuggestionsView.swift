@@ -31,7 +31,8 @@ struct WorkoutPlan: Codable {
     let exercises: [Exercise]
 }
 
-struct Exercise: Codable {
+struct Exercise: Codable, Identifiable {
+    var id: String { name } // Use name as unique identifier
     let name: String
     let duration: Int
     let calories: Int
@@ -164,7 +165,7 @@ struct WorkoutSuggestionsView: View {
             // Sheet for GIF generation
             .sheet(isPresented: $showGifGenerationSheet) {
                 if let rec = recommendation {
-                    GifGenerationView(exercises: rec.plan.exercises)
+                    GifGenerationView(exercises: rec.workoutPlan.exercises)
                 }
             }
         }
@@ -427,7 +428,7 @@ struct WorkoutSuggestionsView: View {
     
     private func mealCard(_ meal: RecommendationMealItem) -> some View {
         let visualService = RecommendationVisualService.shared
-        let mealColor = UIColor(visualService.getMealColor(for: meal.name))
+        let mealColor = visualService.getMealColor(for: meal.name)
         let mealEmoji = visualService.getMealEmoji(for: meal.name)
         
         return VStack(alignment: .leading, spacing: Design.Spacing.md) {
