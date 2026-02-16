@@ -150,7 +150,7 @@ struct WorkoutPreferenceSettingsView: View {
                     // Workout Preferences Grid
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: Design.Spacing.md) {
                         ForEach(WorkoutPreferenceType.allCases) { preference in
-                            WorkoutPreferenceCard(
+                            WorkoutPreferenceSettingsCard(
                                 preference: preference,
                                 isSelected: selectedPreferences.contains(preference),
                                 action: {
@@ -286,7 +286,7 @@ struct WorkoutPreferenceSettingsView: View {
 }
 
 // MARK: - Workout Preference Card
-struct WorkoutPreferenceCard: View {
+struct WorkoutPreferenceSettingsCard: View {
     let preference: WorkoutPreferenceSettingsView.WorkoutPreferenceType
     let isSelected: Bool
     let action: () -> Void
