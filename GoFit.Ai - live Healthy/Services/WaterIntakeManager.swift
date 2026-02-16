@@ -22,14 +22,9 @@ class WaterIntakeManager: ObservableObject {
     
     /// Load today's water intake from cache
     private func loadTodaysIntake() {
-        lock.async { [weak self] in
-            guard let self = self else { return }
-            // Load from cache
-            if let stats = self.cache.dailyStats {
-                DispatchQueue.main.async { [weak self] in
-                    self?.todayWaterIntake = stats.waterIntake
-                }
-            }
+        // Load from cache on main thread
+        if let stats = cache.dailyStats {
+            todayWaterIntake = stats.waterIntake
         }
     }
     
@@ -38,34 +33,31 @@ class WaterIntakeManager: ObservableObject {
     /// Log plain water intake (in liters)
     /// Example: logWater(0.5) for 500ml
     func logWater(_ liters: Double) {
+        let log = WaterLog(
+            id: UUID().uuidString,
+            liters: liters,
+            type: "water",
+            timestamp: Date()
+        )
+        
+        // Update on main thread
+        todayWaterIntake += liters
+        intakeLogs.append(log)
+        
+        // Update cache in background
         lock.async { [weak self] in
             guard let self = self else { return }
-            let log = WaterLog(
-                id: UUID().uuidString,
-                liters: liters,
-                type: "water",
-                timestamp: Date()
-            )
-            
-            // 1️⃣ Update today's total in cache
             if var stats = self.cache.dailyStats {
                 stats.waterIntake += liters
-                // Cache will handle persistence
             }
-            
-            let currentIntake = self.todayWaterIntake + liters
-            DispatchQueue.main.async { [weak self] in
-                self?.todayWaterIntake += liters
-                self?.intakeLogs.append(log)
-            }
-            
-            // 2️⃣ Log the action
-            self.logger.meal("💧 Logged water: \(liters)L (Total today: \(currentIntake)L)")
-            
-            // 3️⃣ Background sync (non-blocking)
-            Task {
-                await self.syncWaterLog(log)
-            }
+        }
+        
+        // Log the action
+        logger.meal("💧 Logged water: \(liters)L (Total today: \(todayWaterIntake)L)")
+        
+        // Background sync
+        Task {
+            await syncWaterLog(log)
         }
     }
     
@@ -79,44 +71,42 @@ class WaterIntakeManager: ObservableObject {
     /// Log beverage with name and optional calories
     /// Example: logBeverage(name: "Orange Juice", liters: 0.25, calories: 110)
     func logBeverage(name: String, liters: Double, calories: Double = 0) {
+        // Create meal entry for beverage
+        let mealEntry = MealEntry(
+            name: name,
+            calories: calories,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            date: Date(),
+            mealType: "drink",
+            imageURL: nil,
+            notes: "Beverage: \(liters)L"
+        )
+        
+        // Update on main thread
+        todayWaterIntake += liters
+        
+        // Save to cache in background
         lock.async { [weak self] in
             guard let self = self else { return }
-            // Create meal entry for beverage
-            let mealEntry = MealEntry(
-                name: name,
-                calories: calories,
-                protein: 0,
-                carbs: 0,
-                fat: 0,
-                date: Date(),
-                mealType: "drink",
-                imageURL: nil,
-                notes: "Beverage: \(liters)L"
-            )
-            
-            // 1️⃣ Save beverage as meal entry
             self.cache.addMealEntry(mealEntry)
             
-            // 2️⃣ Update water intake
             if var stats = self.cache.dailyStats {
                 stats.waterIntake += liters
                 if calories > 0 {
                     stats.totalCaloriesConsumed += calories
                 }
             }
-            
-            DispatchQueue.main.async { [weak self] in
-                self?.todayWaterIntake += liters
-            }
-            
-            // 3️⃣ Log the action
-            let calorieInfo = calories > 0 ? " (\(Int(calories))cal)" : ""
-            self.logger.meal("🥤 Logged \(name): \(liters)L\(calorieInfo)")
-            
-            // 4️⃣ Background sync
-            Task {
-                await self.syncBeverage(name: name, liters: liters, calories: calories)
-            }
+        }
+        
+        // Log the action
+        let calorieInfo = calories > 0 ? " (\(Int(calories))cal)" : ""
+        logger.meal("🥤 Logged \(name): \(liters)L\(calorieInfo)")
+        
+        // Background sync
+        Task {
+            await syncBeverage(name: name, liters: liters, calories: calories)
         }
     }
     
@@ -165,14 +155,10 @@ class WaterIntakeManager: ObservableObject {
     
     /// Reset water intake for new day (called at midnight)
     func resetForNewDay() {
-        lock.async { [weak self] in
-            guard let self = self else { return }
-            DispatchQueue.main.async { [weak self] in
-                self?.todayWaterIntake = 0
-                self?.intakeLogs.removeAll()
-            }
-            self.logger.meal("Reset water intake for new day")
-        }
+        // Reset on main thread
+        todayWaterIntake = 0
+        intakeLogs.removeAll()
+        logger.meal("Reset water intake for new day")
     }
 }
 
