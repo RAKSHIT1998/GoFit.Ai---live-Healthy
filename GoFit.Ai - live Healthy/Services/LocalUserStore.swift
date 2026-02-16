@@ -145,13 +145,14 @@ final class LocalUserStore: ObservableObject {
         }
     }
     
-    func updateGoals(goal: String? = nil, activityLevel: String? = nil, dietaryPreferences: [String]? = nil, allergies: [String]? = nil) {
+    func updateGoals(goal: String? = nil, activityLevel: String? = nil, dietaryPreferences: [String]? = nil, allergies: [String]? = nil, workoutPreferences: [String]? = nil) {
         storageLock.sync {
             var updated = userProfile ?? UserProfileData()
             if let goal = goal { updated.goal = goal }
             if let activityLevel = activityLevel { updated.activityLevel = activityLevel }
             if let dietaryPreferences = dietaryPreferences { updated.dietaryPreferences = dietaryPreferences }
             if let allergies = allergies { updated.allergies = allergies }
+            if let workoutPreferences = workoutPreferences { updated.workoutPreferences = workoutPreferences }
             updated.lastUpdated = Date()
             
             DispatchQueue.main.async {

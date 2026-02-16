@@ -7,16 +7,37 @@ struct GifImageView: View {
     let gifData: Data?
     let loopCount: Int = 0 // 0 means infinite loop
     @State private var animatedImage: UIImage?
+    @State private var staticImage: UIImage?
     @State private var isLoading = false
     @State private var error: String?
+    @State private var isPlaying = true
     
     var body: some View {
         ZStack {
-            if let image = animatedImage {
+            if let image = isPlaying ? animatedImage : staticImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
                     .transition(.opacity)
+                    .overlay(
+                        Group {
+                            if !isPlaying {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.black.opacity(0.5))
+                                        .frame(width: 60, height: 60)
+                                    Image(systemName: "play.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                        }
+                    )
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isPlaying.toggle()
+                        }
+                    }
             } else if isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -65,10 +86,11 @@ struct GifImageView: View {
         isLoading = true
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                let image = try createAnimatedImage(from: gifData)
+                let (animated, static) = try createAnimatedImage(from: gifData)
                 DispatchQueue.main.async {
                     withAnimation {
-                        self.animatedImage = image
+                        self.animatedImage = animated
+                        self.staticImage = static
                         self.isLoading = false
                     }
                 }
@@ -81,7 +103,7 @@ struct GifImageView: View {
         }
     }
     
-    private func createAnimatedImage(from data: Data) throws -> UIImage {
+    private func createAnimatedImage(from data: Data) throws -> (UIImage, UIImage) {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
             throw GifError.invalidData
         }
@@ -108,8 +130,10 @@ struct GifImageView: View {
             throw GifError.noFrames
         }
         
-        // Create animated image
-        return UIImage.animatedImage(with: images, duration: max(duration, 1.0)) ?? images[0]
+        // Create animated image and static (first frame) image
+        let animated = UIImage.animatedImage(with: images, duration: max(duration, 1.0)) ?? images[0]
+        let static = images[0]
+        return (animated, static)
     }
 }
 
@@ -322,7 +346,7 @@ struct ExerciseDemoView: View {
                         Image(systemName: "film.fill")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("Tap to play")
+                        Text("Tap to pause/play")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

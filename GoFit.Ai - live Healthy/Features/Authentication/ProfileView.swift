@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var showingShareProgress = false
     @State private var showingTargetSettings = false
     @State private var showingDietaryPreferences = false
+    @State private var showingWorkoutPreferences = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
@@ -84,6 +85,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingDietaryPreferences) {
                 DietaryPreferencesEditorView().environmentObject(auth)
+            }
+            .sheet(isPresented: $showingWorkoutPreferences) {
+                WorkoutPreferenceSettingsView().environmentObject(auth)
             }
             .onAppear {
                 // Refresh subscription status when profile appears
@@ -611,6 +615,18 @@ struct ProfileView: View {
                 }
             )
             
+            // Workout Preferences
+            SettingsRow(
+                icon: "figure.run",
+                iconColor: .orange,
+                title: "Workout Preferences",
+                subtitle: workoutPreferencesSubtitle,
+                showChevron: true,
+                action: {
+                    showingWorkoutPreferences = true
+                }
+            )
+            
             Menu {
                 Button("Metric") {
                     unitsPreference = "metric"
@@ -668,6 +684,18 @@ struct ProfileView: View {
             let names = auth.dietPrefs.compactMap { displayNames[$0] }
             return names.joined(separator: ", ")
         }
+    }
+    
+    private var workoutPreferencesSubtitle: String {
+        if let profile = LocalUserStore.shared.getProfile() {
+            let prefs = profile.workoutPreferences
+            if prefs.isEmpty {
+                return "None selected"
+            } else {
+                return prefs.prefix(2).joined(separator: ", ") + (prefs.count > 2 ? " +\(prefs.count - 2) more" : "")
+            }
+        }
+        return "None selected"
     }
 
     // MARK: - Privacy
