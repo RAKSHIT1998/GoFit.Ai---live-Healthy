@@ -132,9 +132,6 @@ class NotificationService: ObservableObject {
         saveSettings()
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
-            }
-        }
-    }
     
     // MARK: - Settings
     
