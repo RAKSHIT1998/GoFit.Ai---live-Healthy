@@ -2,6 +2,7 @@ import SwiftUI
 import Vision
 import CoreImage
 import AVFoundation
+import UniformTypeIdentifiers
 
 // MARK: - AI GIF Generator Service
 /// Generates exercise GIF animations using AI and stores them locally on device
@@ -57,7 +58,7 @@ final class AIGifGeneratorService: ObservableObject {
                 let saveResult = gifService.saveGifData(gifData, for: exercise.name)
                 
                 switch saveResult {
-                case .success:
+                case .success(_):
                     await MainActor.run {
                         generationProgress = 1.0
                         isGenerating = false
@@ -570,7 +571,7 @@ final class AIGifGeneratorService: ObservableObject {
         ]
         
         let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(data, kUTTypeGIF, frames.count, nil) else {
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.gif.identifier as CFString, frames.count, nil) else {
             throw AIGifError.creationFailed("Failed to create GIF destination")
         }
         
@@ -594,32 +595,29 @@ final class AIGifGeneratorService: ObservableObject {
     
     /// Generate GIFs for multiple exercises
     func generateGifsForExercises(_ exercises: [Exercise], completion: @escaping (Int, Int) -> Void) {
-        Task {
+        Task { @MainActor in
             var successCount = 0
             
             for (index, exercise) in exercises.enumerated() {
                 // Skip if already has GIF
                 if gifService.hasGif(for: exercise.name) {
                     successCount += 1
-                    await MainActor.run {
-                        completion(index + 1, successCount)
-                    }
+                    completion(index + 1, successCount)
                     continue
                 }
                 
                 // Generate GIF
-                await withCheckedContinuation { continuation in
+                let result = await withCheckedContinuation { continuation in
                     generateGif(for: exercise) { result in
-                        if case .success = result {
-                            successCount += 1
-                        }
-                        continuation.resume()
+                        continuation.resume(returning: result)
                     }
                 }
                 
-                await MainActor.run {
-                    completion(index + 1, successCount)
+                if case .success(_) = result {
+                    successCount += 1
                 }
+                
+                completion(index + 1, successCount)
             }
         }
     }

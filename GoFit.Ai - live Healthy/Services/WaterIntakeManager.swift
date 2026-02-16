@@ -45,8 +45,7 @@ class WaterIntakeManager: ObservableObject {
         intakeLogs.append(log)
         
         // Update cache in background
-        lock.async { [weak self] in
-            guard let self = self else { return }
+        Task { @MainActor in
             if var stats = self.cache.dailyStats {
                 stats.waterIntake += liters
             }
@@ -88,8 +87,7 @@ class WaterIntakeManager: ObservableObject {
         todayWaterIntake += liters
         
         // Save to cache in background
-        lock.async { [weak self] in
-            guard let self = self else { return }
+        Task { @MainActor in
             self.cache.addMealEntry(mealEntry)
             
             if var stats = self.cache.dailyStats {
