@@ -72,45 +72,15 @@ class NotificationService: ObservableObject {
                 guard let self = self else { return }
                 let wasAuthorized = self.notificationsEnabled
                 self.notificationsEnabled = settings.authorizationStatus == .authorized
-        // Load with proper defaults
-        // If never set, all default to true (notifications active)
-        let hasLoadedBefore = UserDefaults.standard.object(forKey: "gofit_notif_initialized") != nil
-        
-        if !hasLoadedBefore {
-            // First time - enable all notifications by default
-            UserDefaults.standard.set(true, forKey: "gofit_notif_initialized")
-            notificationsEnabled = true
-            mealRemindersEnabled = true
-            waterRemindersEnabled = true
-            workoutRemindersEnabled = true
-            saveSettings()
-        } else {
-            // Load saved preferences
-            notificationsEnabled = UserDefaults.standard.object(forKey: "notificationsEnabled") as? Bool ?? true
-            mealRemindersEnabled = UserDefaults.standard.object(forKey: "mealRemindersEnabled") as? Bool ?? true
-            waterRemindersEnabled = UserDefaults.standard.object(forKey: "waterRemindersEnabled") as? Bool ?? true
-            workoutRemindersEnabled = UserDefaults.standard.object(forKey: "workoutRemindersEnabled") as? Bool ?? true
-        }
+                
+                if self.notificationsEnabled && !wasAuthorized {
                     self.scheduleAllNotifications()
                 } else if !self.notificationsEnabled && wasAuthorized {
                     // Permission was revoked, clear notifications
                     UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
                 }
-        UserDefaults.standard.set(mealRemindersEnabled, forKey: "mealRemindersEnabled")
-        UserDefaults.standard.set(waterRemindersEnabled, forKey: "waterRemindersEnabled")
-        UserDefaults.standard.set(workoutRemindersEnabled, forKey: "workoutRemindersEnabled")
-        UserDefaults.standard.synchronize()
-        
-        // Log notification status
-        let status = """
-        🔔 Notification Settings Updated:
-           All: \(notificationsEnabled ? "✅ ON" : "❌ OFF")
-           Meals: \(mealRemindersEnabled ? "✅ ON" : "❌ OFF")
-           Water: \(waterRemindersEnabled ? "✅ ON" : "❌ OFF")
-           Workouts: \(workoutRemindersEnabled ? "✅ ON" : "❌ OFF")
-        """
-        print(status)
-        AppLogger.shared.storage(status)
+            }
+        }
     }
     
     /// Enable ALL notifications (called from settings)
@@ -136,10 +106,25 @@ class NotificationService: ObservableObject {
     // MARK: - Settings
     
     private func loadSettings() {
-        notificationsEnabled = UserDefaults.standard.bool(forKey: "notificationsEnabled")
-        mealRemindersEnabled = UserDefaults.standard.object(forKey: "mealRemindersEnabled") as? Bool ?? true
-        waterRemindersEnabled = UserDefaults.standard.object(forKey: "waterRemindersEnabled") as? Bool ?? true
-        workoutRemindersEnabled = UserDefaults.standard.object(forKey: "workoutRemindersEnabled") as? Bool ?? true
+        // Load with proper defaults
+        // If never set, all default to true (notifications active)
+        let hasLoadedBefore = UserDefaults.standard.object(forKey: "gofit_notif_initialized") != nil
+        
+        if !hasLoadedBefore {
+            // First time - enable all notifications by default
+            UserDefaults.standard.set(true, forKey: "gofit_notif_initialized")
+            notificationsEnabled = true
+            mealRemindersEnabled = true
+            waterRemindersEnabled = true
+            workoutRemindersEnabled = true
+            saveSettings()
+        } else {
+            // Load saved preferences
+            notificationsEnabled = UserDefaults.standard.object(forKey: "notificationsEnabled") as? Bool ?? true
+            mealRemindersEnabled = UserDefaults.standard.object(forKey: "mealRemindersEnabled") as? Bool ?? true
+            waterRemindersEnabled = UserDefaults.standard.object(forKey: "waterRemindersEnabled") as? Bool ?? true
+            workoutRemindersEnabled = UserDefaults.standard.object(forKey: "workoutRemindersEnabled") as? Bool ?? true
+        }
     }
     
     func saveSettings() {
