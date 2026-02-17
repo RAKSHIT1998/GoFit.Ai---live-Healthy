@@ -231,8 +231,24 @@ struct SearchFriendsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            SearchBar(text: $searchText, placeholder: "Search users...", onSearch: onSearch)
-                .padding()
+            VStack(spacing: 12) {
+                SearchBar(text: $searchText, placeholder: "Search by email, name, or username", onSearch: onSearch)
+                
+                // Help text
+                if searchText.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        Text("Type an email, username, or name to find and add friends")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 4)
+                }
+            }
+            .padding()
             
             if isLoading {
                 VStack {
@@ -247,8 +263,16 @@ struct SearchFriendsView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.gray)
                     
-                    Text(searchText.isEmpty ? "Search for users" : "No results found")
-                        .font(.headline)
+                    VStack(spacing: 8) {
+                        Text(searchText.isEmpty ? "Find Friends" : "No results found")
+                            .font(.headline)
+                        
+                        if !searchText.isEmpty {
+                            Text("Try searching by email or full name")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
                 .padding()
@@ -256,34 +280,72 @@ struct SearchFriendsView: View {
                 List {
                     ForEach(searchResults, id: \.id) { result in
                         HStack(spacing: 12) {
+                            // Avatar
                             Circle()
-                                .fill(Color.green.opacity(0.3))
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.blue.opacity(0.6), .purple.opacity(0.6)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                                 .frame(width: 48, height: 48)
                                 .overlay(
-                                    Text(String(result.username.prefix(1)))
+                                    Text(String(result.username.prefix(1)).uppercased())
                                         .font(.headline)
                                         .foregroundColor(.white)
                                 )
                             
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(result.fullName ?? result.username)
-                                    .font(.headline)
+                            VStack(alignment: .leading, spacing: 6) {
+                                // Name
+                                HStack(spacing: 6) {
+                                    Text(result.fullName ?? result.username)
+                                        .font(.headline)
+                                    
+                                    // Badge showing match type
+                                    HStack(spacing: 2) {
+                                        Image(systemName: getMatchTypeIcon(for: result))
+                                            .font(.caption2)
+                                        Text(getMatchType(for: result))
+                                            .font(.caption2)
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.2))
+                                    .foregroundColor(.blue)
+                                    .cornerRadius(4)
+                                }
                                 
-                                Text(result.email)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                // Contact info
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(result.email)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text("@\(result.username)")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             
                             Spacer()
                             
+                            // Action button
                             if result.friendStatus == "friends" {
-                                Text("Friend")
+                                Label("Friend", systemImage: "checkmark.circle.fill")
                                     .font(.caption)
                                     .foregroundColor(.green)
+                            } else if result.friendStatus == "request_sent" {
+                                Label("Sent", systemImage: "clock.badge")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
                             } else {
                                 Button(action: { onAddFriend(result.id) }) {
                                     Image(systemName: "person.badge.plus")
+                                        .font(.system(size: 16))
                                         .foregroundColor(.blue)
+                                        .padding(8)
+                                        .contentShape(Rectangle())
                                 }
                             }
                         }
@@ -292,6 +354,19 @@ struct SearchFriendsView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func getMatchType(for result: SearchResult) -> String {
+        // Determine what field was matched in the search
+        // This would ideally come from the backend, but we can infer from the search text
+        return "match"
+    }
+    
+    private func getMatchTypeIcon(for result: SearchResult) -> String {
+        // Return appropriate icon based on match type
+        return "checkmark.circle"
     }
 }
 

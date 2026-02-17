@@ -247,7 +247,7 @@ router.delete('/:friendId', authenticateToken, async (req, res) => {
 // MARK: - Search Friends
 
 /**
- * Search users by username or email
+ * Search users by username, email, or full name
  * GET /api/friends/search?q=<query>&limit=20
  */
 router.get('/search', authenticateToken, async (req, res) => {
@@ -279,8 +279,15 @@ router.get('/search', authenticateToken, async (req, res) => {
                 (f.user_id = $1 AND f.friend_id = u.id) OR
                 (f.friend_id = $1 AND f.user_id = u.id)
              )
-             WHERE (u.username ILIKE $2 OR u.email ILIKE $2)
+             WHERE (u.username ILIKE $2 OR u.email ILIKE $2 OR u.full_name ILIKE $2)
                 AND u.id != $1
+             ORDER BY 
+                CASE 
+                    WHEN u.username ILIKE $2 THEN 1
+                    WHEN u.email ILIKE $2 THEN 2
+                    ELSE 3
+                END,
+                u.username ASC
              LIMIT $3`,
             [userId, searchQuery, limit]
         );
