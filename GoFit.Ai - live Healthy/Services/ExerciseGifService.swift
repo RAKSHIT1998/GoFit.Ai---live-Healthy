@@ -574,3 +574,240 @@ struct ExerciseDemoView: View {
         }
     }
 }
+
+// MARK: - Meal Demo View with GIF Support
+struct MealDemoView: View {
+    let meal: RecommendationMealItem
+    let gifService = ExerciseGifService.shared
+    let giphyService = GiphyGifService.shared
+    let visualService = RecommendationVisualService.shared
+    
+    @State private var gifData: Data?
+    @State private var isLoadingGif = false
+    @State private var loadingError: String?
+    @State private var hasLoadedGif = false
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // GIF Display with Play/Pause
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.1))
+                    
+                    if isLoadingGif {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Loading meal preparation...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let gifData = gifData {
+                        // Show actual GIF
+                        GifImageView(gifData: gifData)
+                            .frame(height: 300)
+                    } else if let error = loadingError {
+                        // Fallback: Show meal emoji with tips
+                        VStack(spacing: 16) {
+                            Text(visualService.getMealEmoji(for: meal.name))
+                                .font(.system(size: 60))
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Cooking Tips")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                
+                                if let instructions = meal.instructions {
+                                    Text(instructions)
+                                        .font(.caption)
+                                        .lineLimit(3)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding()
+                    } else {
+                        // Empty state
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+                            Text("No recipe video available")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(height: 300)
+                    }
+                }
+                .frame(height: 300)
+                .cornerRadius(12)
+                
+                // Meal Info Header
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(visualService.getMealColor(for: meal.name)).opacity(0.2))
+                            .frame(width: 50, height: 50)
+                        
+                        Text(visualService.getMealEmoji(for: meal.name))
+                            .font(.system(size: 28))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(meal.name)
+                            .font(.headline)
+                        
+                        HStack(spacing: 12) {
+                            Label("\(Int(meal.calories)) kcal", systemImage: "flame.fill")
+                                .font(.caption)
+                            Label("\(Int(meal.protein))g P", systemImage: "bolt.fill")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                
+                // Nutrition Breakdown
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Nutrition")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    HStack(spacing: 12) {
+                        NutritionBar(label: "Protein", value: meal.protein, max: 50, color: .orange)
+                        NutritionBar(label: "Carbs", value: meal.carbs, max: 100, color: .yellow)
+                        NutritionBar(label: "Fat", value: meal.fat, max: 50, color: .red)
+                    }
+                }
+                
+                // Prep Info
+                if let prepTime = meal.prepTime, let servings = meal.servings {
+                    HStack(spacing: 16) {
+                        Label("\(prepTime) min prep", systemImage: "clock.fill")
+                            .font(.caption)
+                        Label("\(servings) serving\(servings > 1 ? "s" : "")", systemImage: "person.fill")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                // Ingredients Section
+                if let ingredients = meal.ingredients, !ingredients.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Ingredients")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(ingredients, id: \.self) { ingredient in
+                                HStack(spacing: 8) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                    Text(ingredient)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Instructions Section
+                if let instructions = meal.instructions, !instructions.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("How to Make")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        
+                        Text(instructions)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineSpacing(2)
+                    }
+                }
+            }
+            .padding()
+        }
+        .navigationTitle(meal.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            loadMealGif()
+        }
+    }
+    
+    private func loadMealGif() {
+        guard !hasLoadedGif else { return }
+        hasLoadedGif = true
+        isLoadingGif = true
+        
+        // Try Giphy first for meal/cooking videos
+        giphyService.fetchGifData(for: meal.name) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let data):
+                    self.gifData = data
+                    self.loadingError = nil
+                    self.isLoadingGif = false
+                case .failure(let error):
+                    // Fallback to local GIFs (if available)
+                    if let localGifData = self.gifService.getGifData(for: meal.name) {
+                        self.gifData = localGifData
+                        self.loadingError = nil
+                    } else {
+                        self.loadingError = error.localizedDescription
+                        self.gifData = nil
+                    }
+                    self.isLoadingGif = false
+                }
+            }
+        }
+    }
+}
+
+// Helper component for nutrition visualization
+struct NutritionBar: View {
+    let label: String
+    let value: Double
+    let max: Double
+    let color: Color
+    
+    var percentage: Double {
+        min(value / max, 1.0)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 6)
+                
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(color)
+                    .frame(width: CGFloat(percentage) * 80, height: 6)
+            }
+            .frame(width: 80)
+            
+            Text("\(Int(value))g")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+        }
+    }
+}

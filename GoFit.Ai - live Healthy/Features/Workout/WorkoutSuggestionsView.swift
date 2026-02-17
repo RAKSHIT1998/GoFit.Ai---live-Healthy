@@ -15,7 +15,8 @@ struct MealPlan: Codable {
     let snacks: [RecommendationMealItem]
 }
 
-struct RecommendationMealItem: Codable {
+struct RecommendationMealItem: Codable, Identifiable {
+    var id: String { name }
     let name: String
     let calories: Double
     let protein: Double
@@ -65,6 +66,7 @@ struct WorkoutSuggestionsView: View {
     @State private var isRefreshing = false
     @State private var currentRequestTask: Task<Void, Never>?
     @State private var selectedExerciseForDemo: Exercise? // NEW: For GIF demo modal
+    @State private var selectedMealForDemo: RecommendationMealItem? // NEW: For meal demo modal
     @StateObject private var gifGenerator = AIGifGeneratorService.shared
     @State private var showGifGenerationSheet = false
     
@@ -161,6 +163,14 @@ struct WorkoutSuggestionsView: View {
                 ExerciseDemoView(exercise: exercise)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+            // Sheet for displaying meal GIF demo
+            .sheet(item: $selectedMealForDemo) { meal in
+                NavigationStack {
+                    MealDemoView(meal: meal)
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             // Sheet for GIF generation
             .sheet(isPresented: $showGifGenerationSheet) {
@@ -538,8 +548,26 @@ struct WorkoutSuggestionsView: View {
                     }
                 )
                 .tint(Design.Colors.primary)
-            }
-        }
+            }            
+            // View Recipe Video Demo Button
+            Button(action: {
+                selectedMealForDemo = meal
+            }) {
+                HStack(spacing: Design.Spacing.sm) {
+                    Image(systemName: "play.circle.fill")
+                    Text("View Recipe Video")
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: "arrow.right")
+                        .font(.caption)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Design.Spacing.md)
+                .padding(.vertical, Design.Spacing.sm)
+                .background(Design.Colors.primary.opacity(0.1))
+                .foregroundColor(Design.Colors.primary)
+                .cornerRadius(Design.Radius.medium)
+            }        }
         .padding(Design.Spacing.lg)
         .cardStyle()
     }
