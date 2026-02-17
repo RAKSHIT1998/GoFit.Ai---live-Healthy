@@ -87,11 +87,14 @@ final class GiphyGifService: ObservableObject {
     // MARK: - Giphy API Request
     
     private func fetchFromGiphy(_ searchQuery: String, completion: @escaping (Result<URL, GiphyError>) -> Void) {
+        // Build smarter search query based on exercise type
+        let enhancedQuery = buildSearchQuery(for: searchQuery)
+        
         // Build API request
         var components = URLComponents(string: baseURL)
         components?.queryItems = [
             URLQueryItem(name: "api_key", value: apiKey),
-            URLQueryItem(name: "q", value: "\(searchQuery) exercise fitness gym"),
+            URLQueryItem(name: "q", value: enhancedQuery),
             URLQueryItem(name: "limit", value: "1"),
             URLQueryItem(name: "offset", value: "0"),
             URLQueryItem(name: "rating", value: "g"),
@@ -197,6 +200,63 @@ final class GiphyGifService: ObservableObject {
                 completion(.success(gifData))
             }
         }.resume()
+    }
+    
+    // MARK: - Search Query Builder
+    
+    private func buildSearchQuery(for exerciseName: String) -> String {
+        let lowercased = exerciseName.lowercased()
+        
+        // Equipment-based exercises
+        if lowercased.contains("stair") || lowercased.contains("stepper") {
+            return "stairmaster stair climbing exercise"
+        }
+        if lowercased.contains("treadmill") {
+            return "treadmill running exercise"
+        }
+        if lowercased.contains("rowing") || lowercased.contains("rower") {
+            return "rowing machine exercise"
+        }
+        if lowercased.contains("elliptical") {
+            return "elliptical machine cardio"
+        }
+        if lowercased.contains("bike") || lowercased.contains("cycling") {
+            return "stationary bike exercise"
+        }
+        
+        // Cardio exercises
+        if lowercased.contains("jumping jacks") {
+            return "jumping jacks exercise"
+        }
+        if lowercased.contains("burpee") {
+            return "burpees workout"
+        }
+        if lowercased.contains("hiit") || lowercased.contains("high intensity") {
+            return "HIIT workout exercise"
+        }
+        if lowercased.contains("sprint") || lowercased.contains("running") {
+            return "sprinting cardio"
+        }
+        
+        // Strength exercises
+        if lowercased.contains("push") || lowercased.contains("pushup") {
+            return "push up exercise"
+        }
+        if lowercased.contains("pull") || lowercased.contains("pullup") {
+            return "pull up exercise"
+        }
+        if lowercased.contains("squat") {
+            return "squat exercise"
+        }
+        if lowercased.contains("deadlift") {
+            return "deadlift exercise"
+        }
+        if lowercased.contains("dumbbell") || lowercased.contains("weight") {
+            return "dumbbell weight training"
+        }
+        
+        // Default: add context
+        return "\(exerciseName) exercise fitness"
     }
     
     // MARK: - Disk Cache Management
