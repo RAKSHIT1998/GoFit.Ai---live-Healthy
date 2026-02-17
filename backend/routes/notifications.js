@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 import { generateCompetitiveNotification } from '../services/aiNotificationService.js';
 
 const router = express.Router();
