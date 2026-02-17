@@ -171,8 +171,6 @@ router.put('/read/all', authenticateToken, async (req, res) => {
   }
 });
 
-export default router;
-
 // Get user context for AI recommendations
 async function getUserContext(userId) {
   const user = await User.findById(userId);
