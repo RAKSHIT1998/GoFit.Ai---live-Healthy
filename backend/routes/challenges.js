@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { wsService } from '../services/websocketService.js';
 
 const router = express.Router();
 
@@ -42,6 +43,12 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Invite users if group challenge
     if (isGroupChallenge && invitedUsers && invitedUsers.length > 0) {
+      // Get creator info for WebSocket notification
+      const creatorInfo = await pool.query(
+        'SELECT id, username, full_name FROM users WHERE id = $1',
+        [userId]
+      );
+      
       for (const invitedUserId of invitedUsers) {
         await pool.query(
           'INSERT INTO challenge_invitations (challenge_id, invited_user_id, invited_by, status) VALUES ($1, $2, $3, $4)',
@@ -54,6 +61,26 @@ router.post('/create', authenticateToken, async (req, res) => {
            VALUES ($1, $2, $3, $4, $5, $6, false)`,
           [invitedUserId, 'challenge_invite', 'Challenge Invitation', `${req.user.username} invited you to "${name}"`, userId, challenge.id]
         );
+        
+        // 🔥 Emit real-time WebSocket notification
+        if (creatorInfo.rows.length > 0) {
+          wsService.emitChallengeInvitation(invitedUserId, {
+            challengeId: challenge.id,
+            from: {
+              id: creatorInfo.rows[0].id,
+              username: creatorInfo.rows[0].username,
+              fullName: creatorInfo.rows[0].full_name
+            },
+            details: {
+              name: name,
+              description: description || '',
+              metric: metric,
+              targetValue: targetValue,
+              duration: duration
+            },
+            message: `${creatorInfo.rows[0].full_name || creatorInfo.rows[0].username} invited you to: ${name}`
+          });
+        }
       }
     }
 
@@ -249,6 +276,29 @@ router.post('/:challengeId/score', authenticateToken, async (req, res) => {
        WHERE challenge_id = $1`,
       [challengeId]
     );
+    
+    // 🔥 Emit real-time WebSocket update to all challenge participants
+    const participantsResult = await pool.query(
+      'SELECT user_id FROM challenge_participants WHERE challenge_id = $1 AND user_id != $2',
+      [challengeId, userId]
+    );
+    
+    if (participantsResult.rows.length > 0) {
+      // Get updated user info
+      const userInfo = await pool.query(
+        'SELECT username, full_name FROM users WHERE id = $1',
+        [userId]
+      );
+      
+      // Broadcast to all participants
+      wsService.emitToChallenge(challengeId, {
+        type: 'score_update',
+        userId: userId,
+        username: userInfo.rows[0]?.username,
+        newScore: updateResult.rows[0].current_score,
+        scoreAdded: scoreValue
+      });
+    }
 
     res.json({
       message: 'Score updated',

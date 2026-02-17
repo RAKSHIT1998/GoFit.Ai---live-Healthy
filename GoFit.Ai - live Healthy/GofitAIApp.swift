@@ -22,14 +22,49 @@ struct GoFitAiApp: App {
     }()
 
     @AppStorage("darkModePreference") private var darkModePreference: String = "light"
+    @StateObject private var webSocketService = WebSocketService.shared
     
     var body: some Scene {
         WindowGroup {
             RootView()
                 .preferredColorScheme(colorScheme)
+                .notificationBanner() // Add real-time notification banner
+                .environmentObject(webSocketService)
                 .onAppear {
-                    // Initialize notification service
+                    // Initialize services
                     _ = NotificationService.shared
+                    
+                    // Connect to WebSocket if authenticated
+                    if UserDefaults.standard.string(forKey: "authToken") != nil {
+                        webSocketService.connect()
+                    }
+                }
+                .onChange(of: webSocketService.latestFriendRequest) { oldValue, newValue in
+                    if let request = newValue {
+                        NotificationBannerManager.shared.show(
+                            title: "New Friend Request",
+                            message: request.message,
+                            icon: "person.badge.plus.fill"
+                        )
+                    }
+                }
+                .onChange(of: webSocketService.latestChallenge) { oldValue, newValue in
+                    if let challenge = newValue {
+                        NotificationBannerManager.shared.show(
+                            title: "Challenge Invitation",
+                            message: "\(challenge.fromUsername) invited you to: \(challenge.challengeName)",
+                            icon: "trophy.fill"
+                        )
+                    }
+                }
+                .onChange(of: webSocketService.latestAchievement) { oldValue, newValue in
+                    if let achievement = newValue {
+                        NotificationBannerManager.shared.show(
+                            title: "🏅 Achievement Unlocked!",
+                            message: "\(achievement.name): \(achievement.description)",
+                            icon: "star.fill"
+                        )
+                    }
                 }
         }
         .modelContainer(sharedModelContainer)

@@ -410,5 +410,34 @@ class NotificationService: ObservableObject {
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["workout-morning", "workout-evening"])
         }
     }
-}
-
+    
+    // MARK: - Instant Notifications (for WebSocket events)
+    
+    /// Show instant local notification (for real-time events like friend requests)
+    func showLocalNotification(title: String, body: String, sound: UNNotificationSound = .default) {
+        guard notificationsEnabled else {
+            print("⚠️ Notifications disabled, skipping local notification")
+            return
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = sound
+        content.badge = 1
+        
+        // Trigger immediately
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil // nil trigger = immediate
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to show local notification: \(error.localizedDescription)")
+            } else {
+                print("✅ Local notification shown: \(title)")
+            }
+        }
+    }
