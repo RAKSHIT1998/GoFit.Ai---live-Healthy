@@ -328,10 +328,12 @@ final class ExerciseGifService {
 struct ExerciseDemoView: View {
     let exercise: Exercise
     let gifService = ExerciseGifService.shared
+    let giphyService = GiphyGifService.shared
     let visualService = RecommendationVisualService.shared
     
     @State private var gifData: Data?
-    @State private var hasLoadedGif = false
+    @State private var isLoadingGif = false
+    @State private var loadingError: String?
     
     var body: some View {
         VStack(spacing: 12) {
@@ -348,6 +350,154 @@ struct ExerciseDemoView: View {
                             .foregroundColor(.secondary)
                         Text("Tap to pause/play")
                             .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else if isLoadingGif {
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("Loading animation...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 250)
+                .frame(maxWidth: .infinity)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
+            } else {
+                // Fallback: Show icon with form tips
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.blue.opacity(0.1))
+                    
+                    VStack(spacing: 16) {
+                        Image(systemName: visualService.getExerciseIcon(for: exercise.name))
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Form Tips")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                            
+                            if let instructions = exercise.instructions {
+                                Text(instructions)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(3)
+                            } else {
+                                Text("Follow proper form for maximum effectiveness")
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding()
+                }
+                .frame(height: 250)
+            }
+            
+            // Exercise Details
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(exercise.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    if let difficulty = exercise.difficulty {
+                        Text(difficulty.capitalized)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange)
+                            .cornerRadius(4)
+                    }
+                    
+                    Spacer()
+                }
+                
+                // Stats
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Duration")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("\(exercise.duration) min")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Calories")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("\(exercise.calories)")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    
+                    if let sets = exercise.sets {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Sets")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(sets)")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 12)
+                .background(Color.gray.opacity(0.05))
+                .cornerRadius(8)
+            }
+            
+            Spacer()
+        }
+        .padding()
+        .onAppear {
+            loadGif()
+        }
+    }
+    
+    private func loadGif() {
+        isLoadingGif = true
+        loadingError = nil
+        
+        // Try to fetch from Giphy first
+        giphyService.fetchGifData(for: exercise.name) { [weak self] result in
+            switch result {
+            case .success(let data):
+                DispatchQueue.main.async {
+                    self?.gifData = data
+                    self?.isLoadingGif = false
+                    print("✅ Loaded GIF from Giphy for: \(self?.exercise.name ?? "exercise")")
+                }
+            case .failure(let error):
+                // Fall back to local GIFs
+                print("⚠️ Giphy error: \(error.localizedDescription), trying local GIFs...")
+                DispatchQueue.main.async {
+                    if let localGifData = self?.gifService.getGifData(for: self?.exercise.name ?? "") {
+                        self?.gifData = localGifData
+                        print("✅ Loaded GIF from local storage for: \(self?.exercise.name ?? "exercise")")
+                    } else {
+                        self?.loadingError = error.localizedDescription
+                        print("❌ No GIF available from Giphy or local storage")
+                    }
+                    self?.isLoadingGif = false
+                }
+            }
+        }
+    }
+}
                             .foregroundColor(.secondary)
                     }
                 }
