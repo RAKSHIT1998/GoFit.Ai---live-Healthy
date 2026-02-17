@@ -26,11 +26,17 @@ struct MainTabView: View {
                 }
                 .tag(2)
             
-            ProfileView()
+            FriendsView()
                 .tabItem {
-                    Label("Profile", systemImage: selectedTab == 3 ? "person.circle.fill" : "person.circle")
+                    Label("Friends", systemImage: selectedTab == 3 ? "person.2.fill" : "person.2")
                 }
                 .tag(3)
+            
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: selectedTab == 4 ? "person.circle.fill" : "person.circle")
+                }
+                .tag(4)
         }
         .accentColor(Design.Colors.primary)
         .onChange(of: selectedTab) { oldValue, newValue in
