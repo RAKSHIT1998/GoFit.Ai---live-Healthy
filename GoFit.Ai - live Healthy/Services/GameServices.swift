@@ -1,5 +1,33 @@
 import Foundation
 
+enum NetworkError: LocalizedError {
+    case invalidURL
+    case invalidResponse
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL"
+        case .invalidResponse:
+            return "Invalid response from server"
+        }
+    }
+}
+
+enum NetworkError: LocalizedError {
+    case invalidURL
+    case invalidResponse
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL"
+        case .invalidResponse:
+            return "Invalid response from server"
+        }
+    }
+}
+
 @MainActor
 class LogSharingService: NSObject, ObservableObject {
     @Published var sharedLogs: [SharedActivityLog] = []
@@ -21,7 +49,9 @@ class LogSharingService: NSObject, ObservableObject {
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let payload: [String: Any] = [
             "mealId": mealId,
@@ -34,7 +64,7 @@ class LogSharingService: NSObject, ObservableObject {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to share meal log"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let result = try JSONDecoder().decode([String: AnyCodable].self, from: data)
@@ -49,7 +79,9 @@ class LogSharingService: NSObject, ObservableObject {
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let payload: [String: Any] = [
             "workoutId": workoutId,
@@ -62,7 +94,7 @@ class LogSharingService: NSObject, ObservableObject {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to share workout log"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let result = try JSONDecoder().decode([String: AnyCodable].self, from: data)
@@ -76,15 +108,17 @@ class LogSharingService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/friends"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch shared logs"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: [SharedActivityLog]].self, from: data)
@@ -98,15 +132,17 @@ class LogSharingService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/feed"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch activity feed"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: [ActivityFeed]].self, from: data)
@@ -123,7 +159,9 @@ class LogSharingService: NSObject, ObservableObject {
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let payload: [String: Any] = [
             "visibility": visibility,
@@ -135,7 +173,7 @@ class LogSharingService: NSObject, ObservableObject {
         let (_, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to update visibility"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
     }
 
@@ -148,12 +186,14 @@ class LogSharingService: NSObject, ObservableObject {
         let endpoint = "\(baseURL)/\(logId)"
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "DELETE"
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (_, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to delete log"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         // Refresh feed
@@ -183,15 +223,17 @@ class GamificationService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/stats"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch stats"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: GamificationStats].self, from: data)
@@ -205,15 +247,17 @@ class GamificationService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/leaderboard?limit=\(limit)&offset=\(offset)"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch leaderboard"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode(GlobalLeaderboard.self, from: data)
@@ -227,15 +271,17 @@ class GamificationService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/badges"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch badges"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: [Badge]].self, from: data)
@@ -249,15 +295,17 @@ class GamificationService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/achievements"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch achievements"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: [Achievement]].self, from: data)
@@ -271,15 +319,17 @@ class GamificationService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/streaks"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch streaks"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: [UserStreak]].self, from: data)

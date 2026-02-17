@@ -1,5 +1,19 @@
 import Foundation
 
+enum NetworkError: LocalizedError {
+    case invalidURL
+    case invalidResponse
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL"
+        case .invalidResponse:
+            return "Invalid response from server"
+        }
+    }
+}
+
 @MainActor
 class ChallengeService: NSObject, ObservableObject {
     @Published var challenges: [Challenge] = []
@@ -31,7 +45,9 @@ class ChallengeService: NSObject, ObservableObject {
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let payload: [String: Any] = [
             "name": name,
@@ -49,7 +65,7 @@ class ChallengeService: NSObject, ObservableObject {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to create challenge"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let result = try JSONDecoder().decode([String: Challenge].self, from: data)
@@ -70,15 +86,17 @@ class ChallengeService: NSObject, ObservableObject {
             endpoint += "&type=\(type)"
         }
 
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch challenges"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode([String: [Challenge]].self, from: data)
@@ -94,12 +112,14 @@ class ChallengeService: NSObject, ObservableObject {
         let endpoint = "\(baseURL)/\(challengeId)/join"
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (_, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to join challenge"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         // Refresh challenges
@@ -113,15 +133,17 @@ class ChallengeService: NSObject, ObservableObject {
         defer { isLoading = false }
 
         let endpoint = "\(baseURL)/\(challengeId)/leaderboard"
-        guard let url = URL(string: endpoint) else { throw APIError.invalidURL }
+        guard let url = URL(string: endpoint) else { throw NetworkError.invalidURL }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to fetch leaderboard"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         let response_data = try JSONDecoder().decode(ChallengeLeaderboard.self, from: data)
@@ -138,7 +160,9 @@ class ChallengeService: NSObject, ObservableObject {
         var request = URLRequest(url: URL(string: endpoint)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(AuthService.shared.getToken() ?? "")", forHTTPHeaderField: "Authorization")
+        if let token = AuthService.shared.readToken()?.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let payload: [String: Any] = ["scoreValue": scoreValue]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
@@ -146,7 +170,7 @@ class ChallengeService: NSObject, ObservableObject {
         let (_, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             errorMessage = "Failed to update score"
-            throw APIError.invalidResponse
+            throw NetworkError.invalidResponse
         }
 
         // Refresh leaderboard
