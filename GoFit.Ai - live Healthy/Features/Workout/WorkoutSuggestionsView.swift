@@ -381,26 +381,6 @@ struct WorkoutSuggestionsView: View {
                 )
                 .tint(Design.Colors.primary)
             }
-            
-            // View Demo Button - for GIF animation
-            Button(action: {
-                selectedExerciseForDemo = exercise
-            }) {
-                HStack(spacing: Design.Spacing.sm) {
-                    Image(systemName: "play.circle.fill")
-                    Text("View Demo")
-                        .fontWeight(.semibold)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Design.Spacing.md)
-                .padding(.vertical, Design.Spacing.sm)
-                .background(Design.Colors.primary.opacity(0.1))
-                .foregroundColor(Design.Colors.primary)
-                .cornerRadius(Design.Radius.medium)
-            }
         }
         .padding(Design.Spacing.lg)
         .cardStyle()
