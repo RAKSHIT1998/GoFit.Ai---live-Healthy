@@ -104,202 +104,120 @@ struct GifImageView: View {
     }
     
     private func createAnimatedImage(from data: Data) throws -> (UIImage, UIImage) {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
-            throw GifError.invalidData
+        guard let imageSource = CGImageSourceCreateWithData(data as CFData, nil) else {
+            throw NSError(domain: "ImageIO", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create image source"])
         }
         
-        let count = CGImageSourceGetCount(source)
+        let frameCount = CGImageSourceGetCount(imageSource)
+        guard frameCount > 0 else {
+            throw NSError(domain: "ImageIO", code: -1, userInfo: [NSLocalizedDescriptionKey: "No frames in GIF"])
+        }
+        
         var images: [UIImage] = []
-        var duration: TimeInterval = 0
+        var durations: [TimeInterval] = []
         
-        for i in 0..<count {
-            guard let cgImage = CGImageSourceCreateImageAtIndex(source, i, nil) else {
-                continue
+        for i in 0..<frameCount {
+            if let cgImage = CGImageSourceCreateImageAtIndex(imageSource, i, nil) {
+                images.append(UIImage(cgImage: cgImage))
+                
+                if let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, i, nil) as? [String: Any],
+                   let gifProperties = properties[kCGImagePropertyGIFDictionary as String] as? [String: Any],
+                   let duration = gifProperties[kCGImagePropertyGIFDelayTime as String] as? NSNumber {
+                    durations.append(max(duration.doubleValue, 0.05))
+                } else {
+                    durations.append(0.08)
+                }
             }
-            
-            images.append(UIImage(cgImage: cgImage))
-            
-            // Get frame duration
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, i, nil) as? [String: Any]
-            let gifProperties = properties?[kCGImagePropertyGIFDictionary as String] as? [String: Any]
-            let frameDuration = (gifProperties?[kCGImagePropertyGIFDelayTime as String] as? NSNumber) ?? 0.1
-            duration += frameDuration.doubleValue
         }
         
-        if images.isEmpty {
-            throw GifError.noFrames
-        }
+        let totalDuration = durations.reduce(0, +)
+        let animatedImage = UIImage.animatedImage(with: images, duration: totalDuration)
+        let staticImage = images.first ?? UIImage()
         
-        // Create animated image and static (first frame) image
-        let animated = UIImage.animatedImage(with: images, duration: max(duration, 1.0)) ?? images[0]
-        let staticFrame = images[0]
-        return (animated, staticFrame)
-    }
-}
-
-enum GifError: Error {
-    case invalidData
-    case noFrames
-    case processingFailed
-    
-    var localizedDescription: String {
-        switch self {
-        case .invalidData:
-            return "Invalid GIF data"
-        case .noFrames:
-            return "No frames found in GIF"
-        case .processingFailed:
-            return "Failed to process GIF"
-        }
+        return (animatedImage ?? UIImage(), staticImage)
     }
 }
 
 // MARK: - Exercise GIF Service
-
-/// Service to manage exercise GIF animations
-final class ExerciseGifService {
+class ExerciseGifService: NSObject, ObservableObject {
     static let shared = ExerciseGifService()
     
-    private let cache = NSCache<NSString, NSData>()
     private let fileManager = FileManager.default
-    private var gifDirectory: URL {
-        let paths = fileManager.urls(for: .documentDirectory, in: .userDomainMask)
-        return paths[0].appendingPathComponent("ExerciseGifs")
+    private let cache = NSCache<NSString, NSData>()
+    private var gifDirectory: URL
+    
+    override private init() {
+        let documentDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        self.gifDirectory = documentDirectory.appendingPathComponent("ExerciseGifs", isDirectory: true)
+        
+        super.init()
+        
+        // Create directory if needed
+        try? fileManager.createDirectory(at: gifDirectory, withIntermediateDirectories: true)
+        
+        // Configure cache
+        cache.totalCostLimit = 100 * 1024 * 1024 // 100 MB
     }
     
-    private init() {
-        setupGifDirectory()
-        cache.totalCostLimit = 100 * 1024 * 1024 // 100 MB cache limit
-    }
+    // MARK: - Public Methods
     
-    // MARK: - Directory Management
-    
-    private func setupGifDirectory() {
-        if !fileManager.fileExists(atPath: gifDirectory.path) {
-            try? fileManager.createDirectory(at: gifDirectory, withIntermediateDirectories: true)
-        }
-    }
-    
-    // MARK: - GIF Management
-    
-    /// Get GIF data for an exercise
     func getGifData(for exerciseName: String) -> Data? {
-        let cacheKey = NSString(string: exerciseName)
+        let key = exerciseName.lowercased()
         
         // Check memory cache first
-        if let cachedData = cache.object(forKey: cacheKey) {
+        if let cachedData = cache.object(forKey: key as NSString) {
+            print("💾 GIF found in memory cache: \(exerciseName)")
             return cachedData as Data
         }
         
-        // Load from disk
-        let gifData = loadGifFromDisk(for: exerciseName)
-        
-        // Cache in memory
-        if let data = gifData {
-            cache.setObject(data as NSData, forKey: cacheKey)
+        // Check disk cache
+        let filePath = gifDirectory.appendingPathComponent("\(key).gif")
+        if let data = fileManager.contents(atPath: filePath.path) {
+            // Put in memory cache for faster future access
+            cache.setObject(data as NSData, forKey: key as NSString)
+            print("💾 GIF loaded from disk cache: \(exerciseName)")
+            return data
         }
         
-        return gifData
+        return nil
     }
     
-    /// Save GIF data for an exercise
     func saveGifData(_ data: Data, for exerciseName: String) -> Bool {
-        let fileName = exerciseName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let filePath = gifDirectory.appendingPathComponent("\(fileName).gif")
+        let key = exerciseName.lowercased()
+        let filePath = gifDirectory.appendingPathComponent("\(key).gif")
         
         do {
             try data.write(to: filePath)
-            
-            // Also cache in memory
-            let cacheKey = NSString(string: exerciseName)
-            cache.setObject(data as NSData, forKey: cacheKey)
-            
-            print("✅ Saved GIF for exercise: \(exerciseName)")
+            cache.setObject(data as NSData, forKey: key as NSString)
+            print("✅ GIF saved for: \(exerciseName)")
             return true
         } catch {
-            print("❌ Failed to save GIF for exercise \(exerciseName): \(error)")
+            print("❌ Failed to save GIF: \(error)")
             return false
         }
     }
     
-    /// Load GIF from disk
-    private func loadGifFromDisk(for exerciseName: String) -> Data? {
-        let fileName = exerciseName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let filePath = gifDirectory.appendingPathComponent("\(fileName).gif")
-        
-        return try? Data(contentsOf: filePath)
-    }
-    
-    /// Check if GIF exists for exercise
     func hasGif(for exerciseName: String) -> Bool {
-        let fileName = exerciseName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let filePath = gifDirectory.appendingPathComponent("\(fileName).gif")
+        let key = exerciseName.lowercased()
+        
+        // Check memory cache
+        if cache.object(forKey: key as NSString) != nil {
+            return true
+        }
+        
+        // Check disk cache
+        let filePath = gifDirectory.appendingPathComponent("\(key).gif")
         return fileManager.fileExists(atPath: filePath.path)
     }
     
-    /// Delete GIF for exercise
-    func deleteGif(for exerciseName: String) -> Bool {
-        let fileName = exerciseName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let filePath = gifDirectory.appendingPathComponent("\(fileName).gif")
-        
-        do {
-            try fileManager.removeItem(at: filePath)
-            
-            // Remove from cache
-            let cacheKey = NSString(string: exerciseName)
-            cache.removeObject(forKey: cacheKey)
-            
-            print("✅ Deleted GIF for exercise: \(exerciseName)")
-            return true
-        } catch {
-            print("❌ Failed to delete GIF for exercise \(exerciseName): \(error)")
-            return false
-        }
-    }
-    
-    /// Get all stored GIFs
-    func getAllStoredGifs() -> [String: URL] {
-        var gifs: [String: URL] = [:]
-        
-        do {
-            let files = try fileManager.contentsOfDirectory(at: gifDirectory, includingPropertiesForKeys: nil)
-            for file in files where file.pathExtension.lowercased() == "gif" {
-                let exerciseName = file.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " ").capitalized
-                gifs[exerciseName] = file
-            }
-        } catch {
-            print("⚠️ Failed to read GIF directory: \(error)")
-        }
-        
-        return gifs
-    }
-    
-    /// Get total storage used by GIFs
-    func getStorageUsage() -> Int64 {
-        var totalSize: Int64 = 0
-        
-        do {
-            let files = try fileManager.contentsOfDirectory(at: gifDirectory, includingPropertiesForKeys: [.fileSizeKey])
-            for file in files {
-                if let resources = try? file.resourceValues(forKeys: [.fileSizeKey]),
-                   let fileSize = resources.fileSize {
-                    totalSize += Int64(fileSize)
-                }
-            }
-        } catch {
-            print("⚠️ Failed to calculate GIF storage: \(error)")
-        }
-        
-        return totalSize
-    }
-    
-    /// Clear all GIFs
     func clearAllGifs() -> Bool {
         do {
-            try fileManager.removeItem(at: gifDirectory)
-            setupGifDirectory()
+            let gifFiles = try fileManager.contentsOfDirectory(at: gifDirectory, includingPropertiesForKeys: nil)
+            for fileURL in gifFiles {
+                try fileManager.removeItem(at: fileURL)
+            }
             cache.removeAllObjects()
-            print("✅ Cleared all exercise GIFs")
+            print("✅ All cached GIFs cleared")
             return true
         } catch {
             print("❌ Failed to clear GIFs: \(error)")
@@ -307,24 +225,28 @@ final class ExerciseGifService {
         }
     }
     
-    /// Preload GIFs for a list of exercises
-    func preloadGifs(for exerciseNames: [String], completion: @escaping (Int) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            var loaded = 0
-            for exerciseName in exerciseNames {
-                if let _ = self.getGifData(for: exerciseName) {
-                    loaded += 1
-                }
-            }
-            DispatchQueue.main.async {
-                completion(loaded)
+    func getStorageUsage() -> Int64 {
+        guard let enumerator = fileManager.enumerator(atPath: gifDirectory.path) else { return 0 }
+        var totalSize: Int64 = 0
+        
+        for case let file as String in enumerator {
+            let filePath = gifDirectory.appendingPathComponent(file)
+            if let attributes = try? fileManager.attributesOfItem(atPath: filePath.path),
+               let fileSize = attributes[.size] as? Int64 {
+                totalSize += fileSize
             }
         }
+        
+        return totalSize
+    }
+    
+    func getStorageUsageMB() -> Double {
+        let bytes = getStorageUsage()
+        return Double(bytes) / (1024 * 1024)
     }
 }
 
-// MARK: - SwiftUI Helper View
-
+// MARK: - Exercise Demo View
 struct ExerciseDemoView: View {
     let exercise: Exercise
     let gifService = ExerciseGifService.shared
@@ -334,6 +256,7 @@ struct ExerciseDemoView: View {
     @State private var gifData: Data?
     @State private var isLoadingGif = false
     @State private var loadingError: String?
+    @State private var hasLoadedGif = false
     
     var body: some View {
         VStack(spacing: 12) {
@@ -469,106 +392,29 @@ struct ExerciseDemoView: View {
     }
     
     private func loadGif() {
-        isLoadingGif = true
-        loadingError = nil
-        
-        // Try to fetch from Giphy first
-        giphyService.fetchGifData(for: exercise.name) { [weak self] result in
-            switch result {
-            case .success(let data):
-                DispatchQueue.main.async {
-                    self?.gifData = data
-                    self?.isLoadingGif = false
-                    print("✅ Loaded GIF from Giphy for: \(self?.exercise.name ?? "exercise")")
-                }
-            case .failure(let error):
-                // Fall back to local GIFs
-                print("⚠️ Giphy error: \(error.localizedDescription), trying local GIFs...")
-                DispatchQueue.main.async {
-                    if let localGifData = self?.gifService.getGifData(for: self?.exercise.name ?? "") {
-                        self?.gifData = localGifData
-                        print("✅ Loaded GIF from local storage for: \(self?.exercise.name ?? "exercise")")
-                    } else {
-                        self?.loadingError = error.localizedDescription
-                        print("❌ No GIF available from Giphy or local storage")
-                    }
-                    self?.isLoadingGif = false
-                }
-            }
-        }
-    }
-}
-                            .foregroundColor(.secondary)
-                    }
-                }
-            } else {
-                // Fallback: Show icon with form tips
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.blue.opacity(0.1))
-                    
-                    VStack(spacing: 16) {
-                        Image(systemName: visualService.getExerciseIcon(for: exercise.name))
-                            .font(.system(size: 50))
-                            .foregroundColor(.blue)
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Form Tips")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                            
-                            if let instructions = exercise.instructions {
-                                Text(instructions)
-                                    .font(.caption)
-                                    .lineLimit(3)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding()
-                }
-                .frame(height: 250)
-            }
-            
-            // Exercise info
-            VStack(alignment: .leading, spacing: 8) {
-                Text(exercise.name)
-                    .font(.headline)
-                
-                HStack(spacing: 16) {
-                    Label("\(exercise.duration) min", systemImage: "clock.fill")
-                        .font(.caption)
-                    Label("\(exercise.calories) kcal", systemImage: "flame.fill")
-                        .font(.caption)
-                    
-                    if let difficulty = exercise.difficulty {
-                        Text(difficulty.capitalized)
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.2))
-                            .cornerRadius(4)
-                    }
-                }
-                .foregroundColor(.secondary)
-            }
-        }
-        .onAppear {
-            loadGif()
-        }
-    }
-    
-    private func loadGif() {
         guard !hasLoadedGif else { return }
         hasLoadedGif = true
         
-        DispatchQueue.global(qos: .userInitiated).async {
-            let data = gifService.getGifData(for: exercise.name)
+        isLoadingGif = true
+        
+        // Try Giphy first
+        giphyService.fetchGifData(for: exercise.name) { result in
             DispatchQueue.main.async {
-                withAnimation {
+                switch result {
+                case .success(let data):
                     self.gifData = data
+                    self.loadingError = nil
+                    self.isLoadingGif = false
+                case .failure(let error):
+                    // Fallback to local GIFs
+                    if let localGifData = self.gifService.getGifData(for: self.exercise.name) {
+                        self.gifData = localGifData
+                        self.loadingError = nil
+                    } else {
+                        self.loadingError = error.localizedDescription
+                        self.gifData = nil
+                    }
+                    self.isLoadingGif = false
                 }
             }
         }
@@ -608,7 +454,7 @@ struct MealDemoView: View {
                         // Show actual GIF
                         GifImageView(gifData: gifData)
                             .frame(height: 300)
-                    } else if let error = loadingError {
+                    } else if let _ = loadingError {
                         // Fallback: Show meal emoji with tips
                         VStack(spacing: 16) {
                             Text(visualService.getMealEmoji(for: meal.name))

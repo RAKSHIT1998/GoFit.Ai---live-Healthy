@@ -135,15 +135,22 @@ final class GiphyGifService: ObservableObject {
                 let response = try JSONDecoder().decode(GiphyResponse.self, from: data)
                 
                 // Get the first GIF result
-                guard let gif = response.data.first,
-                      let gifUrl = gif.images.original.url ?? gif.images.fixed_height.url else {
+                guard let gif = response.data.first else {
                     print("⚠️ No GIF found for: \(searchQuery)")
                     completion(.failure(.noGifFound))
                     return
                 }
                 
-                print("✅ Found GIF for \(searchQuery): \(gifUrl.absoluteString)")
-                completion(.success(gifUrl))
+                let gifUrl = gif.images.original.url ?? gif.images.fixed_height?.url ?? gif.images.fixed_width?.url ?? gif.images.downsized?.url
+                
+                guard let validGifUrl = gifUrl else {
+                    print("⚠️ No GIF URL found for: \(searchQuery)")
+                    completion(.failure(.noGifFound))
+                    return
+                }
+                
+                print("✅ Found GIF for \(searchQuery): \(validGifUrl.absoluteString)")
+                completion(.success(validGifUrl))
             } catch {
                 print("❌ Failed to decode Giphy response: \(error)")
                 completion(.failure(.decodingError(error.localizedDescription)))
