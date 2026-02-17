@@ -9,9 +9,14 @@ class FriendsService: NSObject, ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     
-    private let baseURL = NetworkManager.baseURL
+    private let baseURL: String
     
-    override private init() {
+    override init() {
+        if let baseURL = UserDefaults.standard.string(forKey: "backendURL"), !baseURL.isEmpty {
+            self.baseURL = baseURL
+        } else {
+            self.baseURL = "http://localhost:3000"
+        }
         super.init()
     }
     
