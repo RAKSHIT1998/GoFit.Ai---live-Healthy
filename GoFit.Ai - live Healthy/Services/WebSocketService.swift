@@ -42,7 +42,8 @@ class WebSocketService: ObservableObject {
             self.baseURL = baseURL.replacingOccurrences(of: "http://", with: "ws://")
                                   .replacingOccurrences(of: "https://", with: "wss://")
         } else {
-            self.baseURL = "ws://localhost:3000"
+            // Default to production Render backend with WSS (secure WebSocket)
+            self.baseURL = "wss://gofit-ai-live-healthy-1.onrender.com"
         }
         
         // Listen for app lifecycle events

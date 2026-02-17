@@ -10,8 +10,15 @@ struct APIConfig {
             return storedURL
         }
         
-        // Default to local development server
-        return "http://localhost:3000"
+        // Default to production Render backend
+        #if DEBUG
+        // Development: use localhost for local testing
+        // Change to production URL if testing with deployed backend
+        return "https://gofit-ai-live-healthy-1.onrender.com"
+        #else
+        // Production: always use Render backend
+        return "https://gofit-ai-live-healthy-1.onrender.com"
+        #endif
     }
     
     /// Update the backend URL stored in UserDefaults

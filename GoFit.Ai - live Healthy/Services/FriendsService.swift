@@ -15,7 +15,8 @@ class FriendsService: NSObject, ObservableObject {
         if let baseURL = UserDefaults.standard.string(forKey: "backendURL"), !baseURL.isEmpty {
             self.baseURL = baseURL
         } else {
-            self.baseURL = "http://localhost:3000"
+            // Default to production Render backend
+            self.baseURL = "https://gofit-ai-live-healthy-1.onrender.com"
         }
         super.init()
     }
