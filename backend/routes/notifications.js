@@ -235,7 +235,7 @@ async function getUserContext(userId) {
 }
 
 // Generate AI meal reminder
-router.post('/meal-reminder', authMiddleware, async (req, res) => {
+router.post('/meal-reminder', authenticateToken, async (req, res) => {
   try {
     console.log(`🤖 Meal reminder request received for user: ${req.user._id}`);
     const { mealType } = req.body;
@@ -326,7 +326,7 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
 });
 
 // Generate AI water reminder
-router.post('/water-reminder', authMiddleware, async (req, res) => {
+router.post('/water-reminder', authenticateToken, async (req, res) => {
   try {
     console.log(`🤖 Water reminder request received for user: ${req.user._id}`);
     if (!openai) {
@@ -406,7 +406,7 @@ Return ONLY a JSON object with "title" (max 50 chars) and "body" (max 100 chars)
 });
 
 // Generate AI workout reminder
-router.post('/workout-reminder', authMiddleware, async (req, res) => {
+router.post('/workout-reminder', authenticateToken, async (req, res) => {
   try {
     if (!openai) {
       return res.status(500).json({

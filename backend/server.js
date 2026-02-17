@@ -267,7 +267,7 @@ async function startServer() {
     }
     
     // Initialize WebSocket server
-    await wsService.initialize(httpServer);
+    wsService.initialize(httpServer);
     
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { Server } from 'socket.io';
 
 /**
  * WebSocket Service for Real-time Communication
@@ -15,8 +16,6 @@ export class WebSocketService {
    * @param {http.Server} server - HTTP server instance
    */
   initialize(server) {
-    const { Server } = await import('socket.io');
-    
     this.io = new Server(server, {
       cors: {
         origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
