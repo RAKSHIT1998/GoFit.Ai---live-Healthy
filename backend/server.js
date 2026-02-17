@@ -1,10 +1,12 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { connectDB } from './config/database.js';
 import { connectRedis } from './config/redis.js';
+import { wsService } from './services/websocketService.js';
 import authRoutes from './routes/auth.js';
 import mealRoutes from './routes/meals.js';
 import photoRoutes from './routes/photo.js';
@@ -31,6 +33,7 @@ import gamificationRoutes from './routes/gamification.js';
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Trust proxy for Render (needed for rate limiting behind proxy)
@@ -263,10 +266,14 @@ async function startServer() {
       console.log('⚠️  Redis connection failed, continuing without Redis');
     }
     
-    app.listen(PORT, () => {
+    // Initialize WebSocket server
+    await wsService.initialize(httpServer);
+    
+    httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`✅ Required environment variables loaded`);
+      console.log(`🔌 WebSocket server ready for real-time connections`);
       
       // Log OpenAI API key status (without exposing the key)
       if (process.env.OPENAI_API_KEY) {

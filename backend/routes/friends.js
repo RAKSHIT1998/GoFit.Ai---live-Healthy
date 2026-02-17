@@ -1,8 +1,10 @@
-const express = require('express');
+import express from 'express';
+import db from '../config/database.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
+import { wsService } from '../services/websocketService.js';
+
 const router = express.Router();
-const db = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
-const logger = require('../utils/logger');
+const logger = console;
 
 /**
  * Friends & Social System API Endpoints
@@ -63,7 +65,26 @@ router.post('/request/:targetUserId', authenticateToken, async (req, res) => {
             [userId, targetUserId]
         );
         
-        logger.info(`Friend request sent from ${userId} to ${targetUserId}`);
+        // Get sender info for the notification
+        const senderInfo = await db.query(
+            'SELECT id, username, full_name, profile_image_url FROM users WHERE id = $1',
+            [userId]
+        );
+        
+        logger.log(`Friend request sent from ${userId} to ${targetUserId}`);
+        
+        // 🔥 Emit real-time WebSocket notification
+        wsService.emitFriendRequest(targetUserId, {
+            requestId: result.rows[0].id,
+            from: {
+                id: senderInfo.rows[0].id,
+                username: senderInfo.rows[0].username,
+                fullName: senderInfo.rows[0].full_name,
+                profileImageUrl: senderInfo.rows[0].profile_image_url
+            },
+            status: 'pending',
+            message: `${senderInfo.rows[0].full_name || senderInfo.rows[0].username} sent you a friend request`
+        });
         
         res.status(201).json({
             message: 'Friend request sent',
@@ -129,7 +150,24 @@ router.post('/accept/:friendId', authenticateToken, async (req, res) => {
             return res.status(404).json({ error: 'Friend request not found' });
         }
         
-        logger.info(`Friend request accepted: ${friendId} <-> ${userId}`);
+        // Get acceptor info for the notification
+        const acceptorInfo = await db.query(
+            'SELECT id, username, full_name, profile_image_url FROM users WHERE id = $1',
+            [userId]
+        );
+        
+        logger.log(`Friend request accepted: ${friendId} <-> ${userId}`);
+        
+        // 🔥 Emit real-time WebSocket notification to the original requester
+        wsService.emitFriendRequestAccepted(friendId, {
+            acceptedBy: {
+                id: acceptorInfo.rows[0].id,
+                username: acceptorInfo.rows[0].username,
+                fullName: acceptorInfo.rows[0].full_name,
+                profileImageUrl: acceptorInfo.rows[0].profile_image_url
+            },
+            message: `${acceptorInfo.rows[0].full_name || acceptorInfo.rows[0].username} accepted your friend request`
+        });
         
         res.status(200).json({
             message: 'Friend request accepted',
@@ -418,4 +456,4 @@ router.get('/:friendId/stats', authenticateToken, async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;
