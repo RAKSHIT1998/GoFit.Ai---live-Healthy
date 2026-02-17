@@ -441,3 +441,5 @@ class NotificationService: ObservableObject {
             }
         }
     }
+}
+

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UIKit
 import Combine
 
 /// WebSocket service for real-time communication
@@ -291,13 +292,15 @@ class WebSocketService: ObservableObject {
         self.latestFriendRequest = notification
         
         // Refresh friend requests list
-        FriendsService.shared.fetchFriendRequests()
+        FriendsService.shared.fetchFriendRequests { _ in }
         
         // Show system notification
-        NotificationService.shared.showLocalNotification(
-            title: "New Friend Request",
-            body: message
-        )
+        Task { @MainActor in
+            NotificationService.shared.showLocalNotification(
+                title: "New Friend Request",
+                body: message
+            )
+        }
         
         print("📬 Friend Request: \(message)")
     }
@@ -306,13 +309,15 @@ class WebSocketService: ObservableObject {
         guard let message = data["message"] as? String else { return }
         
         // Refresh friends list
-        FriendsService.shared.fetchFriends()
+        FriendsService.shared.fetchFriends { _ in }
         
         // Show notification
-        NotificationService.shared.showLocalNotification(
-            title: "Friend Request Accepted",
-            body: message
-        )
+        Task { @MainActor in
+            NotificationService.shared.showLocalNotification(
+                title: "Friend Request Accepted",
+                body: message
+            )
+        }
         
         print("✅ Friend Request Accepted: \(message)")
     }
@@ -320,10 +325,12 @@ class WebSocketService: ObservableObject {
     private func handleFriendRequestRejected(_ data: [String: Any]) {
         guard let message = data["message"] as? String else { return }
         
-        NotificationService.shared.showLocalNotification(
-            title: "Friend Request Declined",
-            body: message
-        )
+        Task { @MainActor in
+            NotificationService.shared.showLocalNotification(
+                title: "Friend Request Declined",
+                body: message
+            )
+        }
         
         print("❌ Friend Request Rejected: \(message)")
     }
@@ -345,10 +352,12 @@ class WebSocketService: ObservableObject {
         
         self.latestChallenge = notification
         
-        NotificationService.shared.showLocalNotification(
-            title: "Challenge Invitation",
-            body: "\(notification.fromUsername) invited you to: \(message)"
-        )
+        Task { @MainActor in
+            NotificationService.shared.showLocalNotification(
+                title: "Challenge Invitation",
+                body: "\(notification.fromUsername) invited you to: \(message)"
+            )
+        }
         
         print("🏆 Challenge Invitation: \(message)")
     }
@@ -373,10 +382,12 @@ class WebSocketService: ObservableObject {
         
         self.latestAchievement = notification
         
-        NotificationService.shared.showLocalNotification(
-            title: "🏅 Achievement Unlocked!",
-            body: "\(name): \(description)"
-        )
+        Task { @MainActor in
+            NotificationService.shared.showLocalNotification(
+                title: "🏅 Achievement Unlocked!",
+                body: "\(name): \(description)"
+            )
+        }
         
         print("🏅 Achievement: \(name)")
     }
@@ -504,7 +515,7 @@ enum ConnectionStatus {
     }
 }
 
-struct FriendRequestNotification: Identifiable {
+struct FriendRequestNotification: Identifiable, Equatable {
     let id = UUID()
     let requestId: String
     let fromUserId: String
@@ -513,20 +524,32 @@ struct FriendRequestNotification: Identifiable {
     let fromProfileImage: String?
     let message: String
     let timestamp: Date
+    
+    static func == (lhs: FriendRequestNotification, rhs: FriendRequestNotification) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
-struct ChallengeNotification: Identifiable {
+struct ChallengeNotification: Identifiable, Equatable {
     let id = UUID()
     let challengeId: String
     let fromUsername: String
     let challengeName: String
     let timestamp: Date
+    
+    static func == (lhs: ChallengeNotification, rhs: ChallengeNotification) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
-struct AchievementNotification: Identifiable {
+struct AchievementNotification: Identifiable, Equatable {
     let id = UUID()
     let achievementId: String
     let name: String
     let description: String
     let timestamp: Date
+    
+    static func == (lhs: AchievementNotification, rhs: AchievementNotification) -> Bool {
+        lhs.id == rhs.id
+    }
 }
