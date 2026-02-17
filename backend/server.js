@@ -25,6 +25,8 @@ import analyticsRoutes from './routes/analytics.js';
 import onboardingRoutes from './routes/onboarding.js';
 import notificationRoutes from './routes/notifications.js';
 import friendsRoutes from './routes/friends.js';
+import logsRoutes from './routes/logs.js';
+import gamificationRoutes from './routes/gamification.js';
 
 dotenv.config();
 
@@ -173,7 +175,9 @@ app.get('/', (req, res) => {
       analytics: '/api/analytics',
       onboarding: '/api/onboarding',
       notifications: '/api/notifications',
-      friends: '/api/friends'
+      friends: '/api/friends',
+      logs: '/api/logs',
+      gamification: '/api/gamification'
     }
   });
 });
@@ -204,6 +208,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/friends', friendsRoutes);
+app.use('/api/logs', logsRoutes);
+app.use('/api/gamification', gamificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

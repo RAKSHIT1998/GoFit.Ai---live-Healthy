@@ -1,16 +1,177 @@
 import express from 'express';
-import OpenAI from 'openai';
-import User from '../models/User.js';
-import Meal from '../models/Meal.js';
-import WaterLog from '../models/WaterLog.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
-import mlService from '../services/mlService.js';
+import pool from '../config/database.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { generateCompetitiveNotification } from '../services/aiNotificationService.js';
 
 const router = express.Router();
 
-// Initialize OpenAI API
-const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').trim();
-const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+/**
+ * Get all notifications for user
+ * GET /api/notifications
+ */
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { limit = 30, offset = 0, unreadOnly = false } = req.query;
+
+    let query = 'SELECT * FROM social_notifications WHERE recipient_id = $1';
+    const params = [userId];
+
+    if (unreadOnly === 'true') {
+      query += ' AND is_read = false';
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT $2 OFFSET $3';
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      notifications: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({ message: 'Error fetching notifications' });
+  }
+});
+
+/**
+ * Get unread notification count
+ * GET /api/notifications/unread/count
+ */
+router.get('/unread/count', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'SELECT COUNT(*) as unread_count FROM social_notifications WHERE recipient_id = $1 AND is_read = false',
+      [userId]
+    );
+
+    res.json({
+      unreadCount: parseInt(result.rows[0].unread_count)
+    });
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ message: 'Error fetching unread count' });
+  }
+});
+
+/**
+ * Mark notification as read
+ * PUT /api/notifications/:notificationId/read
+ */
+router.put('/:notificationId/read', authenticateToken, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'UPDATE social_notifications SET is_read = true WHERE id = $1 AND recipient_id = $2 RETURNING *',
+      [notificationId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    res.json({
+      message: 'Notification marked as read',
+      notification: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Mark as read error:', error);
+    res.status(500).json({ message: 'Error marking notification' });
+  }
+});
+
+/**
+ * Delete notification
+ * DELETE /api/notifications/:notificationId
+ */
+router.delete('/:notificationId', authenticateToken, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'DELETE FROM social_notifications WHERE id = $1 AND recipient_id = $2 RETURNING id',
+      [notificationId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    res.json({ message: 'Notification deleted' });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({ message: 'Error deleting notification' });
+  }
+});
+
+/**
+ * Generate competitive notification for a user
+ * POST /api/notifications/competitive
+ * Admin/System endpoint
+ */
+router.post('/competitive', authenticateToken, async (req, res) => {
+  try {
+    const { userId, triggerType, contextData } = req.body;
+
+    if (!userId || !triggerType) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Generate AI notification
+    const notification = await generateCompetitiveNotification(userId, triggerType, contextData);
+
+    if (!notification) {
+      return res.status(400).json({ message: 'Could not generate notification' });
+    }
+
+    // Store notification
+    const result = await pool.query(
+      `INSERT INTO social_notifications (recipient_id, type, title, message, ai_generated, created_at)
+       VALUES ($1, $2, $3, $4, true, NOW())
+       RETURNING *`,
+      [userId, 'ai_competitive', notification.title, notification.message]
+    );
+
+    res.json({
+      message: 'Competitive notification generated',
+      notification: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Generate competitive notification error:', error);
+    res.status(500).json({ message: 'Error generating notification' });
+  }
+});
+
+/**
+ * Mark all notifications as read
+ * PUT /api/notifications/read/all
+ */
+router.put('/read/all', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'UPDATE social_notifications SET is_read = true WHERE recipient_id = $1 AND is_read = false RETURNING COUNT(*)',
+      [userId]
+    );
+
+    res.json({
+      message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    console.error('Mark all as read error:', error);
+    res.status(500).json({ message: 'Error marking notifications' });
+  }
+});
+
+export default router;
 
 // Get user context for AI recommendations
 async function getUserContext(userId) {
