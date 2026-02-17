@@ -5,7 +5,7 @@ struct ProfileView: View {
     @EnvironmentObject var auth: AuthViewModel
     @EnvironmentObject var purchases: PurchaseManager
     @StateObject private var healthKit = HealthKitService.shared
-    @StateObject private var notifications = NotificationService.shared
+    @StateObject private var notifications: NotificationService = NotificationService.shared
 
     @State private var showingEditProfile = false
     @State private var showingPaywall = false
