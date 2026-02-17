@@ -83,7 +83,7 @@ class WebSocketService: ObservableObject {
         }
         
         // Build WebSocket URL with Socket.IO path
-        var urlString = "\(baseURL)/socket.io/?EIO=4&transport=websocket"
+        let urlString = "\(baseURL)/socket.io/?EIO=4&transport=websocket"
         
         guard var urlComponents = URLComponents(string: urlString) else {
             print("❌ WebSocket: Invalid URL")
