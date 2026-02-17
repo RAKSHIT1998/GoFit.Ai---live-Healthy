@@ -109,17 +109,23 @@ class ShareService {
                 options: []
             )
             
-            // White content area (rounded rectangle instead of ellipse)
+            // Content area with adaptive background (dark on dark, light on light)
             let contentRect = CGRect(x: 60, y: 60, width: size.width - 120, height: size.height - 120)
             let path = UIBezierPath(roundedRect: contentRect, cornerRadius: 40)
-            UIColor.white.setFill()
+            let contentBackgroundColor = UITraitCollection.current.userInterfaceStyle == .dark 
+                ? UIColor.systemGray6 
+                : UIColor.white
+            contentBackgroundColor.setFill()
             path.fill()
             
             // Title
             let titleText = "My Fitness Progress"
+            let titleColor = UITraitCollection.current.userInterfaceStyle == .dark 
+                ? UIColor.white 
+                : UIColor.black
             let titleAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 48, weight: .bold),
-                .foregroundColor: UIColor.label
+                .foregroundColor: titleColor
             ]
             let titleSize = titleText.size(withAttributes: titleAttributes)
             let titleRect = CGRect(
@@ -193,9 +199,12 @@ class ShareService {
             
             // Footer with app name
             let footerText = "GoFit.Ai - #GoFitAi #Fitness #Health"
+            let footerColor = UITraitCollection.current.userInterfaceStyle == .dark 
+                ? UIColor.lightGray 
+                : UIColor.secondaryLabel
             let footerAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 32, weight: .medium),
-                .foregroundColor: UIColor.secondaryLabel
+                .foregroundColor: footerColor
             ]
             let footerSize = footerText.size(withAttributes: footerAttributes)
             let footerRect = CGRect(
@@ -219,6 +228,11 @@ class ShareService {
         let fontSize: CGFloat = 40
         let labelFontSize: CGFloat = 28
         
+        // Determine text colors based on dark mode
+        let isDarkMode = UITraitCollection.current.userInterfaceStyle == .dark
+        let valueColor = isDarkMode ? UIColor.white : UIColor.black
+        let labelColor = isDarkMode ? UIColor.lightGray : UIColor.gray
+        
         // Icon
         let iconAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: fontSize)
@@ -230,7 +244,7 @@ class ShareService {
         // Value
         let valueAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: fontSize, weight: .bold),
-            .foregroundColor: UIColor.label
+            .foregroundColor: valueColor
         ]
         let valueSize = value.size(withAttributes: valueAttributes)
         let valueRect = CGRect(x: 280, y: y, width: valueSize.width, height: valueSize.height)
@@ -239,7 +253,7 @@ class ShareService {
         // Label
         let labelAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: labelFontSize),
-            .foregroundColor: UIColor.secondaryLabel
+            .foregroundColor: labelColor
         ]
         let labelSize = label.size(withAttributes: labelAttributes)
         let labelRect = CGRect(x: width - 200 - labelSize.width, y: y + 8, width: labelSize.width, height: labelSize.height)
