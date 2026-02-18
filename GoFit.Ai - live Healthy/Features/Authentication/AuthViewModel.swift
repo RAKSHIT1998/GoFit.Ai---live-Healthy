@@ -12,7 +12,7 @@ final class AuthViewModel: ObservableObject {
     @Published var heightCm: Double = 170
     @Published var goal: String = "maintain"
     @Published var dietPrefs: [String] = []
-    @Published var profilePictureURL: String = ""
+    @Published var profilePictureURL: String?
     
     // Comprehensive onboarding data
     @Published var onboardingData: OnboardingData?
@@ -87,7 +87,7 @@ final class AuthViewModel: ObservableObject {
             self.goal = obj.goal.isEmpty ? "maintain" : obj.goal
             self.dietPrefs = obj.dietPrefs
             self.userId = obj.userId
-            self.profilePictureURL = obj.profilePictureURL ?? ""
+            self.profilePictureURL = obj.profilePictureURL
             print("📱 Loaded local state: didFinishOnboarding=\(self.didFinishOnboarding), isLoggedIn=\(self.isLoggedIn)")
         } else {
             // Initialize with defaults if no saved state
@@ -97,7 +97,7 @@ final class AuthViewModel: ObservableObject {
             self.heightCm = 170
             self.goal = "maintain"
             self.dietPrefs = []
-            self.profilePictureURL = ""
+            self.profilePictureURL = nil
             print("📱 No saved state found - initializing with defaults: didFinishOnboarding=false")
         }
     }
