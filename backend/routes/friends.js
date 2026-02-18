@@ -1,5 +1,6 @@
 import express from 'express';
-import db from '../config/database.js';
+import User from '../models/User.js';
+import Friend from '../models/Friend.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { wsService } from '../services/websocketService.js';
 
@@ -32,180 +33,183 @@ router.post('/request/:targetUserId', authenticateToken, async (req, res) => {
         }
         
         // Check if target user exists
-        const userExists = await db.query(
-            'SELECT id FROM users WHERE id = $1',
-            [targetUserId]
-        );
-        
-        if (userExists.rows.length === 0) {
+        const targetUser = await User.findById(targetUserId);
+        if (!targetUser) {
             return res.status(404).json({ error: 'User not found' });
         }
         
         // Check if already friends or pending
-        const existingRelationship = await db.query(
-            'SELECT id, status FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)',
-            [userId, targetUserId]
-        );
+        const existingRelationship = await Friend.findOne({
+            $or: [
+                { userId, friendId: targetUserId },
+                { userId: targetUserId, friendId: userId }
+            ]
+        });
         
-        if (existingRelationship.rows.length > 0) {
-            const existing = existingRelationship.rows[0];
-            if (existing.status === 'accepted') {
+        if (existingRelationship) {
+            if (existingRelationship.status === 'accepted') {
                 return res.status(400).json({ error: 'Already friends' });
             }
-            if (existing.status === 'pending') {
+            if (existingRelationship.status === 'pending') {
                 return res.status(400).json({ error: 'Friend request already pending' });
             }
         }
         
         // Create friend request
-        const result = await db.query(
-            `INSERT INTO friends (id, user_id, friend_id, status, created_at) 
-             VALUES (gen_random_uuid(), $1, $2, 'pending', NOW())
-             RETURNING id, status`,
-            [userId, targetUserId]
-        );
+        const friendRequest = new Friend({
+            userId,
+            friendId: targetUserId,
+            status: 'pending'
+        });
+        
+        await friendRequest.save();
         
         // Get sender info for the notification
-        const senderInfo = await db.query(
-            'SELECT id, username, full_name, profile_image_url FROM users WHERE id = $1',
-            [userId]
-        );
+        const senderInfo = await User.findById(userId).select('name email profileImageUrl');
         
-        logger.log(`Friend request sent from ${userId} to ${targetUserId}`);
+        logger.log(`✅ Friend request sent from ${userId} to ${targetUserId}`);
         
         // 🔥 Emit real-time WebSocket notification
         wsService.emitFriendRequest(targetUserId, {
-            requestId: result.rows[0].id,
+            requestId: friendRequest._id.toString(),
             from: {
-                id: senderInfo.rows[0].id,
-                username: senderInfo.rows[0].username,
-                fullName: senderInfo.rows[0].full_name,
-                profileImageUrl: senderInfo.rows[0].profile_image_url
+                id: senderInfo._id.toString(),
+                username: senderInfo.name,
+                fullName: senderInfo.name,
+                profileImageUrl: senderInfo.profileImageUrl || null
             },
             status: 'pending',
-            message: `${senderInfo.rows[0].full_name || senderInfo.rows[0].username} sent you a friend request`
+            message: `${senderInfo.name} sent you a friend request`
         });
         
         res.status(201).json({
             message: 'Friend request sent',
-            friendRequest: result.rows[0]
+            friendRequest: {
+                id: friendRequest._id.toString(),
+                status: friendRequest.status
+            }
         });
     } catch (error) {
-        logger.error(`Error sending friend request: ${error.message}`);
+        logger.error(`❌ Error sending friend request: ${error.message}`);
         res.status(500).json({ error: 'Failed to send friend request' });
     }
 });
 
 /**
- * Get pending friend requests
+ * Get pending friend requests for current user
  * GET /api/friends/requests
  */
 router.get('/requests', authenticateToken, async (req, res) => {
     const { userId } = req.user;
     
     try {
-        const result = await db.query(
-            `SELECT 
-                f.id,
-                f.user_id,
-                u.id as requester_id,
-                u.username,
-                u.email,
-                u.profile_image_url,
-                f.created_at
-             FROM friends f
-             JOIN users u ON f.user_id = u.id
-             WHERE f.friend_id = $1 AND f.status = 'pending'
-             ORDER BY f.created_at DESC`,
-            [userId]
-        );
+        const requests = await Friend.find({
+            friendId: userId,
+            status: 'pending'
+        })
+        .populate('userId', 'name email profileImageUrl')
+        .sort({ createdAt: -1 });
+        
+        const formattedRequests = requests.map(req => ({
+            id: req._id.toString(),
+            from: {
+                id: req.userId._id.toString(),
+                username: req.userId.name,
+                fullName: req.userId.name,
+                profileImageUrl: req.userId.profileImageUrl || null
+            },
+            status: 'pending',
+            createdAt: req.createdAt
+        }));
         
         res.status(200).json({
-            requests: result.rows
+            requests: formattedRequests,
+            count: formattedRequests.length
         });
     } catch (error) {
-        logger.error(`Error fetching friend requests: ${error.message}`);
+        logger.error(`❌ Error fetching friend requests: ${error.message}`);
         res.status(500).json({ error: 'Failed to fetch friend requests' });
     }
 });
 
 /**
- * Accept friend request
- * POST /api/friends/accept/:friendId
+ * Accept a friend request
+ * PUT /api/friends/accept/:requestUserId
  */
-router.post('/accept/:friendId', authenticateToken, async (req, res) => {
+router.put('/accept/:requestUserId', authenticateToken, async (req, res) => {
     const { userId } = req.user;
-    const { friendId } = req.params;
+    const { requestUserId } = req.params;
     
     try {
-        const result = await db.query(
-            `UPDATE friends 
-             SET status = 'accepted'
-             WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'
-             RETURNING id, status`,
-            [friendId, userId]
-        );
+        // Find the friend request
+        const friendRequest = await Friend.findOne({
+            userId: requestUserId,
+            friendId: userId,
+            status: 'pending'
+        });
         
-        if (result.rows.length === 0) {
+        if (!friendRequest) {
             return res.status(404).json({ error: 'Friend request not found' });
         }
         
+        // Update status to accepted
+        friendRequest.status = 'accepted';
+        await friendRequest.save();
+        
         // Get acceptor info for the notification
-        const acceptorInfo = await db.query(
-            'SELECT id, username, full_name, profile_image_url FROM users WHERE id = $1',
-            [userId]
-        );
+        const acceptorInfo = await User.findById(userId).select('name email profileImageUrl');
         
-        logger.log(`Friend request accepted: ${friendId} <-> ${userId}`);
+        logger.log(`✅ Friend request accepted from ${requestUserId} to ${userId}`);
         
-        // 🔥 Emit real-time WebSocket notification to the original requester
-        wsService.emitFriendRequestAccepted(friendId, {
-            acceptedBy: {
-                id: acceptorInfo.rows[0].id,
-                username: acceptorInfo.rows[0].username,
-                fullName: acceptorInfo.rows[0].full_name,
-                profileImageUrl: acceptorInfo.rows[0].profile_image_url
+        // 🔥 Emit real-time WebSocket notification
+        wsService.emitFriendRequestAccepted(requestUserId, {
+            from: {
+                id: acceptorInfo._id.toString(),
+                username: acceptorInfo.name,
+                fullName: acceptorInfo.name,
+                profileImageUrl: acceptorInfo.profileImageUrl || null
             },
-            message: `${acceptorInfo.rows[0].full_name || acceptorInfo.rows[0].username} accepted your friend request`
+            status: 'accepted',
+            message: `${acceptorInfo.name} accepted your friend request`
         });
         
         res.status(200).json({
             message: 'Friend request accepted',
-            friendship: result.rows[0]
+            friend: {
+                id: requestUserId,
+                status: 'accepted'
+            }
         });
     } catch (error) {
-        logger.error(`Error accepting friend request: ${error.message}`);
+        logger.error(`❌ Error accepting friend request: ${error.message}`);
         res.status(500).json({ error: 'Failed to accept friend request' });
     }
 });
 
 /**
- * Reject friend request
- * POST /api/friends/reject/:friendId
+ * Reject a friend request
+ * DELETE /api/friends/reject/:requestUserId
  */
-router.post('/reject/:friendId', authenticateToken, async (req, res) => {
+router.delete('/reject/:requestUserId', authenticateToken, async (req, res) => {
     const { userId } = req.user;
-    const { friendId } = req.params;
+    const { requestUserId } = req.params;
     
     try {
-        const result = await db.query(
-            `DELETE FROM friends 
-             WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'
-             RETURNING id`,
-            [friendId, userId]
-        );
+        const result = await Friend.findOneAndDelete({
+            userId: requestUserId,
+            friendId: userId,
+            status: 'pending'
+        });
         
-        if (result.rows.length === 0) {
+        if (!result) {
             return res.status(404).json({ error: 'Friend request not found' });
         }
         
-        logger.info(`Friend request rejected: ${friendId} rejected ${userId}`);
+        logger.log(`✅ Friend request rejected from ${requestUserId} to ${userId}`);
         
-        res.status(200).json({
-            message: 'Friend request rejected'
-        });
+        res.status(200).json({ message: 'Friend request rejected' });
     } catch (error) {
-        logger.error(`Error rejecting friend request: ${error.message}`);
+        logger.error(`❌ Error rejecting friend request: ${error.message}`);
         res.status(500).json({ error: 'Failed to reject friend request' });
     }
 });
@@ -220,38 +224,44 @@ router.get('/', authenticateToken, async (req, res) => {
     const { userId } = req.user;
     
     try {
-        const result = await db.query(
-            `SELECT DISTINCT
-                CASE 
-                    WHEN f.user_id = $1 THEN f.friend_id 
-                    ELSE f.user_id 
-                END as friend_id,
-                u.username,
-                u.email,
-                u.profile_image_url,
-                u.full_name
-             FROM friends f
-             JOIN users u ON (
-                (f.user_id = $1 AND f.friend_id = u.id) OR
-                (f.friend_id = $1 AND f.user_id = u.id)
-             )
-             WHERE f.status = 'accepted'
-             ORDER BY u.username ASC`,
-            [userId]
-        );
+        const friendships = await Friend.find({
+            $or: [
+                { userId, status: 'accepted' },
+                { friendId: userId, status: 'accepted' }
+            ]
+        })
+        .populate('userId', 'name email profileImageUrl')
+        .populate('friendId', 'name email profileImageUrl')
+        .sort({ updatedAt: -1 });
+        
+        // Extract friend info from both directions of the relationship
+        const friends = friendships.map(f => {
+            const isSender = f.userId._id.toString() === userId;
+            const friendData = isSender ? f.friendId : f.userId;
+            
+            return {
+                id: friendData._id.toString(),
+                username: friendData.name,
+                email: friendData.email,
+                fullName: friendData.name,
+                profileImageUrl: friendData.profileImageUrl || null,
+                status: 'friends',
+                connectedAt: f.updatedAt
+            };
+        });
         
         res.status(200).json({
-            friends: result.rows,
-            count: result.rows.length
+            friends,
+            count: friends.length
         });
     } catch (error) {
-        logger.error(`Error fetching friends list: ${error.message}`);
-        res.status(500).json({ error: 'Failed to fetch friends list' });
+        logger.error(`❌ Error fetching friends: ${error.message}`);
+        res.status(500).json({ error: 'Failed to fetch friends' });
     }
 });
 
 /**
- * Remove friend
+ * Remove a friend
  * DELETE /api/friends/:friendId
  */
 router.delete('/:friendId', authenticateToken, async (req, res) => {
@@ -259,25 +269,23 @@ router.delete('/:friendId', authenticateToken, async (req, res) => {
     const { friendId } = req.params;
     
     try {
-        const result = await db.query(
-            `DELETE FROM friends 
-             WHERE (user_id = $1 AND friend_id = $2 AND status = 'accepted') 
-                OR (user_id = $2 AND friend_id = $1 AND status = 'accepted')
-             RETURNING id`,
-            [userId, friendId]
-        );
+        const result = await Friend.findOneAndDelete({
+            $or: [
+                { userId, friendId },
+                { userId: friendId, friendId: userId }
+            ],
+            status: 'accepted'
+        });
         
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Friendship not found' });
+        if (!result) {
+            return res.status(404).json({ error: 'Friend relationship not found' });
         }
         
-        logger.info(`Friend removed: ${userId} removed ${friendId}`);
+        logger.log(`✅ Friend removed: ${userId} removed ${friendId}`);
         
-        res.status(200).json({
-            message: 'Friend removed successfully'
-        });
+        res.status(200).json({ message: 'Friend removed' });
     } catch (error) {
-        logger.error(`Error removing friend: ${error.message}`);
+        logger.error(`❌ Error removing friend: ${error.message}`);
         res.status(500).json({ error: 'Failed to remove friend' });
     }
 });
@@ -285,7 +293,7 @@ router.delete('/:friendId', authenticateToken, async (req, res) => {
 // MARK: - Search Friends
 
 /**
- * Search users by username, email, or full name
+ * Search users by username or email
  * GET /api/friends/search?q=<query>&limit=20
  */
 router.get('/search', authenticateToken, async (req, res) => {
@@ -297,45 +305,58 @@ router.get('/search', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Search query must be at least 2 characters' });
         }
         
-        const searchQuery = `%${q}%`;
+        // Build search regex for case-insensitive search
+        const searchRegex = new RegExp(q, 'i');
         
-        const result = await db.query(
-            `SELECT DISTINCT
-                u.id,
-                u.username,
-                u.email,
-                u.profile_image_url,
-                u.full_name,
-                CASE 
-                    WHEN f.status = 'accepted' THEN 'friends'
-                    WHEN f.status = 'pending' AND f.user_id = $1 THEN 'request_sent'
-                    WHEN f.status = 'pending' AND f.friend_id = $1 THEN 'request_received'
-                    ELSE 'not_friends'
-                END as friend_status
-             FROM users u
-             LEFT JOIN friends f ON (
-                (f.user_id = $1 AND f.friend_id = u.id) OR
-                (f.friend_id = $1 AND f.user_id = u.id)
-             )
-             WHERE (u.username ILIKE $2 OR u.email ILIKE $2 OR u.full_name ILIKE $2)
-                AND u.id != $1
-             ORDER BY 
-                CASE 
-                    WHEN u.username ILIKE $2 THEN 1
-                    WHEN u.email ILIKE $2 THEN 2
-                    ELSE 3
-                END,
-                u.username ASC
-             LIMIT $3`,
-            [userId, searchQuery, limit]
-        );
+        // Search for users matching the query
+        const users = await User.find({
+            _id: { $ne: userId }, // Exclude current user
+            $or: [
+                { name: searchRegex },
+                { email: searchRegex }
+            ]
+        })
+        .select('_id name email profileImageUrl')
+        .limit(parseInt(limit));
+        
+        // For each user, get their friend status with the current user
+        const results = await Promise.all(users.map(async (user) => {
+            const friendship = await Friend.findOne({
+                $or: [
+                    { userId, friendId: user._id },
+                    { userId: user._id, friendId: userId }
+                ]
+            });
+            
+            let friendStatus = 'not_friends';
+            if (friendship) {
+                if (friendship.status === 'accepted') {
+                    friendStatus = 'friends';
+                } else if (friendship.status === 'pending') {
+                    if (friendship.userId.toString() === userId) {
+                        friendStatus = 'request_sent';
+                    } else {
+                        friendStatus = 'request_received';
+                    }
+                }
+            }
+            
+            return {
+                id: user._id.toString(),
+                username: user.name,
+                email: user.email,
+                fullName: user.name,
+                profileImageUrl: user.profileImageUrl || null,
+                friendStatus
+            };
+        }));
         
         res.status(200).json({
-            results: result.rows,
-            count: result.rows.length
+            results,
+            count: results.length
         });
     } catch (error) {
-        logger.error(`Error searching users: ${error.message}`);
+        logger.error(`❌ Error searching users: ${error.message}`);
         res.status(500).json({ error: 'Failed to search users' });
     }
 });
@@ -344,114 +365,90 @@ router.get('/search', authenticateToken, async (req, res) => {
 
 /**
  * Block a user
- * POST /api/friends/block/:blockedUserId
+ * POST /api/friends/block/:userId
  */
-router.post('/block/:blockedUserId', authenticateToken, async (req, res) => {
+router.post('/block/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.user;
-    const { blockedUserId } = req.params;
+    const { userId: blockUserId } = req.params;
     
     try {
-        if (userId === blockedUserId) {
-            return res.status(400).json({ error: 'Cannot block yourself' });
-        }
-        
-        // Delete existing friendship if any
-        await db.query(
-            `DELETE FROM friends 
-             WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
-            [userId, blockedUserId]
-        );
-        
-        // Create blocked relationship
-        const result = await db.query(
-            `INSERT INTO friends (id, user_id, friend_id, status, created_at) 
-             VALUES (gen_random_uuid(), $1, $2, 'blocked', NOW())
-             RETURNING id, status`,
-            [userId, blockedUserId]
-        );
-        
-        logger.info(`User blocked: ${userId} blocked ${blockedUserId}`);
-        
-        res.status(201).json({
-            message: 'User blocked successfully',
-            blocked: result.rows[0]
+        // Remove any existing friendship
+        await Friend.deleteMany({
+            $or: [
+                { userId, friendId: blockUserId },
+                { userId: blockUserId, friendId: userId }
+            ]
         });
+        
+        // Create a blocked relationship
+        const blockedRelationship = new Friend({
+            userId,
+            friendId: blockUserId,
+            status: 'blocked'
+        });
+        
+        await blockedRelationship.save();
+        
+        logger.log(`✅ User blocked: ${userId} blocked ${blockUserId}`);
+        
+        res.status(200).json({ message: 'User blocked successfully' });
     } catch (error) {
-        logger.error(`Error blocking user: ${error.message}`);
+        logger.error(`❌ Error blocking user: ${error.message}`);
         res.status(500).json({ error: 'Failed to block user' });
     }
 });
 
 /**
  * Unblock a user
- * POST /api/friends/unblock/:blockedUserId
+ * DELETE /api/friends/block/:userId
  */
-router.post('/unblock/:blockedUserId', authenticateToken, async (req, res) => {
+router.delete('/block/:userId', authenticateToken, async (req, res) => {
     const { userId } = req.user;
-    const { blockedUserId } = req.params;
+    const { userId: unblockUserId } = req.params;
     
     try {
-        const result = await db.query(
-            `DELETE FROM friends 
-             WHERE user_id = $1 AND friend_id = $2 AND status = 'blocked'
-             RETURNING id`,
-            [userId, blockedUserId]
-        );
+        const result = await Friend.findOneAndDelete({
+            userId,
+            friendId: unblockUserId,
+            status: 'blocked'
+        });
         
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found in block list' });
+        if (!result) {
+            return res.status(404).json({ error: 'Blocked user not found' });
         }
         
-        logger.info(`User unblocked: ${userId} unblocked ${blockedUserId}`);
+        logger.log(`✅ User unblocked: ${userId} unblocked ${unblockUserId}`);
         
-        res.status(200).json({
-            message: 'User unblocked successfully'
-        });
+        res.status(200).json({ message: 'User unblocked successfully' });
     } catch (error) {
-        logger.error(`Error unblocking user: ${error.message}`);
+        logger.error(`❌ Error unblocking user: ${error.message}`);
         res.status(500).json({ error: 'Failed to unblock user' });
     }
 });
 
-// MARK: - Friend Stats
-
 /**
  * Get friend statistics
- * GET /api/friends/:friendId/stats
+ * GET /api/friends/stats/:friendId
  */
-router.get('/:friendId/stats', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
+router.get('/stats/:friendId', authenticateToken, async (req, res) => {
     const { friendId } = req.params;
     
     try {
-        // Verify friendship
-        const friendship = await db.query(
-            `SELECT id FROM friends 
-             WHERE (user_id = $1 AND friend_id = $2 AND status = 'accepted') OR
-                   (user_id = $2 AND friend_id = $1 AND status = 'accepted')`,
-            [userId, friendId]
-        );
+        // Get friend's metrics from their user profile
+        const friend = await User.findById(friendId).select('metrics subscription');
         
-        if (friendship.rows.length === 0) {
-            return res.status(403).json({ error: 'Not friends with this user' });
+        if (!friend) {
+            return res.status(404).json({ error: 'Friend not found' });
         }
         
-        // Get friend stats (can be customized based on your data model)
-        const stats = await db.query(
-            `SELECT 
-                (SELECT COUNT(*) FROM meals WHERE user_id = $1) as total_meals_logged,
-                (SELECT COUNT(*) FROM workouts WHERE user_id = $1) as total_workouts_completed,
-                (SELECT COALESCE(SUM(calories_burned), 0) FROM workouts WHERE user_id = $1) as total_calories_burned,
-                (SELECT MAX(created_at) FROM meals WHERE user_id = $1) as last_meal_logged,
-                (SELECT MAX(created_at) FROM workouts WHERE user_id = $1) as last_workout_completed`,
-            [friendId]
-        );
+        const stats = {
+            metrics: friend.metrics || {},
+            subscription: friend.subscription || {}
+        };
         
-        res.status(200).json({
-            stats: stats.rows[0]
-        });
+        res.status(200).json({ stats });
     } catch (error) {
-        logger.error(`Error fetching friend stats: ${error.message}`);
+        logger.error(`❌ Error fetching friend stats: ${error.message}`);
         res.status(500).json({ error: 'Failed to fetch friend stats' });
     }
 });

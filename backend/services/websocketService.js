@@ -267,6 +267,56 @@ export class WebSocketService {
   }
 
   /**
+   * Emit a message in real-time
+   */
+  emitMessage(userId, messageData) {
+    this.emitToUser(userId, 'message:received', {
+      ...messageData,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Emit motivation message
+   */
+  emitMotivation(userId, motivationData) {
+    this.emitToUser(userId, 'motivation:received', {
+      ...motivationData,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Emit activity shared by friend
+   */
+  emitActivity(userId, activityData) {
+    this.emitToUser(userId, 'activity:shared', {
+      ...activityData,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Emit activity like notification
+   */
+  emitActivityLike(userId, likeData) {
+    this.emitToUser(userId, 'activity:liked', {
+      ...likeData,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Emit activity comment notification
+   */
+  emitActivityComment(userId, commentData) {
+    this.emitToUser(userId, 'activity:commented', {
+      ...commentData,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
    * Check if user is online
    */
   isUserOnline(userId) {
