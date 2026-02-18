@@ -1,7 +1,7 @@
 import express from 'express';
-import User from '../models/User.js';
 import Message from '../models/Message.js';
-import Conversation from '../models/Conversation.js';
+import User from '../models/User.js';
+import Friend from '../models/Friend.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { wsService } from '../services/websocketService.js';
 
@@ -9,370 +9,285 @@ const router = express.Router();
 const logger = console;
 
 /**
- * Messaging System API Endpoints
+ * Messaging/Chat System API Endpoints
  */
 
-// MARK: - Conversations
+// Helper function to create consistent conversation ID
+function getConversationId(userId1, userId2) {
+  const ids = [userId1.toString(), userId2.toString()].sort();
+  return ids.join('_');
+}
 
 /**
- * Get all conversations for current user
- * GET /api/messages/conversations
+ * Send a message to a friend
+ * POST /api/messages/:friendId
  */
-router.get('/conversations', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    
-    try {
-        const conversations = await Conversation.find({
-            participantIds: userId
-        })
-        .populate('participantIds', 'name email profileImageUrl')
-        .sort({ lastMessageAt: -1 })
-        .limit(50);
-        
-        const formattedConversations = conversations.map(conv => {
-            // Get other participant(s) info
-            const otherParticipants = conv.participantIds.filter(p => p._id.toString() !== userId);
-            const isUnread = !conv.readStatus?.get(userId.toString());
-            
-            return {
-                id: conv._id.toString(),
-                type: conv.type,
-                name: conv.name || otherParticipants.map(p => p.name).join(', '),
-                participants: otherParticipants.map(p => ({
-                    id: p._id.toString(),
-                    name: p.name,
-                    email: p.email,
-                    profileImageUrl: p.profileImageUrl || null
-                })),
-                lastMessage: conv.lastMessage,
-                lastMessageAt: conv.lastMessageAt,
-                isUnread,
-                participantCount: conv.participantIds.length
-            };
-        });
-        
-        res.status(200).json({
-            conversations: formattedConversations,
-            count: formattedConversations.length
-        });
-    } catch (error) {
-        logger.error(`❌ Error fetching conversations: ${error.message}`);
-        res.status(500).json({ error: 'Failed to fetch conversations' });
+router.post('/:friendId', authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+  const { friendId } = req.params;
+  const { message, messageType = 'text' } = req.body;
+
+  try {
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message cannot be empty' });
     }
+
+    // Verify they are friends
+    const friendship = await Friend.findOne({
+      $or: [
+        { userId, friendId },
+        { userId: friendId, friendId: userId }
+      ],
+      status: 'accepted'
+    });
+
+    if (!friendship) {
+      return res.status(403).json({ error: 'You are not friends with this user' });
+    }
+
+    const conversationId = getConversationId(userId, friendId);
+
+    // Create message
+    const newMessage = new Message({
+      senderId: userId,
+      recipientId: friendId,
+      conversationId,
+      message: message.trim(),
+      messageType
+    });
+
+    await newMessage.save();
+    await newMessage.populate('senderId', 'name profileImageUrl');
+
+    logger.log(`💬 Message sent from ${userId} to ${friendId}`);
+
+    // 🔥 Emit real-time WebSocket notification
+    wsService.emitMessage(friendId, {
+      messageId: newMessage._id.toString(),
+      conversationId,
+      from: {
+        id: newMessage.senderId._id.toString(),
+        username: newMessage.senderId.name,
+        profileImageUrl: newMessage.senderId.profileImageUrl || null
+      },
+      message: newMessage.message,
+      messageType,
+      timestamp: newMessage.createdAt
+    });
+
+    res.status(201).json({
+      message: 'Message sent',
+      data: {
+        id: newMessage._id.toString(),
+        conversationId,
+        message: newMessage.message,
+        messageType,
+        createdAt: newMessage.createdAt
+      }
+    });
+  } catch (error) {
+    logger.error(`❌ Error sending message: ${error.message}`);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
 });
 
 /**
- * Get or create direct conversation with another user
- * POST /api/messages/conversations/direct/:friendId
+ * Get conversation messages with a friend
+ * GET /api/messages/:friendId?limit=50&skip=0
  */
-router.post('/conversations/direct/:friendId', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    const { friendId } = req.params;
-    
-    try {
-        // Check if conversation already exists
-        let conversation = await Conversation.findOne({
-            type: 'direct',
-            participantIds: { $all: [userId, friendId] }
-        }).populate('participantIds', 'name email profileImageUrl');
-        
-        if (!conversation) {
-            // Create new conversation
-            conversation = new Conversation({
-                type: 'direct',
-                participantIds: [userId, friendId],
-                readStatus: new Map()
-            });
-            await conversation.save();
-            await conversation.populate('participantIds', 'name email profileImageUrl');
-        }
-        
-        const otherParticipants = conversation.participantIds.filter(p => p._id.toString() !== userId);
-        
-        res.status(200).json({
-            conversation: {
-                id: conversation._id.toString(),
-                type: 'direct',
-                name: otherParticipants.map(p => p.name).join(', '),
-                participants: otherParticipants.map(p => ({
-                    id: p._id.toString(),
-                    name: p.name,
-                    email: p.email,
-                    profileImageUrl: p.profileImageUrl || null
-                })),
-                lastMessage: conversation.lastMessage,
-                lastMessageAt: conversation.lastMessageAt
-            }
-        });
-    } catch (error) {
-        logger.error(`❌ Error creating conversation: ${error.message}`);
-        res.status(500).json({ error: 'Failed to create conversation' });
+router.get('/:friendId', authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+  const { friendId } = req.params;
+  const { limit = 50, skip = 0 } = req.query;
+
+  try {
+    // Verify they are friends
+    const friendship = await Friend.findOne({
+      $or: [
+        { userId, friendId },
+        { userId: friendId, friendId: userId }
+      ],
+      status: 'accepted'
+    });
+
+    if (!friendship) {
+      return res.status(403).json({ error: 'You are not friends with this user' });
     }
+
+    const conversationId = getConversationId(userId, friendId);
+
+    // Get messages
+    const messages = await Message.find({ conversationId })
+      .populate('senderId', 'name profileImageUrl')
+      .sort({ createdAt: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit));
+
+    // Mark as read
+    await Message.updateMany(
+      {
+        conversationId,
+        recipientId: userId,
+        isRead: false
+      },
+      {
+        $set: {
+          isRead: true,
+          readAt: new Date()
+        }
+      }
+    );
+
+    res.status(200).json({
+      messages: messages.reverse().map(msg => ({
+        id: msg._id.toString(),
+        senderId: msg.senderId._id.toString(),
+        senderName: msg.senderId.name,
+        senderImage: msg.senderId.profileImageUrl || null,
+        message: msg.message,
+        messageType: msg.messageType,
+        isRead: msg.isRead,
+        createdAt: msg.createdAt
+      })),
+      count: messages.length
+    });
+  } catch (error) {
+    logger.error(`❌ Error fetching messages: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
 });
 
 /**
- * Get messages from a conversation
- * GET /api/messages/conversations/:conversationId
+ * Get all conversations (list of friends with last message)
+ * GET /api/messages
  */
-router.get('/conversations/:conversationId', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    const { conversationId } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
-    
-    try {
-        // Verify user is part of conversation
-        const conversation = await Conversation.findOne({
-            _id: conversationId,
-            participantIds: userId
-        });
-        
-        if (!conversation) {
-            return res.status(404).json({ error: 'Conversation not found' });
-        }
-        
-        // Get messages
-        const messages = await Message.find({ conversationId })
-            .populate('senderId', 'name profileImageUrl email')
-            .sort({ createdAt: -1 })
-            .skip(parseInt(offset))
-            .limit(parseInt(limit));
-        
-        // Mark messages as read
-        await Message.updateMany(
-            { conversationId, senderId: { $ne: userId }, isRead: false },
-            { isRead: true, readAt: new Date() }
-        );
-        
-        // Update conversation read status
-        conversation.readStatus.set(userId.toString(), new Date());
-        await conversation.save();
-        
-        const formattedMessages = messages.reverse().map(msg => ({
-            id: msg._id.toString(),
-            conversationId: msg.conversationId.toString(),
-            sender: {
-                id: msg.senderId._id.toString(),
-                name: msg.senderId.name,
-                profileImageUrl: msg.senderId.profileImageUrl || null
-            },
-            content: msg.content,
-            messageType: msg.messageType,
-            motivationType: msg.motivationType,
-            emoji: msg.emoji,
-            linkedActivityId: msg.linkedActivityId,
-            linkedActivityType: msg.linkedActivityType,
-            isRead: msg.isRead,
-            createdAt: msg.createdAt
-        }));
-        
-        res.status(200).json({
-            messages: formattedMessages,
-            count: formattedMessages.length
-        });
-    } catch (error) {
-        logger.error(`❌ Error fetching messages: ${error.message}`);
-        res.status(500).json({ error: 'Failed to fetch messages' });
-    }
-});
+router.get('/', authenticateToken, async (req, res) => {
+  const { userId } = req.user;
 
-// MARK: - Sending Messages
+  try {
+    // Get all friend relationships
+    const friendships = await Friend.find({
+      $or: [
+        { userId, status: 'accepted' },
+        { friendId: userId, status: 'accepted' }
+      ]
+    });
 
-/**
- * Send a message
- * POST /api/messages/send
- */
-router.post('/send', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    const { conversationId, content, messageType = 'text', motivationType, emoji, linkedActivityId, linkedActivityType } = req.body;
-    
-    try {
-        if (!conversationId || !content) {
-            return res.status(400).json({ error: 'Conversation ID and content are required' });
-        }
-        
-        // Verify conversation exists and user is participant
-        const conversation = await Conversation.findOne({
-            _id: conversationId,
-            participantIds: userId
+    // Get conversations with last message
+    const conversations = await Promise.all(
+      friendships.map(async (f) => {
+        const friendId = f.userId.toString() === userId ? f.friendId : f.userId;
+        const conversationId = getConversationId(userId, friendId);
+
+        const lastMessage = await Message.findOne({ conversationId })
+          .sort({ createdAt: -1 });
+
+        const unreadCount = await Message.countDocuments({
+          conversationId,
+          recipientId: userId,
+          isRead: false
         });
-        
-        if (!conversation) {
-            return res.status(404).json({ error: 'Conversation not found' });
-        }
-        
-        // Create message
-        const message = new Message({
-            conversationId,
-            senderId: userId,
-            content,
-            messageType,
-            motivationType: messageType === 'motivation' ? motivationType : null,
-            emoji: messageType === 'motivation' ? emoji : null,
-            linkedActivityId,
-            linkedActivityType
-        });
-        
-        await message.save();
-        await message.populate('senderId', 'name profileImageUrl email');
-        
-        // Update conversation
-        conversation.lastMessage = content;
-        conversation.lastMessageAt = new Date();
-        await conversation.save();
-        
-        const formattedMessage = {
-            id: message._id.toString(),
-            conversationId: message.conversationId.toString(),
-            sender: {
-                id: message.senderId._id.toString(),
-                name: message.senderId.name,
-                profileImageUrl: message.senderId.profileImageUrl || null
-            },
-            content: message.content,
-            messageType: message.messageType,
-            motivationType: message.motivationType,
-            emoji: message.emoji,
-            linkedActivityId: message.linkedActivityId,
-            linkedActivityType: message.linkedActivityType,
-            isRead: message.isRead,
-            createdAt: message.createdAt
+
+        const friend = await User.findById(friendId).select('name profileImageUrl');
+
+        return {
+          friendId: friendId.toString(),
+          friendName: friend.name,
+          friendImage: friend.profileImageUrl || null,
+          lastMessage: lastMessage ? lastMessage.message : null,
+          lastMessageTime: lastMessage ? lastMessage.createdAt : null,
+          unreadCount,
+          conversationId
         };
-        
-        // 🔥 Emit real-time message to all participants
-        conversation.participantIds.forEach(participantId => {
-            if (participantId.toString() !== userId) {
-                wsService.emitMessage(participantId.toString(), {
-                    conversationId: conversationId.toString(),
-                    message: formattedMessage
-                });
-            }
-        });
-        
-        logger.log(`✅ Message sent in conversation ${conversationId}`);
-        
-        res.status(201).json({
-            message: formattedMessage
-        });
-    } catch (error) {
-        logger.error(`❌ Error sending message: ${error.message}`);
-        res.status(500).json({ error: 'Failed to send message' });
-    }
-});
+      })
+    );
 
-/**
- * Send motivation message
- * POST /api/messages/motivation/:friendId
- */
-router.post('/motivation/:friendId', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    const { friendId } = req.params;
-    const { motivationType, emoji, text } = req.body;
-    
-    try {
-        // Get or create conversation
-        let conversation = await Conversation.findOne({
-            type: 'direct',
-            participantIds: { $all: [userId, friendId] }
-        });
-        
-        if (!conversation) {
-            conversation = new Conversation({
-                type: 'direct',
-                participantIds: [userId, friendId],
-                readStatus: new Map()
-            });
-            await conversation.save();
-        }
-        
-        // Create motivation message
-        const message = new Message({
-            conversationId: conversation._id,
-            senderId: userId,
-            content: text || `${emoji} ${motivationType}`,
-            messageType: 'motivation',
-            motivationType,
-            emoji
-        });
-        
-        await message.save();
-        
-        // Update conversation
-        conversation.lastMessage = `${emoji} Motivation: ${motivationType}`;
-        conversation.lastMessageAt = new Date();
-        await conversation.save();
-        
-        logger.log(`✅ Motivation message sent to ${friendId}`);
-        
-        // 🔥 Emit real-time notification
-        wsService.emitMotivation(friendId, {
-            from: userId,
-            motivationType,
-            emoji,
-            text: text || `${emoji} ${motivationType}`
-        });
-        
-        res.status(201).json({
-            message: 'Motivation sent successfully'
-        });
-    } catch (error) {
-        logger.error(`❌ Error sending motivation: ${error.message}`);
-        res.status(500).json({ error: 'Failed to send motivation' });
-    }
-});
+    // Sort by last message time
+    conversations.sort((a, b) => {
+      const timeA = a.lastMessageTime ? new Date(a.lastMessageTime) : new Date(0);
+      const timeB = b.lastMessageTime ? new Date(b.lastMessageTime) : new Date(0);
+      return timeB - timeA;
+    });
 
-/**
- * Mark conversation as read
- * PUT /api/messages/conversations/:conversationId/read
- */
-router.put('/conversations/:conversationId/read', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    const { conversationId } = req.params;
-    
-    try {
-        const conversation = await Conversation.findOne({
-            _id: conversationId,
-            participantIds: userId
-        });
-        
-        if (!conversation) {
-            return res.status(404).json({ error: 'Conversation not found' });
-        }
-        
-        // Mark all messages as read
-        await Message.updateMany(
-            { conversationId, senderId: { $ne: userId }, isRead: false },
-            { isRead: true, readAt: new Date() }
-        );
-        
-        // Update conversation read status
-        conversation.readStatus.set(userId.toString(), new Date());
-        await conversation.save();
-        
-        res.status(200).json({ message: 'Conversation marked as read' });
-    } catch (error) {
-        logger.error(`❌ Error marking conversation as read: ${error.message}`);
-        res.status(500).json({ error: 'Failed to mark conversation as read' });
-    }
+    res.status(200).json({
+      conversations,
+      count: conversations.length
+    });
+  } catch (error) {
+    logger.error(`❌ Error fetching conversations: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
+  }
 });
 
 /**
  * Get unread message count
- * GET /api/messages/unread-count
+ * GET /api/messages/unread/count
  */
-router.get('/unread-count', authenticateToken, async (req, res) => {
-    const { userId } = req.user;
-    
-    try {
-        const unreadCount = await Message.countDocuments({
-            senderId: { $ne: userId },
-            isRead: false
-        });
-        
-        res.status(200).json({ unreadCount });
-    } catch (error) {
-        logger.error(`❌ Error fetching unread count: ${error.message}`);
-        res.status(500).json({ error: 'Failed to fetch unread count' });
-    }
+router.get('/unread/count', authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+
+  try {
+    const unreadCount = await Message.countDocuments({
+      recipientId: userId,
+      isRead: false
+    });
+
+    res.status(200).json({ unreadCount });
+  } catch (error) {
+    logger.error(`❌ Error fetching unread count: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch unread count' });
+  }
+});
+
+/**
+ * Send motivational message template
+ * POST /api/messages/:friendId/motivate
+ */
+router.post('/:friendId/motivate', authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+  const { friendId } = req.params;
+  const { motivationType } = req.body; // 'amazing', 'keep_going', 'you_got_this', 'proud_of_you', 'crush_it'
+
+  try {
+    const motivationalMessages = {
+      amazing: "🔥 That's amazing! Keep it up!",
+      keep_going: "💪 Keep going! You're doing great!",
+      you_got_this: "💯 You got this! One more rep!",
+      proud_of_you: "🌟 I'm so proud of you!",
+      crush_it: "🚀 Crush it! Let's go!"
+    };
+
+    const message = motivationalMessages[motivationType] || motivationalMessages.keep_going;
+
+    const conversationId = getConversationId(userId, friendId);
+
+    const newMessage = new Message({
+      senderId: userId,
+      recipientId: friendId,
+      conversationId,
+      message,
+      messageType: 'motivation'
+    });
+
+    await newMessage.save();
+
+    logger.log(`🔥 Motivational message sent from ${userId} to ${friendId}`);
+
+    // Emit WebSocket notification
+    wsService.emitMessage(friendId, {
+      messageId: newMessage._id.toString(),
+      conversationId,
+      from: { id: userId },
+      message,
+      messageType: 'motivation',
+      timestamp: newMessage.createdAt
+    });
+
+    res.status(201).json({ message: 'Motivational message sent', data: newMessage });
+  } catch (error) {
+    logger.error(`❌ Error sending motivational message: ${error.message}`);
+    res.status(500).json({ error: 'Failed to send motivational message' });
+  }
 });
 
 export default router;

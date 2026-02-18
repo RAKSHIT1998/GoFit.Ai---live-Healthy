@@ -1,64 +1,47 @@
 import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema({
-  conversationId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Conversation',
-    required: true
-  },
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  content: {
+  recipientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  conversationId: {
+    type: String, // Format: userId1_userId2 (sorted for consistency)
+    required: true,
+    index: true
+  },
+  message: {
     type: String,
     required: true,
-    trim: true
+    maxlength: 5000
   },
   messageType: {
     type: String,
     enum: ['text', 'motivation', 'achievement', 'milestone'],
     default: 'text'
   },
-  // For motivation messages with emojis
-  motivationType: {
-    type: String,
-    enum: ['encouragement', 'celebration', 'challenge', 'support'],
-    default: null
-  },
-  emoji: {
-    type: String,
-    default: null
-  },
-  // For activity-related messages
-  linkedActivityId: {
-    type: String,
-    default: null // References workout or meal ID
-  },
-  linkedActivityType: {
-    type: String,
-    enum: ['workout', 'meal', 'achievement', null],
-    default: null
-  },
   isRead: {
     type: Boolean,
     default: false
   },
-  readAt: {
-    type: Date,
-    default: null
-  },
+  readAt: Date,
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    index: true
   }
 });
 
 // Index for faster queries
 messageSchema.index({ conversationId: 1, createdAt: -1 });
-messageSchema.index({ senderId: 1 });
-messageSchema.index({ isRead: 1 });
+messageSchema.index({ senderId: 1, createdAt: -1 });
+messageSchema.index({ recipientId: 1, isRead: 1 });
 
 const Message = mongoose.model('Message', messageSchema);
 

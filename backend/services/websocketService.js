@@ -267,51 +267,41 @@ export class WebSocketService {
   }
 
   /**
-   * Emit a message in real-time
+   * Emit new message notification
    */
-  emitMessage(userId, messageData) {
-    this.emitToUser(userId, 'message:received', {
+  emitMessage(recipientId, messageData) {
+    this.emitToUser(recipientId, 'message:received', {
       ...messageData,
       timestamp: new Date().toISOString()
     });
   }
 
   /**
-   * Emit motivation message
+   * Emit activity shared notification (workout, meal, photo, etc)
    */
-  emitMotivation(userId, motivationData) {
-    this.emitToUser(userId, 'motivation:received', {
-      ...motivationData,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
-   * Emit activity shared by friend
-   */
-  emitActivity(userId, activityData) {
-    this.emitToUser(userId, 'activity:shared', {
+  emitActivityShared(friendId, activityData) {
+    this.emitToUser(friendId, 'activity:shared', {
       ...activityData,
       timestamp: new Date().toISOString()
     });
   }
 
   /**
-   * Emit activity like notification
+   * Emit reaction to activity
    */
-  emitActivityLike(userId, likeData) {
-    this.emitToUser(userId, 'activity:liked', {
-      ...likeData,
+  emitActivityReaction(userId, reactionData) {
+    this.emitToUser(userId, 'activity:reaction', {
+      ...reactionData,
       timestamp: new Date().toISOString()
     });
   }
 
   /**
-   * Emit activity comment notification
+   * Emit real-time metrics update (for activity feed)
    */
-  emitActivityComment(userId, commentData) {
-    this.emitToUser(userId, 'activity:commented', {
-      ...commentData,
+  emitMetricsUpdate(friendId, metricsData) {
+    this.emitToUser(friendId, 'metrics:updated', {
+      ...metricsData,
       timestamp: new Date().toISOString()
     });
   }
