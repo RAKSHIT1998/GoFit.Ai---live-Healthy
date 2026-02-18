@@ -106,6 +106,11 @@ const userSchema = new mongoose.Schema({
     }
   },
   // Comprehensive onboarding data for AI personalization
+  profilePictureURL: {
+    type: String,
+    default: null,
+    sparse: true
+  },
   onboardingData: {
     workoutPreferences: [String],
     favoriteCuisines: [String],

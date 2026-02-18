@@ -341,7 +341,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 // Update user profile
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { name, goals, activityLevel, dietaryPreferences, allergies, fastingPreference, metrics } = req.body;
+    const { name, goals, activityLevel, dietaryPreferences, allergies, fastingPreference, metrics, profilePictureURL } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
@@ -351,6 +351,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
     if (allergies) updateData.allergies = allergies;
     if (fastingPreference) updateData.fastingPreference = fastingPreference;
     if (metrics) updateData.metrics = { ...req.user.metrics, ...metrics };
+    if (profilePictureURL !== undefined) updateData.profilePictureURL = profilePictureURL;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -362,6 +363,39 @@ router.put('/profile', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+});
+
+// Update profile picture
+router.post('/profile-picture', authMiddleware, async (req, res) => {
+  try {
+    const { profilePictureURL } = req.body;
+
+    if (!profilePictureURL) {
+      return res.status(400).json({ message: 'Profile picture URL is required' });
+    }
+
+    // Validate URL format
+    try {
+      new URL(profilePictureURL);
+    } catch {
+      return res.status(400).json({ message: 'Invalid profile picture URL' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { profilePictureURL } },
+      { new: true }
+    ).select('-passwordHash');
+
+    res.json({ 
+      message: 'Profile picture updated successfully',
+      profilePictureURL: user.profilePictureURL,
+      user 
+    });
+  } catch (error) {
+    console.error('Update profile picture error:', error);
+    res.status(500).json({ message: 'Failed to update profile picture', error: error.message });
   }
 });
 

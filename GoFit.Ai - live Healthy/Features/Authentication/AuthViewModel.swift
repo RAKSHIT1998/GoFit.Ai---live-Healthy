@@ -12,6 +12,7 @@ final class AuthViewModel: ObservableObject {
     @Published var heightCm: Double = 170
     @Published var goal: String = "maintain"
     @Published var dietPrefs: [String] = []
+    @Published var profilePictureURL: String = ""
     
     // Comprehensive onboarding data
     @Published var onboardingData: OnboardingData?
@@ -86,6 +87,7 @@ final class AuthViewModel: ObservableObject {
             self.goal = obj.goal.isEmpty ? "maintain" : obj.goal
             self.dietPrefs = obj.dietPrefs
             self.userId = obj.userId
+            self.profilePictureURL = obj.profilePictureURL ?? ""
             print("📱 Loaded local state: didFinishOnboarding=\(self.didFinishOnboarding), isLoggedIn=\(self.isLoggedIn)")
         } else {
             // Initialize with defaults if no saved state
@@ -95,12 +97,13 @@ final class AuthViewModel: ObservableObject {
             self.heightCm = 170
             self.goal = "maintain"
             self.dietPrefs = []
+            self.profilePictureURL = ""
             print("📱 No saved state found - initializing with defaults: didFinishOnboarding=false")
         }
     }
 
     func saveLocalState() {
-        let s = LocalState(didFinishOnboarding: didFinishOnboarding, name: name, weightKg: weightKg, heightCm: heightCm, goal: goal, dietPrefs: dietPrefs, userId: userId)
+        let s = LocalState(didFinishOnboarding: didFinishOnboarding, name: name, weightKg: weightKg, heightCm: heightCm, goal: goal, dietPrefs: dietPrefs, userId: userId, profilePictureURL: profilePictureURL)
         if let data = try? JSONEncoder().encode(s) {
             UserDefaults.standard.set(data, forKey: localKey)
         }
@@ -389,6 +392,9 @@ final class AuthViewModel: ObservableObject {
                 self.userId = me.id
                 self.email = me.email
                 self.name = me.name
+                if let pictureURL = me.profilePictureURL {
+                    self.profilePictureURL = pictureURL
+                }
                 saveLocalState()
                 // Also update LocalUserStore
                 LocalUserStore.shared.updateBasicInfo(name: me.name, email: me.email, weightKg: self.weightKg, heightCm: self.heightCm)
@@ -526,6 +532,7 @@ fileprivate struct LocalState: Codable {
     var goal: String = "maintain"
     var dietPrefs: [String] = []
     var userId: String? = nil
+    var profilePictureURL: String? = nil
 }
 
 // Minimal profile model (used in login flow to fetch user id)
@@ -533,6 +540,22 @@ struct UserProfile: Codable {
     let id: String
     let email: String
     let name: String
+    let profilePictureURL: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case email
+        case name
+        case profilePictureURL
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        email = try container.decode(String.self, forKey: .email)
+        name = try container.decode(String.self, forKey: .name)
+        profilePictureURL = try container.decodeIfPresent(String.self, forKey: .profilePictureURL)
+    }
 }
 
 // Comprehensive onboarding data structure

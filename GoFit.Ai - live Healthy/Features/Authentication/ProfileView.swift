@@ -16,6 +16,9 @@ struct ProfileView: View {
     @State private var showingTargetSettings = false
     @State private var showingDietaryPreferences = false
     @State private var showingWorkoutPreferences = false
+    @State private var showingImagePicker = false
+    @State private var selectedProfileImage: UIImage? = nil
+    @State private var isUploadingProfilePicture = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
@@ -269,14 +272,74 @@ struct ProfileView: View {
     // MARK: - Profile Header
     private var profileHeader: some View {
         VStack(spacing: 16) {
-            Circle()
-                .fill(Design.Colors.primaryGradient)
-                .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
-                .overlay(
-                    Text(auth.name.prefix(1).uppercased())
-                        .font(Design.Typography.title)
+            Button {
+                showingImagePicker = true
+            } label: {
+                ZStack(alignment: .bottomTrailing) {
+                    if let profilePictureURL = auth.profilePictureURL, !profilePictureURL.isEmpty,
+                       let url = URL(string: profilePictureURL) {
+                        // Show profile picture from URL
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                Circle()
+                                    .fill(Design.Colors.primaryGradient)
+                                    .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
+                                    .overlay(
+                                        ProgressView()
+                                            .tint(.white)
+                                    )
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
+                                    .clipShape(Circle())
+                            case .failure:
+                                Circle()
+                                    .fill(Design.Colors.primaryGradient)
+                                    .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
+                                    .overlay(
+                                        Text(auth.name.prefix(1).uppercased())
+                                            .font(Design.Typography.title)
+                                            .foregroundColor(.white)
+                                    )
+                            @unknown default:
+                                Circle()
+                                    .fill(Design.Colors.primaryGradient)
+                                    .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
+                            }
+                        }
+                    } else if let selectedImage = selectedProfileImage {
+                        // Show selected image before upload
+                        Image(uiImage: selectedImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
+                            .clipShape(Circle())
+                    } else {
+                        // Show initials
+                        Circle()
+                            .fill(Design.Colors.primaryGradient)
+                            .frame(width: Design.Scale.value(100, textStyle: .title1), height: Design.Scale.value(100, textStyle: .title1))
+                            .overlay(
+                                Text(auth.name.prefix(1).uppercased())
+                                    .font(Design.Typography.title)
+                                    .foregroundColor(.white)
+                            )
+                    }
+                    
+                    // Camera icon overlay
+                    Image(systemName: "camera.fill")
+                        .font(.caption)
                         .foregroundColor(.white)
-                )
+                        .padding(8)
+                        .background(Design.Colors.primary)
+                        .clipShape(Circle())
+                        .padding(4)
+                }
+            }
+            .disabled(isUploadingProfilePicture)
 
             Text(auth.name.isEmpty ? "User" : auth.name)
                 .font(.title2)
@@ -292,6 +355,14 @@ struct ProfileView: View {
             .buttonStyle(ScaleButtonStyle())
         }
         .padding(.top, 20)
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(selectedImage: $selectedProfileImage)
+                .onDisappear {
+                    if let image = selectedProfileImage {
+                        uploadProfilePicture(image)
+                    }
+                }
+        }
     }
 
     // MARK: - Quick Stats
@@ -794,6 +865,50 @@ struct ProfileView: View {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootViewController = windowScene.windows.first?.rootViewController {
             rootViewController.present(activityVC, animated: true)
+        }
+    }
+    
+    private func uploadProfilePicture(_ image: UIImage) {
+        isUploadingProfilePicture = true
+        
+        Task {
+            do {
+                // Convert image to base64
+                guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+                    throw NSError(domain: "Image Error", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image"])
+                }
+                
+                let base64String = imageData.base64EncodedString()
+                let profilePictureURL = "data:image/jpeg;base64,\(base64String)"
+                
+                let body: [String: Any] = [
+                    "profilePictureURL": profilePictureURL
+                ]
+                
+                let bodyData = try JSONSerialization.data(withJSONObject: body, options: [])
+                
+                let response: [String: Any] = try await NetworkManager.shared.requestDictionary(
+                    "auth/profile-picture",
+                    method: "POST",
+                    body: bodyData
+                )
+                
+                await MainActor.run {
+                    if let pictureURL = response["profilePictureURL"] as? String {
+                        auth.profilePictureURL = pictureURL
+                        auth.saveLocalState()
+                    }
+                    isUploadingProfilePicture = false
+                    selectedProfileImage = nil
+                }
+            } catch {
+                await MainActor.run {
+                    isUploadingProfilePicture = false
+                    errorMessage = "Failed to upload profile picture: \(error.localizedDescription)"
+                    showingError = true
+                    selectedProfileImage = nil
+                }
+            }
         }
     }
     
