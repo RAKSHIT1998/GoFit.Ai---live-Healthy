@@ -4,12 +4,14 @@ import SwiftUI
 struct ModernCard<Content: View>: View {
     let content: Content
     var padding: CGFloat = Design.Spacing.lg
-    var backgroundColor: Color = Color(white: 0.98) // Light mode only
+    var backgroundColor: Color?
     var cornerRadius: CGFloat = Design.Radius.large
+    
+    @Environment(\.colorScheme) var colorScheme
     
     init(
         padding: CGFloat = Design.Spacing.lg,
-        backgroundColor: Color = Color(white: 0.98), // Light mode only
+        backgroundColor: Color? = nil,
         cornerRadius: CGFloat = Design.Radius.large,
         @ViewBuilder content: () -> Content
     ) {
@@ -22,7 +24,18 @@ struct ModernCard<Content: View>: View {
     var body: some View {
         content
             .padding(padding)
-            .background(backgroundColor)
+            .background(
+                Group {
+                    if let bg = backgroundColor {
+                        bg
+                    } else {
+                        // Adaptive background
+                        colorScheme == .dark
+                            ? Color(white: 0.15)
+                            : Color(white: 0.98)
+                    }
+                }
+            )
             .cornerRadius(cornerRadius)
             .shadow(color: Color.primary.opacity(0.06), radius: 12, x: 0, y: 4)
     }
@@ -58,13 +71,23 @@ struct ModernSecondaryButtonStyle: ButtonStyle {
     var height: CGFloat = Design.Scale.value(56, textStyle: .body)
     var cornerRadius: CGFloat = Design.Radius.medium
     
+    @Environment(\.colorScheme) var colorScheme
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Design.Typography.headline)
             .foregroundColor(foregroundColor)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(Color(white: 0.98)) // Light mode only
+            .background(
+                Group {
+                    if colorScheme == .dark {
+                        Color(white: 0.2)
+                    } else {
+                        Color(white: 0.98)
+                    }
+                }
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(borderColor, lineWidth: 2)
