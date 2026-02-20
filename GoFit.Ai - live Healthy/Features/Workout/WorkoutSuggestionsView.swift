@@ -197,12 +197,17 @@ struct WorkoutSuggestionsView: View {
                     },
                     onDecline: {
                         showPrivacyDisclosure = false
+                        // Still mark as seen even if declined
+                        hasSeenPrivacyDisclosure = true
                     }
                 )
             }
             .onAppear {
+                // Only show on first appearance when not previously seen
                 if !hasSeenPrivacyDisclosure {
-                    showPrivacyDisclosure = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showPrivacyDisclosure = true
+                    }
                 }
             }
         }
