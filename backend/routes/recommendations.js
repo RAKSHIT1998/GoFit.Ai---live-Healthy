@@ -612,7 +612,12 @@ INSTRUCTIONS:
 3. Analyze the user's recent meals to understand their eating patterns and preferences
 4. Create a balanced meal plan that aligns with their goals (${context.user.goals}) AND learned preferences
 5. Ensure meals are diverse, nutritious, and match their dietary preferences
-6. Design workouts that complement their activity level, goals, AND workout preferences
+6. **DIVERSE WORKOUT PLAN**: Design 8-10 varied exercises that complement their activity level, goals, AND workout preferences:
+   - Include mix of cardio, strength training, flexibility, and HIIT exercises
+   - Vary intensity levels (beginner to advanced)
+   - Include both equipment-based and bodyweight exercises
+   - Total workout time should be realistic (mix of 15-60 minute exercises)
+   - Ensure variety to prevent boredom and work different muscle groups
 7. Consider their fasting preference when scheduling meals
 8. **GRADUAL ADAPTATION**: If this is a returning user, gradually adapt recommendations based on their behavior patterns
 9. Provide detailed, practical instructions for both meals and exercises
@@ -629,11 +634,13 @@ Return a JSON object with:
   - instructions: string (step-by-step cooking instructions)
   - prepTime: number (minutes)
   - servings: number
+  - sources: array of citation objects with { title: string, url: string } for nutritional information sources (e.g., nutrition.gov, heart.org, WHO guidelines, etc.)
 
 - workoutPlan: { exercises: [] }
+  **IMPORTANT: Generate 8-10 diverse exercises mixing cardio, strength, flexibility, and HIIT**
   Each exercise should have:
   - name: string
-  - duration: number (minutes)
+  - duration: number (minutes) - individual exercise duration, 10-60 minutes
   - calories: number (estimated calories burned)
   - type: string (cardio, strength, flexibility, hiit, etc.)
   - instructions: string (detailed step-by-step instructions on how to perform the exercise)
@@ -643,9 +650,18 @@ Return a JSON object with:
   - difficulty: string (beginner, intermediate, advanced)
   - muscleGroups: array of strings (e.g., ["chest", "triceps", "shoulders"])
   - equipment: array of strings (e.g., ["dumbbells", "mat"] or ["none"] for bodyweight)
+  - sources: array of citation objects with { title: string, url: string } for exercise science and fitness sources (e.g., ACE, NASM, CDC fitness guidelines, research.gov, etc.)
 
 - hydrationGoal: { targetLiters: number }
 - insights: [string array of personalized insights]
+
+CITATIONS REQUIREMENT (FOR APP STORE COMPLIANCE):
+**IMPORTANT:** Each meal and exercise MUST include sources/citations that reference:
+- Reputable health organizations (WHO, CDC, American Heart Association, Mayo Clinic, etc.)
+- Government nutritional guidelines (USDA nutrition.gov, etc.)
+- Peer-reviewed fitness sources (ACE, NASM, ISSN, etc.)
+- Scientific research databases (PubMed, research.gov, ResearchGate, etc.)
+Include at least 1-2 credible sources per item to ensure users have access to evidence-based information.
 
 IMPORTANT REQUIREMENTS:
 - All meal items MUST include complete recipes with specific ingredients and step-by-step cooking instructions
@@ -688,7 +704,7 @@ Ensure all recommendations are safe, achievable, and aligned with the user's pro
     console.log(`🤖 Making ChatGPT API request for personalized recommendations (user: ${user._id})...`);
     console.log(`📊 User context: goals=${user.goals}, activityLevel=${user.activityLevel}, targetCalories=${user.metrics?.targetCalories || 2000}`);
     console.log(`🍽️ ChatGPT will generate: Personalized meal plan (breakfast, lunch, dinner, snacks)`);
-    console.log(`💪 ChatGPT will generate: Personalized workout plan (exercises with instructions)`);
+    console.log(`💪 ChatGPT will generate: 8-10 diverse workout exercises with detailed instructions`);
     
     // Generate content with OpenAI
     const completion = await openai.chat.completions.create({
@@ -1056,7 +1072,7 @@ CRITICAL JSON FORMAT REQUIREMENTS:
       console.error('❌ Failed to parse OpenAI recommendation response:', parseError);
       console.error('📝 Response content (first 500 chars):', content ? content.substring(0, 500) : 'No content');
       console.error('📝 Full response length:', content ? content.length : 0);
-    // Fallback recommendation with full details
+    // Fallback recommendation with full details and sources
     recommendationData = {
       mealPlan: {
         breakfast: [{
@@ -1068,7 +1084,11 @@ CRITICAL JSON FORMAT REQUIREMENTS:
           ingredients: ["1 cup rolled oats", "1 cup water or milk", "1/2 cup mixed berries", "1 tbsp honey", "1 tbsp chopped nuts"],
           instructions: "1. Bring water or milk to a boil. 2. Add oats and reduce heat to medium. 3. Cook for 5 minutes, stirring occasionally. 4. Remove from heat and let sit for 2 minutes. 5. Top with berries, honey, and nuts.",
           prepTime: 10,
-          servings: 1
+          servings: 1,
+          sources: [
+            { title: "USDA Nutrition Guidelines - Whole Grains", url: "https://www.nutrition.gov/topics/nutrients-over-lifespan/whole-grains" },
+            { title: "American Heart Association - Healthy Diet", url: "https://www.heart.org/en/healthy-living/healthy-eating" }
+          ]
         }],
         lunch: [{
           name: "Grilled chicken salad",
@@ -1079,7 +1099,11 @@ CRITICAL JSON FORMAT REQUIREMENTS:
           ingredients: ["150g chicken breast", "2 cups mixed greens", "1/2 cup cherry tomatoes", "1/4 cup cucumber", "2 tbsp olive oil", "1 tbsp lemon juice", "Salt and pepper"],
           instructions: "1. Season chicken with salt and pepper. 2. Grill for 6-7 minutes per side until cooked through. 3. Let rest for 5 minutes, then slice. 4. Toss greens with tomatoes and cucumber. 5. Mix olive oil and lemon juice for dressing. 6. Top salad with chicken and drizzle with dressing.",
           prepTime: 20,
-          servings: 1
+          servings: 1,
+          sources: [
+            { title: "USDA MyPlate - Protein Foods", url: "https://www.myplate.gov/eat-healthy" },
+            { title: "Mayo Clinic - Lean Meats for Heart Health", url: "https://www.mayoclinic.org/healthy-lifestyle/nutrition-and-healthy-eating" }
+          ]
         }],
         dinner: [{
           name: "Salmon with vegetables",
@@ -1090,7 +1114,11 @@ CRITICAL JSON FORMAT REQUIREMENTS:
           ingredients: ["200g salmon fillet", "1 cup mixed vegetables (broccoli, carrots, bell peppers)", "2 tbsp olive oil", "Lemon wedges", "Garlic powder", "Salt and pepper"],
           instructions: "1. Preheat oven to 400°F. 2. Season salmon with salt, pepper, and garlic powder. 3. Toss vegetables with olive oil and seasonings. 4. Place salmon and vegetables on a baking sheet. 5. Bake for 15-18 minutes until salmon flakes easily. 6. Serve with lemon wedges.",
           prepTime: 25,
-          servings: 1
+          servings: 1,
+          sources: [
+            { title: "American Heart Association - Omega-3 Fatty Acids", url: "https://www.heart.org/en/healthy-living/healthy-eating/eat-smart/fish" },
+            { title: "WHO - Fish and Omega-3 Benefits", url: "https://www.who.int/news-room/fact-sheets" }
+          ]
         }],
         snacks: [{
           name: "Greek yogurt with berries",
@@ -1101,23 +1129,186 @@ CRITICAL JSON FORMAT REQUIREMENTS:
           ingredients: ["1 cup Greek yogurt", "1/2 cup mixed berries", "1 tbsp honey"],
           instructions: "1. Scoop Greek yogurt into a bowl. 2. Top with fresh berries. 3. Drizzle with honey. 4. Enjoy immediately.",
           prepTime: 2,
-          servings: 1
+          servings: 1,
+          sources: [
+            { title: "USDA - Dairy and Protein", url: "https://www.nutrition.gov" },
+            { title: "Mayo Clinic - Yogurt Health Benefits", url: "https://www.mayoclinic.org/healthy-lifestyle/nutrition-and-healthy-eating" }
+          ]
         }]
       },
       workoutPlan: {
-        exercises: [{
-          name: "30 Minute Brisk Walk",
-          duration: 30,
-          calories: 150,
-          type: "cardio",
-          instructions: "1. Start with a 5-minute warm-up at a slow pace. 2. Increase to a brisk walking pace where you can still hold a conversation but feel your heart rate increase. 3. Maintain this pace for 20 minutes. 4. Cool down with 5 minutes of slower walking. 5. Focus on good posture: stand tall, engage your core, and swing your arms naturally.",
-          sets: null,
-          reps: "30 minutes continuous",
-          restTime: null,
-          difficulty: "beginner",
-          muscleGroups: ["legs", "core", "cardiovascular"],
-          equipment: ["none"]
-        }]
+        exercises: [
+          {
+            name: "30 Minute Brisk Walk",
+            duration: 30,
+            calories: 150,
+            type: "cardio",
+            instructions: "1. Start with a 5-minute warm-up at a slow pace. 2. Increase to a brisk walking pace where you can still hold a conversation but feel your heart rate increase. 3. Maintain this pace for 20 minutes. 4. Cool down with 5 minutes of slower walking. 5. Focus on good posture: stand tall, engage your core, and swing your arms naturally.",
+            sets: null,
+            reps: "30 minutes continuous",
+            restTime: null,
+            difficulty: "beginner",
+            muscleGroups: ["legs", "core", "cardiovascular"],
+            equipment: ["none"],
+            sources: [
+              { title: "CDC - Physical Activity for Everyone", url: "https://www.cdc.gov/physicalactivity/basics/index.htm" },
+              { title: "American Heart Association - Exercise Guidelines", url: "https://www.heart.org/en/healthy-living/fitness/fitness-basics/heart-healthy-exercise" }
+            ]
+          },
+          {
+            name: "Bodyweight Squats",
+            duration: 15,
+            calories: 75,
+            type: "strength",
+            instructions: "1. Stand with feet shoulder-width apart. 2. Keep your chest up and core engaged. 3. Lower your body by bending your knees, pushing your hips back as if sitting in a chair. 4. Go down until your thighs are parallel to the ground or slightly below. 5. Press through your heels to return to standing position. 6. Perform 3 sets of 15-20 reps.",
+            sets: 3,
+            reps: "15-20",
+            restTime: 60,
+            difficulty: "beginner",
+            muscleGroups: ["legs", "glutes", "core"],
+            equipment: ["none"],
+            sources: [
+              { title: "ACE Fitness - Squat Exercise Guide", url: "https://www.acefitness.org" },
+              { title: "NASM - Lower Body Training", url: "https://www.nasm.org" }
+            ]
+          },
+          {
+            name: "Push-ups",
+            duration: 15,
+            calories: 80,
+            type: "strength",
+            instructions: "1. Start in a plank position with hands slightly wider than shoulder-width. 2. Lower your body until your chest nearly touches the floor. 3. Keep your elbows at a 45-degree angle to your body. 4. Push through your palms to return to starting position. 5. Modify by doing push-ups on your knees if needed. 6. Perform 3 sets of 8-12 reps.",
+            sets: 3,
+            reps: "8-12",
+            restTime: 90,
+            difficulty: "beginner",
+            muscleGroups: ["chest", "shoulders", "triceps", "core"],
+            equipment: ["none"],
+            sources: [
+              { title: "ACE Fitness - Push-up Variations", url: "https://www.acefitness.org" },
+              { title: "ISSN - Resistance Training Research", url: "https://www.issn.org" }
+            ]
+          },
+          {
+            name: "Jumping Jacks",
+            duration: 10,
+            calories: 60,
+            type: "cardio",
+            instructions: "1. Stand with feet together and arms at your sides. 2. Jump while spreading your feet to shoulder-width. 3. Simultaneously raise your arms above your head. 4. Jump back to starting position. 5. Maintain a steady, rhythmic pace. 6. Do this for 10 minutes continuously or in 30-second intervals with 15-second rest.",
+            sets: null,
+            reps: "continuous",
+            restTime: null,
+            difficulty: "beginner",
+            muscleGroups: ["full body", "cardiovascular"],
+            equipment: ["none"],
+            sources: [
+              { title: "CDC - Aerobic Activity Recommendations", url: "https://www.cdc.gov/physicalactivity" },
+              { title: "Mayo Clinic - Cardio Exercise Benefits", url: "https://www.mayoclinic.org/healthy-lifestyle/fitness" }
+            ]
+          },
+          {
+            name: "Plank Hold",
+            duration: 10,
+            calories: 50,
+            type: "strength",
+            instructions: "1. Start in a push-up position with forearms on the ground. 2. Keep your body in a straight line from head to heels. 3. Engage your core and avoid letting your hips sag or pike up. 4. Hold for 20-60 seconds. 5. Rest for 30-45 seconds. 6. Repeat 3-4 times. 7. As you get stronger, gradually increase hold duration.",
+            sets: 3,
+            reps: "30-60 seconds",
+            restTime: 45,
+            difficulty: "beginner",
+            muscleGroups: ["core", "shoulders", "back"],
+            equipment: ["none"],
+            sources: [
+              { title: "ACE Fitness - Core Training", url: "https://www.acefitness.org" },
+              { title: "NASM - Core Stability Training", url: "https://www.nasm.org" }
+            ]
+          },
+          {
+            name: "Lunges",
+            duration: 15,
+            calories: 70,
+            type: "strength",
+            instructions: "1. Stand with feet hip-width apart. 2. Step forward with one leg, lowering your hips until both knees are at 90-degree angles. 3. Push back to starting position. 4. Alternate legs and repeat. 5. Keep your torso upright and core engaged. 6. Perform 3 sets of 12 reps per leg.",
+            sets: 3,
+            reps: "12 per leg",
+            restTime: 60,
+            difficulty: "beginner",
+            muscleGroups: ["legs", "glutes", "core"],
+            equipment: ["none"],
+            sources: [
+              { title: "ACE Fitness - Lower Body Exercises", url: "https://www.acefitness.org" },
+              { title: "NASM - Lunge Variations", url: "https://www.nasm.org" }
+            ]
+          },
+          {
+            name: "Stretching & Yoga Flow",
+            duration: 15,
+            calories: 40,
+            type: "flexibility",
+            instructions: "1. Child's pose: 30 seconds. 2. Cat-cow stretch: 10 reps. 3. Downward dog: 30 seconds. 4. Forward fold: 30 seconds, reaching toward toes. 5. Quad stretch: 30 seconds per leg. 6. Spinal twist: 30 seconds per side. 7. Neck rolls: 10 reps in each direction. 8. Shoulder rolls: 10 reps forward and backward. 9. End with a minute of deep breathing.",
+            sets: 1,
+            reps: "full sequence",
+            restTime: null,
+            difficulty: "beginner",
+            muscleGroups: ["full body"],
+            equipment: ["yoga mat"],
+            sources: [
+              { title: "CDC - Flexibility Benefits", url: "https://www.cdc.gov/physicalactivity" },
+              { title: "Yoga Journal - Beginner Poses", url: "https://www.yogajournal.com" }
+            ]
+          },
+          {
+            name: "Burpees (HIIT)",
+            duration: 10,
+            calories: 100,
+            type: "hiit",
+            instructions: "1. Stand with feet together. 2. Bend down and place hands on the ground. 3. Jump feet backward into a plank position. 4. Do a push-up. 5. Jump feet forward to return to squat position. 6. Jump up with arms overhead. 7. Complete 30 seconds of work, rest for 30 seconds. 8. Repeat 5 times (5 sets total).",
+            sets: 5,
+            reps: "30 seconds work",
+            restTime: 30,
+            difficulty: "intermediate",
+            muscleGroups: ["full body", "cardiovascular"],
+            equipment: ["none"],
+            sources: [
+              { title: "ISSN - High Intensity Training", url: "https://www.issn.org" },
+              { title: "American College of Sports Medicine", url: "https://www.acsm.org" }
+            ]
+          },
+          {
+            name: "Glute Bridges",
+            duration: 12,
+            calories: 60,
+            type: "strength",
+            instructions: "1. Lie on your back with knees bent and feet flat on the floor, hip-width apart. 2. Keep arms at your sides with palms down. 3. Press through your heels and lift your hips until your body forms a straight line from knees to shoulders. 4. Squeeze your glutes at the top. 5. Lower back down slowly. 6. Perform 3 sets of 15-20 reps.",
+            sets: 3,
+            reps: "15-20",
+            restTime: 60,
+            difficulty: "beginner",
+            muscleGroups: ["glutes", "hamstrings", "core"],
+            equipment: ["none"],
+            sources: [
+              { title: "ACE Fitness - Glute Activation", url: "https://www.acefitness.org" },
+              { title: "NASM - Lower Body Strength", url: "https://www.nasm.org" }
+            ]
+          },
+          {
+            name: "Tricep Dips",
+            duration: 12,
+            calories: 70,
+            type: "strength",
+            instructions: "1. Sit on a bench or chair with hands gripping the edge behind you, fingers pointing forward. 2. Lower your body by bending elbows until arms are at 90 degrees. 3. Push back up to starting position. 4. Keep your chest upright. 5. For easier modification, keep knees bent. 6. Perform 3 sets of 10-15 reps.",
+            sets: 3,
+            reps: "10-15",
+            restTime: 60,
+            difficulty: "beginner",
+            muscleGroups: ["triceps", "chest", "shoulders"],
+            equipment: ["bench"],
+            sources: [
+              { title: "ACE Fitness - Upper Body Training", url: "https://www.acefitness.org" },
+              { title: "NASM - Tricep Exercises", url: "https://www.nasm.org" }
+            ]
+          }
+        ]
       },
       hydrationGoal: { targetLiters: 2.5 },
       insights: ["Stay hydrated throughout the day", "Aim for 8-10 glasses of water daily"]

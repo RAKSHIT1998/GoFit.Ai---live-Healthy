@@ -15,6 +15,11 @@ struct MealPlan: Codable {
     let snacks: [RecommendationMealItem]
 }
 
+struct CitationSource: Codable {
+    let title: String
+    let url: String
+}
+
 struct RecommendationMealItem: Codable, Identifiable {
     var id: String { name }
     let name: String
@@ -26,6 +31,7 @@ struct RecommendationMealItem: Codable, Identifiable {
     let instructions: String?
     let prepTime: Int?
     let servings: Int?
+    let sources: [CitationSource]?
 }
 
 struct WorkoutPlan: Codable {
@@ -47,6 +53,7 @@ struct Exercise: Codable, Identifiable {
     let equipment: [String]?
     let gifUrl: String? // NEW: URL to exercise GIF animation
     let videoUrl: String? // NEW: URL to exercise video
+    let sources: [CitationSource]?
 }
 
 struct HydrationGoal: Codable {
@@ -61,6 +68,16 @@ struct WorkoutSuggestionsView: View {
     @State private var errorMessage: String?
     @State private var selectedTab = 0 // 0: Workouts, 1: Meals
     @State private var expandedMeal: String?
+    @State private var expandedExercise: String?
+    @State private var isUsingFallback = true // Start with built-in data by default
+    @State private var isRefreshing = false
+    @State private var currentRequestTask: Task<Void, Never>?
+    @State private var selectedExerciseForDemo: Exercise? // NEW: For GIF demo modal
+    @State private var selectedMealForDemo: RecommendationMealItem? // NEW: For meal demo modal
+    @StateObject private var gifGenerator = AIGifGeneratorService.shared
+    @State private var showGifGenerationSheet = false
+    @State private var showPrivacyDisclosure = false // NEW: Show AI privacy disclosure
+    @AppStorage("hasSeenAIPrivacyDisclosure") private var hasSeenPrivacyDisclosure = false // NEW: Track if user has seen privacy disclosure
     @State private var expandedExercise: String?
     @State private var isUsingFallback = true // Start with built-in data by default
     @State private var isRefreshing = false
@@ -176,6 +193,25 @@ struct WorkoutSuggestionsView: View {
             .sheet(isPresented: $showGifGenerationSheet) {
                 if let rec = recommendation {
                     GifGenerationView(exercises: rec.workoutPlan.exercises)
+                }
+            }
+            // Sheet for AI Privacy Disclosure
+            .sheet(isPresented: $showPrivacyDisclosure) {
+                PrivacyDisclosureView(
+                    onAccept: {
+                        showPrivacyDisclosure = false
+                        hasSeenPrivacyDisclosure = true
+                    },
+                    onDecline: {
+                        showPrivacyDisclosure = false
+                        // Optional: User declined, could disable AI recommendations
+                    }
+                )
+            }
+            // Show privacy disclosure on first load if not seen before
+            .onAppear {
+                if !hasSeenPrivacyDisclosure {
+                    showPrivacyDisclosure = true
                 }
             }
         }
@@ -381,12 +417,58 @@ struct WorkoutSuggestionsView: View {
                 )
                 .tint(Design.Colors.primary)
             }
-        }
-        .padding(Design.Spacing.lg)
-        .cardStyle()
-    }
-    
-    // MARK: - Meal Section
+            
+            // Sources/Citations
+            if let sources = exercise.sources, !sources.isEmpty {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedExercise == "\(exercise.name)-sources" },
+                        set: { expandedExercise = $0 ? "\(exercise.name)-sources" : nil }
+                    ),
+                    content: {
+                        VStack(alignment: .leading, spacing: Design.Spacing.md) {
+                            Text("This exercise recommendation is based on information from:")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                            
+                            ForEach(sources, id: \.url) { source in
+                                HStack(alignment: .top, spacing: Design.Spacing.sm) {
+                                    Image(systemName: "link.circle.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(Design.Colors.primary)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(source.title)
+                                            .font(Design.Typography.subheadline)
+                                            .foregroundColor(Design.Colors.primary)
+                                        
+                                        if let url = URL(string: source.url) {
+                                            Link(destination: url) {
+                                                Text(source.url)
+                                                    .font(Design.Typography.caption)
+                                                    .foregroundColor(.blue)
+                                                    .lineLimit(1)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.top, Design.Spacing.sm)
+                    },
+                    label: {
+                        HStack {
+                            Image(systemName: "books.vertical.fill")
+                                .foregroundColor(Design.Colors.primary)
+                            Text("Sources & Citations")
+                                .font(Design.Typography.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                )
+                .tint(Design.Colors.primary)
+            }
+            
     private func mealSection(_ plan: MealPlan) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.lg) {
             mealCategory(title: "Breakfast", icon: "sunrise.fill", meals: plan.breakfast, color: .orange)
@@ -528,11 +610,59 @@ struct WorkoutSuggestionsView: View {
                     }
                 )
                 .tint(Design.Colors.primary)
-            }            
-            // View Recipe Video Demo Button
-            Button(action: {
-                selectedMealForDemo = meal
-            }) {
+            }
+            
+            // Sources/Citations
+            if let sources = meal.sources, !sources.isEmpty {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedMeal == "\(meal.name)-sources" },
+                        set: { expandedMeal = $0 ? "\(meal.name)-sources" : nil }
+                    ),
+                    content: {
+                        VStack(alignment: .leading, spacing: Design.Spacing.md) {
+                            Text("This recommendation is based on information from:")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                            
+                            ForEach(sources, id: \.url) { source in
+                                HStack(alignment: .top, spacing: Design.Spacing.sm) {
+                                    Image(systemName: "link.circle.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(Design.Colors.primary)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(source.title)
+                                            .font(Design.Typography.subheadline)
+                                            .foregroundColor(Design.Colors.primary)
+                                        
+                                        if let url = URL(string: source.url) {
+                                            Link(destination: url) {
+                                                Text(source.url)
+                                                    .font(Design.Typography.caption)
+                                                    .foregroundColor(.blue)
+                                                    .lineLimit(1)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.top, Design.Spacing.sm)
+                    },
+                    label: {
+                        HStack {
+                            Image(systemName: "books.vertical.fill")
+                                .foregroundColor(Design.Colors.primary)
+                            Text("Sources & Citations")
+                                .font(Design.Typography.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                )
+                .tint(Design.Colors.primary)
+            }
+            
                 HStack(spacing: Design.Spacing.sm) {
                     Image(systemName: "play.circle.fill")
                     Text("View Recipe Video")
