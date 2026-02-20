@@ -71,7 +71,10 @@ struct MealScannerView3: View {
                         HStack {
                             Spacer()
                             Button {
-                                showPicker = true
+                                HapticManager.shared.lightTap()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showPicker = true
+                                }
                             } label: {
                                 Image(systemName: "photo.on.rectangle.angled")
                                     .font(.title2)
@@ -86,18 +89,12 @@ struct MealScannerView3: View {
                         
                         // Capture Button - Instant capture
                         Button(action: { 
-                            // Prevent multiple captures
                             guard !isCapturing else { return }
                             isCapturing = true
                             
-                            // INSTANT CAPTURE: Trigger immediately, no delays
+                            HapticManager.shared.mediumTap()
                             captureTrigger += 1
                             
-                            // Immediate haptic feedback (non-blocking)
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                            impactFeedback.impactOccurred()
-                            
-                            // Flash effect (non-blocking, doesn't delay capture)
                             withAnimation(.easeOut(duration: 0.05)) {
                                 showFlash = true
                             }
@@ -105,7 +102,6 @@ struct MealScannerView3: View {
                                 showFlash = false
                             }
                             
-                            // Reset capture flag quickly
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 isCapturing = false
                             }
@@ -144,6 +140,7 @@ struct MealScannerView3: View {
                         Text("Analyzing with AI...")
                             .font(Design.Typography.headline)
                             .foregroundColor(.primary)
+                            .smoothFadeIn()
                         Text("Detecting food items and nutrition")
                             .font(Design.Typography.caption)
                             .foregroundColor(.secondary)
@@ -157,31 +154,31 @@ struct MealScannerView3: View {
                     .background(Design.Colors.background)
                 }
 
-                // Results Section - Beautiful, aesthetic display with log/dismiss options
+                // Results Section
                 if let resp = uploadResult, let items = resp.parsedItems, !items.isEmpty {
                     ScrollView {
                         VStack(spacing: 24) {
-                            // Header with success animation
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: Design.Scale.value(60, textStyle: .title1)))
                                     .foregroundColor(Design.Colors.primary)
                                     .symbolEffect(.bounce, value: uploadResult != nil)
+                                    .delayedAppear(0)
                                 
                                 Text("Meal Detected!")
                                     .font(Design.Typography.title)
                                     .foregroundColor(.primary)
+                                    .delayedAppear(0.05)
                                 
                                 Text("\(items.count) item\(items.count == 1 ? "" : "s") found")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                    .delayedAppear(0.1)
                             }
                             .padding(.top, 20)
                             
-                            // Beautiful meal cards with nutrition
                             ForEach(Array(items.enumerated()), id: \.element.name) { index, item in
                                 VStack(spacing: 0) {
-                                    // Meal name header with gradient
                                     HStack {
                                         Image(systemName: "fork.knife.circle.fill")
                                             .font(.title2)
@@ -202,15 +199,12 @@ struct MealScannerView3: View {
                                         )
                                     )
                                     
-                                    // Nutrition grid - aesthetic layout
                                     VStack(spacing: 16) {
-                                        // Main nutrition metrics in a grid
                                         LazyVGrid(columns: [
                                             GridItem(.flexible()),
                                             GridItem(.flexible()),
                                             GridItem(.flexible())
                                         ], spacing: 16) {
-                                            // Calories - prominent
                                             NutritionMetricCard(
                                                 value: item.calories.map { "\(Int($0))" } ?? "—",
                                                 label: "Calories",
@@ -218,7 +212,6 @@ struct MealScannerView3: View {
                                                 icon: "flame.fill"
                                             )
                                             
-                                            // Protein
                                             NutritionMetricCard(
                                                 value: item.protein.map { "\(Int($0))g" } ?? "—",
                                                 label: "Protein",
@@ -226,7 +219,6 @@ struct MealScannerView3: View {
                                                 icon: "figure.strengthtraining.traditional"
                                             )
                                             
-                                            // Carbs
                                             NutritionMetricCard(
                                                 value: item.carbs.map { "\(Int($0))g" } ?? "—",
                                                 label: "Carbs",
@@ -235,7 +227,6 @@ struct MealScannerView3: View {
                                             )
                                         }
                                         
-                                        // Secondary metrics
                                         HStack(spacing: 16) {
                                             NutritionMetricCard(
                                                 value: item.fat.map { "\(Int($0))g" } ?? "—",
@@ -252,7 +243,6 @@ struct MealScannerView3: View {
                                             )
                                         }
                                         
-                                        // Portion size
                                         if let portion = item.portionSize {
                                             HStack {
                                                 Image(systemName: "ruler.fill")
@@ -270,12 +260,13 @@ struct MealScannerView3: View {
                                 .cornerRadius(20)
                                 .shadow(color: Color.black.opacity(0.1), radius: 15, x: 0, y: 5)
                                 .padding(.horizontal)
+                                .delayedAppear(Double(index) * 0.1 + 0.15)
+                                .transition(.moveAndFade)
                             }
                                 
-                            // Action buttons - Log or Dismiss
                             VStack(spacing: 12) {
-                                // Log Meal Button - Save Immediately
                                 Button {
+                                    HapticManager.shared.mediumTap()
                                     Task {
                                         await logMealImmediately(resp: resp)
                                     }
