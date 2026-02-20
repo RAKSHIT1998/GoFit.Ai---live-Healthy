@@ -38,17 +38,25 @@ struct HomeDashboardView: View {
                 ScrollView {
                     VStack(spacing: Design.Spacing.lg) {
                         welcomeHeader
+                            .delayedAppear(0)
                         mainStatsCard
+                            .delayedAppear(0.1)
                         quickActionsSection
+                            .delayedAppear(0.2)
                         healthMetricsSection
+                            .delayedAppear(0.3)
                         waterIntakeCard
+                            .delayedAppear(0.4)
                         sugarMeterCard
+                            .delayedAppear(0.5)
                         aiRecommendationsCard
+                            .delayedAppear(0.6)
                     }
                     .padding(.horizontal, Design.Spacing.md)
                     .padding(.bottom, Design.Spacing.xl)
                 }
                 .refreshable {
+                    HapticManager.shared.lightTap()
                     await loadLiquidIntakeGoal()
                     await loadSummary()
                     await loadWaterIntake()
@@ -62,7 +70,10 @@ struct HomeDashboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { showingHistory = true } label: {
+                    Button {
+                        HapticManager.shared.lightTap()
+                        showingHistory = true
+                    } label: {
                         Image(systemName: "clock.fill")
                             .foregroundColor(Design.Colors.primary)
                     }
@@ -70,10 +81,16 @@ struct HomeDashboardView: View {
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button { showingFasting = true } label: {
+                        Button {
+                            HapticManager.shared.lightTap()
+                            showingFasting = true
+                        } label: {
                             Label("Fasting", systemImage: "timer")
                         }
-                        Button { showingShareProgress = true } label: {
+                        Button {
+                            HapticManager.shared.lightTap()
+                            showingShareProgress = true
+                        } label: {
                             Label("Share Progress", systemImage: "square.and.arrow.up")
                         }
                     } label: {
@@ -98,7 +115,6 @@ struct HomeDashboardView: View {
                 LiquidLogView()
                     .environmentObject(auth)
                     .onDisappear {
-                        // Reload water intake when sheet dismisses
                         Task {
                             await loadWaterIntake()
                         }
@@ -119,32 +135,31 @@ struct HomeDashboardView: View {
                     animateCards = true
                 }
 
-                // Run independent loads concurrently to reduce time-to-interactive and avoid UI hitching.
                 Task(priority: .userInitiated) {
-                    async let targetCalories: Void = loadTargetCalories() // AI-calculated target calories
-                    async let liquidGoal: Void = loadLiquidIntakeGoal() // Custom liquid intake goal
+                    async let targetCalories: Void = loadTargetCalories()
+                    async let liquidGoal: Void = loadLiquidIntakeGoal()
                     async let summary: Void = loadSummary()
                     async let water: Void = loadWaterIntake()
-                    async let backendHealth: Void = loadHealthData() // Backend first
+                    async let backendHealth: Void = loadHealthData()
 
                     _ = await (targetCalories, liquidGoal, summary, water, backendHealth)
 
-                    // Sync with HealthKit after baseline data is loaded.
                     await syncHealthData()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MealSaved"))) { _ in
-                // Reload immediately from local cache (instant update)
                 Task {
                     let localTotals = LocalMealCache.shared.getTodayTotals()
                     await MainActor.run {
-                        todayCalories = "\(Int(localTotals.calories))"
-                        todayProtein = "\(Int(localTotals.protein))g"
-                        todayCarbs = "\(Int(localTotals.carbs))g"
-                        todayFat = "\(Int(localTotals.fat))g"
-                        todaySugar = localTotals.sugar
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            todayCalories = "\(Int(localTotals.calories))"
+                            todayProtein = "\(Int(localTotals.protein))g"
+                            todayCarbs = "\(Int(localTotals.carbs))g"
+                            todayFat = "\(Int(localTotals.fat))g"
+                            todaySugar = localTotals.sugar
+                        }
+                        HapticManager.shared.lightTap()
                     }
-                    // Then sync with backend in background
                     await loadSummary()
                 }
             }
@@ -306,7 +321,10 @@ struct HomeDashboardView: View {
             HStack(spacing: Design.Spacing.md) {
                 // Scan Meal Button - Opens Camera
                 Button {
-                    showingScanner = true
+                    HapticManager.shared.mediumTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showingScanner = true
+                    }
                 } label: {
                     VStack(spacing: 12) {
                         Image(systemName: "camera.fill")
@@ -326,9 +344,13 @@ struct HomeDashboardView: View {
                     .cornerRadius(16)
                     .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                 }
+                .buttonStyle(SmoothButtonStyle())
 
                 Button {
-                    showingLiquidLog = true
+                    HapticManager.shared.mediumTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showingLiquidLog = true
+                    }
                 } label: {
                     VStack(spacing: 12) {
                         Image(systemName: "drop.fill")
@@ -348,9 +370,13 @@ struct HomeDashboardView: View {
                     .cornerRadius(16)
                     .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                 }
+                .buttonStyle(SmoothButtonStyle())
 
                 Button {
-                    showingWorkout = true
+                    HapticManager.shared.mediumTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showingWorkout = true
+                    }
                 } label: {
                     VStack(spacing: 12) {
                         Image(systemName: "figure.walk")
@@ -370,6 +396,7 @@ struct HomeDashboardView: View {
                     .cornerRadius(16)
                     .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
                 }
+                .buttonStyle(SmoothButtonStyle())
             }
         }
     }
@@ -393,6 +420,7 @@ struct HomeDashboardView: View {
                     Text("\(healthKit.todaySteps)")
                         .font(Design.Typography.headline)
                         .fontWeight(.bold)
+                        .transition(.scale)
                     
                     Text("Steps")
                         .font(Design.Typography.caption)

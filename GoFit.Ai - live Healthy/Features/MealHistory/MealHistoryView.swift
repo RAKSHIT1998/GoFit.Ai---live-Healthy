@@ -13,19 +13,22 @@ struct MealHistoryView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Scrollable calendar bar at top
                     ScrollableCalendarBar(selectedDate: $selectedDate) {
-                        // Callback when date is selected - opens sheet even if same date is tapped again
-                        showingDailyDetails = true
+                        HapticManager.shared.lightTap()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showingDailyDetails = true
+                        }
                     }
                     .padding(.vertical, Design.Spacing.md)
                     .background(Design.Colors.cardBackground)
+                    .transition(.move(edge: .top))
                     
-                    // Main content - show today's data by default
                     if let todayLog = logStore.getLog(for: selectedDate) {
                         dailyContentView(log: todayLog)
+                            .transition(.moveAndFade)
                     } else {
                         emptyStateView
+                            .transition(.opacity)
                     }
                 }
             }
@@ -34,6 +37,7 @@ struct MealHistoryView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        HapticManager.shared.lightTap()
                         showingDailyDetails = true
                     } label: {
                         Image(systemName: "info.circle")
@@ -45,7 +49,6 @@ struct MealHistoryView: View {
                 DailyDetailsSheet(date: selectedDate, isPresented: $showingDailyDetails)
             }
             .onAppear {
-                // Ensure we're observing log changes
                 _ = logStore.logs
             }
         }

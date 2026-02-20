@@ -93,25 +93,31 @@ struct WorkoutSuggestionsView: View {
                             .font(Design.Typography.body)
                             .foregroundColor(.secondary)
                     }
+                    .smoothFadeIn()
                 } else if let rec = recommendation {
                     ScrollView {
                         VStack(spacing: Design.Spacing.lg) {
                             headerBanner
                                 .padding(.horizontal, Design.Spacing.md)
                                 .padding(.top, Design.Spacing.md)
+                                .delayedAppear(0)
                             
                             tabSelector
                                 .padding(.horizontal, Design.Spacing.md)
+                                .delayedAppear(0.1)
                             
                             if selectedTab == 0 {
                                 workoutSection(rec.workoutPlan)
+                                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
                             } else {
                                 mealSection(rec.mealPlan)
+                                    .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing)))
                             }
                             
                             if !rec.insights.isEmpty {
                                 insightsCard(rec.insights)
                                     .padding(.horizontal, Design.Spacing.md)
+                                    .delayedAppear(0.2)
                             }
                         }
                         .padding(.bottom, Design.Spacing.xl)
@@ -129,6 +135,7 @@ struct WorkoutSuggestionsView: View {
                         },
                         actionTitle: "Load Recommendations"
                     )
+                    .smoothFadeIn()
                 }
             }
             .navigationTitle("Recommendations")
@@ -137,13 +144,16 @@ struct WorkoutSuggestionsView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
                         Button(action: {
+                            HapticManager.shared.lightTap()
                             showGifGenerationSheet = true
                         }) {
                             Image(systemName: "wand.and.stars")
                                 .foregroundColor(Design.Colors.primary)
                         }
+                        .buttonStyle(SmoothButtonStyle())
                         
                         Button(action: {
+                            HapticManager.shared.mediumTap()
                             Task { await refreshRecommendations() }
                         }) {
                             if isRefreshing {
@@ -154,6 +164,7 @@ struct WorkoutSuggestionsView: View {
                                     .foregroundColor(Design.Colors.primary)
                             }
                         }
+                        .buttonStyle(SmoothButtonStyle())
                         .disabled(isRefreshing || isLoading)
                     }
                 }
@@ -226,10 +237,16 @@ struct WorkoutSuggestionsView: View {
     private var tabSelector: some View {
         HStack(spacing: 0) {
             tabButton(title: "Workouts", icon: "figure.run", isSelected: selectedTab == 0) {
-                selectedTab = 0
+                HapticManager.shared.lightTap()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    selectedTab = 0
+                }
             }
             tabButton(title: "Meals", icon: "fork.knife", isSelected: selectedTab == 1) {
-                selectedTab = 1
+                HapticManager.shared.lightTap()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    selectedTab = 1
+                }
             }
         }
         .background(Design.Colors.secondaryBackground)
