@@ -78,14 +78,6 @@ struct WorkoutSuggestionsView: View {
     @State private var showGifGenerationSheet = false
     @State private var showPrivacyDisclosure = false // NEW: Show AI privacy disclosure
     @AppStorage("hasSeenAIPrivacyDisclosure") private var hasSeenPrivacyDisclosure = false // NEW: Track if user has seen privacy disclosure
-    @State private var expandedExercise: String?
-    @State private var isUsingFallback = true // Start with built-in data by default
-    @State private var isRefreshing = false
-    @State private var currentRequestTask: Task<Void, Never>?
-    @State private var selectedExerciseForDemo: Exercise? // NEW: For GIF demo modal
-    @State private var selectedMealForDemo: RecommendationMealItem? // NEW: For meal demo modal
-    @StateObject private var gifGenerator = AIGifGeneratorService.shared
-    @State private var showGifGenerationSheet = false
     
     var body: some View {
         NavigationStack {
