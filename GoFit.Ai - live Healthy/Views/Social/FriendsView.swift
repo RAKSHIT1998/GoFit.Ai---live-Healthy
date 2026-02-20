@@ -869,7 +869,7 @@ struct ActivityCardView: View {
             // Reactions and action buttons
             HStack(spacing: 8) {
                 HStack(spacing: 4) {
-                    ForEach(activity.reactions, id: \.self) { reaction in
+                    ForEach(Array(activity.reactions.enumerated()), id: \.offset) { index, reaction in
                         Text(reaction)
                             .font(.caption)
                     }
@@ -878,13 +878,13 @@ struct ActivityCardView: View {
                 Spacer()
                 
                 Menu {
-                    ForEach(["🔥", "❤️", "👍", "🎉", "💪"], id: \.self) { emoji in
+                    ForEach(Array(["🔥", "❤️", "👍", "🎉", "💪"].enumerated()), id: \.offset) { index, emoji in
                         Button(emoji) {
                             reactionSelection = emoji
                         }
                     }
                 } label: {
-                    Image(systemName: "smileyface")
+                    Image(systemName: "face.smiling")
                         .font(.caption)
                         .foregroundColor(Design.Colors.primary)
                 }
