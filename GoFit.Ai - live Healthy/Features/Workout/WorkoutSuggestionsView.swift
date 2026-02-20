@@ -39,7 +39,7 @@ struct WorkoutPlan: Codable {
 }
 
 struct Exercise: Codable, Identifiable {
-    var id: String { name } // Use name as unique identifier
+    var id: String { name }
     let name: String
     let duration: Int
     let calories: Int
@@ -51,8 +51,8 @@ struct Exercise: Codable, Identifiable {
     let difficulty: String?
     let muscleGroups: [String]?
     let equipment: [String]?
-    let gifUrl: String? // NEW: URL to exercise GIF animation
-    let videoUrl: String? // NEW: URL to exercise video
+    let gifUrl: String?
+    let videoUrl: String?
     let sources: [CitationSource]?
 }
 
@@ -66,18 +66,18 @@ struct WorkoutSuggestionsView: View {
     @State private var recommendation: RecommendationResponse?
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var selectedTab = 0 // 0: Workouts, 1: Meals
+    @State private var selectedTab = 0
     @State private var expandedMeal: String?
     @State private var expandedExercise: String?
-    @State private var isUsingFallback = true // Start with built-in data by default
+    @State private var isUsingFallback = true
     @State private var isRefreshing = false
     @State private var currentRequestTask: Task<Void, Never>?
-    @State private var selectedExerciseForDemo: Exercise? // NEW: For GIF demo modal
-    @State private var selectedMealForDemo: RecommendationMealItem? // NEW: For meal demo modal
+    @State private var selectedExerciseForDemo: Exercise?
+    @State private var selectedMealForDemo: RecommendationMealItem?
     @StateObject private var gifGenerator = AIGifGeneratorService.shared
     @State private var showGifGenerationSheet = false
-    @State private var showPrivacyDisclosure = false // NEW: Show AI privacy disclosure
-    @AppStorage("hasSeenAIPrivacyDisclosure") private var hasSeenPrivacyDisclosure = false // NEW: Track if user has seen privacy disclosure
+    @State private var showPrivacyDisclosure = false
+    @AppStorage("hasSeenAIPrivacyDisclosure") private var hasSeenPrivacyDisclosure = false
     
     var body: some View {
         NavigationStack {
@@ -96,23 +96,19 @@ struct WorkoutSuggestionsView: View {
                 } else if let rec = recommendation {
                     ScrollView {
                         VStack(spacing: Design.Spacing.lg) {
-                            // Header Banner
                             headerBanner
                                 .padding(.horizontal, Design.Spacing.md)
                                 .padding(.top, Design.Spacing.md)
                             
-                            // Tab Selector
                             tabSelector
                                 .padding(.horizontal, Design.Spacing.md)
                             
-                            // Content based on selected tab
                             if selectedTab == 0 {
                                 workoutSection(rec.workoutPlan)
                             } else {
                                 mealSection(rec.mealPlan)
                             }
                             
-                            // Insights Card
                             if !rec.insights.isEmpty {
                                 insightsCard(rec.insights)
                                     .padding(.horizontal, Design.Spacing.md)
@@ -140,7 +136,6 @@ struct WorkoutSuggestionsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
-                        // Generate GIFs button
                         Button(action: {
                             showGifGenerationSheet = true
                         }) {
@@ -148,7 +143,6 @@ struct WorkoutSuggestionsView: View {
                                 .foregroundColor(Design.Colors.primary)
                         }
                         
-                        // Refresh button
                         Button(action: {
                             Task { await refreshRecommendations() }
                         }) {
@@ -156,8 +150,8 @@ struct WorkoutSuggestionsView: View {
                                 ProgressView()
                                     .scaleEffect(0.8)
                             } else {
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundColor(Design.Colors.primary)
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundColor(Design.Colors.primary)
                             }
                         }
                         .disabled(isRefreshing || isLoading)
@@ -167,13 +161,11 @@ struct WorkoutSuggestionsView: View {
             .task {
                 await loadRecommendations()
             }
-            // Sheet for displaying exercise GIF demo
             .sheet(item: $selectedExerciseForDemo) { exercise in
                 ExerciseDemoView(exercise: exercise)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
-            // Sheet for displaying meal GIF demo
             .sheet(item: $selectedMealForDemo) { meal in
                 NavigationStack {
                     MealDemoView(meal: meal)
@@ -181,13 +173,11 @@ struct WorkoutSuggestionsView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-            // Sheet for GIF generation
             .sheet(isPresented: $showGifGenerationSheet) {
                 if let rec = recommendation {
                     GifGenerationView(exercises: rec.workoutPlan.exercises)
                 }
             }
-            // Sheet for AI Privacy Disclosure
             .sheet(isPresented: $showPrivacyDisclosure) {
                 PrivacyDisclosureView(
                     onAccept: {
@@ -196,11 +186,9 @@ struct WorkoutSuggestionsView: View {
                     },
                     onDecline: {
                         showPrivacyDisclosure = false
-                        // Optional: User declined, could disable AI recommendations
                     }
                 )
             }
-            // Show privacy disclosure on first load if not seen before
             .onAppear {
                 if !hasSeenPrivacyDisclosure {
                     showPrivacyDisclosure = true
@@ -238,10 +226,10 @@ struct WorkoutSuggestionsView: View {
     private var tabSelector: some View {
         HStack(spacing: 0) {
             tabButton(title: "Workouts", icon: "figure.run", isSelected: selectedTab == 0) {
-                    selectedTab = 0
+                selectedTab = 0
             }
             tabButton(title: "Meals", icon: "fork.knife", isSelected: selectedTab == 1) {
-                    selectedTab = 1
+                selectedTab = 1
             }
         }
         .background(Design.Colors.secondaryBackground)
@@ -282,9 +270,7 @@ struct WorkoutSuggestionsView: View {
         let visualService = RecommendationVisualService.shared
         
         return VStack(alignment: .leading, spacing: Design.Spacing.md) {
-            // Visual Header with Exercise Icon
             HStack(spacing: Design.Spacing.md) {
-                // Exercise Icon with gradient background
                 ZStack {
                     Circle()
                         .fill(Design.Colors.primaryGradient)
@@ -295,7 +281,6 @@ struct WorkoutSuggestionsView: View {
                         .foregroundColor(.white)
                 }
                 
-                // Exercise details
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(exercise.name)
@@ -335,7 +320,6 @@ struct WorkoutSuggestionsView: View {
                 Spacer()
             }
             
-            // Exercise details
             HStack(spacing: Design.Spacing.md) {
                 if let sets = exercise.sets {
                     detailBadge(icon: "repeat", text: "\(sets) sets")
@@ -352,7 +336,6 @@ struct WorkoutSuggestionsView: View {
                 detailBadge(icon: "figure.walk", text: exercise.type.capitalized)
             }
             
-            // Muscle groups
             if let muscleGroups = exercise.muscleGroups, !muscleGroups.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Design.Spacing.sm) {
@@ -369,7 +352,6 @@ struct WorkoutSuggestionsView: View {
                 }
             }
             
-            // Equipment
             if let equipment = exercise.equipment, !equipment.isEmpty {
                 HStack(spacing: Design.Spacing.sm) {
                     Image(systemName: "wrench.and.screwdriver.fill")
@@ -381,7 +363,6 @@ struct WorkoutSuggestionsView: View {
                 }
             }
             
-            // Instructions - How to Perform
             if let instructions = exercise.instructions, !instructions.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -410,7 +391,6 @@ struct WorkoutSuggestionsView: View {
                 .tint(Design.Colors.primary)
             }
             
-            // Sources/Citations
             if let sources = exercise.sources, !sources.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -460,7 +440,12 @@ struct WorkoutSuggestionsView: View {
                 )
                 .tint(Design.Colors.primary)
             }
-            
+        }
+        .padding(Design.Spacing.lg)
+        .cardStyle()
+    }
+    
+    // MARK: - Meal Section
     private func mealSection(_ plan: MealPlan) -> some View {
         VStack(alignment: .leading, spacing: Design.Spacing.lg) {
             mealCategory(title: "Breakfast", icon: "sunrise.fill", meals: plan.breakfast, color: .orange)
@@ -496,9 +481,7 @@ struct WorkoutSuggestionsView: View {
         let mealEmoji = visualService.getMealEmoji(for: meal.name)
         
         return VStack(alignment: .leading, spacing: Design.Spacing.md) {
-            // Visual Header
             HStack(spacing: Design.Spacing.md) {
-                // Meal emoji in colored circle
                 ZStack {
                     Circle()
                         .fill(Color(mealColor).opacity(0.2))
@@ -508,7 +491,6 @@ struct WorkoutSuggestionsView: View {
                         .font(.system(size: 28))
                 }
                 
-                // Meal details
                 VStack(alignment: .leading, spacing: 4) {
                     Text(meal.name)
                         .font(Design.Typography.headline)
@@ -525,7 +507,6 @@ struct WorkoutSuggestionsView: View {
                 Spacer()
             }
             
-            // Prep info
             HStack(spacing: Design.Spacing.md) {
                 if let prepTime = meal.prepTime {
                     Label("\(prepTime) min", systemImage: "clock.fill")
@@ -540,7 +521,6 @@ struct WorkoutSuggestionsView: View {
                 }
             }
             
-            // Ingredients
             if let ingredients = meal.ingredients, !ingredients.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -575,7 +555,6 @@ struct WorkoutSuggestionsView: View {
                 .tint(Design.Colors.primary)
             }
             
-            // Instructions - How to Make
             if let instructions = meal.instructions, !instructions.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -604,7 +583,6 @@ struct WorkoutSuggestionsView: View {
                 .tint(Design.Colors.primary)
             }
             
-            // Sources/Citations
             if let sources = meal.sources, !sources.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(
@@ -655,21 +633,21 @@ struct WorkoutSuggestionsView: View {
                 .tint(Design.Colors.primary)
             }
             
-                HStack(spacing: Design.Spacing.sm) {
-                    Image(systemName: "play.circle.fill")
-                    Text("View Recipe Video")
-                        .fontWeight(.semibold)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Design.Spacing.md)
-                .padding(.vertical, Design.Spacing.sm)
-                .background(Design.Colors.primary.opacity(0.1))
-                .foregroundColor(Design.Colors.primary)
-                .cornerRadius(Design.Radius.medium)
-            }        }
+            HStack(spacing: Design.Spacing.sm) {
+                Image(systemName: "play.circle.fill")
+                Text("View Recipe Video")
+                    .fontWeight(.semibold)
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Design.Spacing.md)
+            .padding(.vertical, Design.Spacing.sm)
+            .background(Design.Colors.primary.opacity(0.1))
+            .foregroundColor(Design.Colors.primary)
+            .cornerRadius(Design.Radius.medium)
+        }
         .padding(Design.Spacing.lg)
         .cardStyle()
     }
@@ -731,8 +709,8 @@ struct WorkoutSuggestionsView: View {
                         .foregroundColor(Design.Colors.primary)
                         .padding(.top, 6)
                     Text(insight)
-                .font(Design.Typography.body)
-                .foregroundColor(.secondary)
+                        .font(Design.Typography.body)
+                        .foregroundColor(.secondary)
                 }
             }
         }
@@ -757,29 +735,22 @@ struct WorkoutSuggestionsView: View {
     
     // MARK: - Network Functions
     private func loadRecommendations() async {
-        // Always start with built-in data for instant display
         await loadBuiltInRecommendations()
         
-        // Then try to load AI recommendations in background
-            if !EnvironmentConfig.skipAuthentication {
+        if !EnvironmentConfig.skipAuthentication {
             await tryLoadAIRecommendations()
         }
     }
     
     private func refreshRecommendations() async {
-        // Cancel any existing request
         currentRequestTask?.cancel()
         
         isRefreshing = true
         defer { isRefreshing = false }
         
-        // Always reload built-in recommendations first for instant feedback
-        // Use forceNew=true to get different meals/workouts on each refresh
         await loadBuiltInRecommendations(forceNew: true)
         
-        // Then try AI recommendations in background (will replace built-in if successful)
         if !EnvironmentConfig.skipAuthentication {
-            // Create a new task and store it
             let task = Task {
                 await tryLoadAIRecommendations(forceRefresh: true)
             }
@@ -790,15 +761,9 @@ struct WorkoutSuggestionsView: View {
     
     private func loadBuiltInRecommendations(forceNew: Bool = false) async {
         let goal = auth.goal.isEmpty ? "maintain" : auth.goal
-        // Use default activity level since AuthViewModel doesn't have this property
         let activityLevel = "moderate"
-        
-        // Get dietary preferences from auth (if available)
         let dietaryPreferences = auth.dietPrefs
         
-        // If forceNew (refresh), use timestamp-based seed for truly random selection each time
-        // Otherwise, use day-based seed for consistent daily recommendations
-        // Filter meals based on dietary preferences (vegan/vegetarian)
         let fallbackMeals = FallbackDataService.shared.getRandomMeals(goal: goal, count: 4, useTimestamp: forceNew, dietaryPreferences: dietaryPreferences)
         let fallbackWorkouts = FallbackDataService.shared.getRandomWorkouts(activityLevel: activityLevel, count: 4, useTimestamp: forceNew)
         
@@ -823,19 +788,14 @@ struct WorkoutSuggestionsView: View {
     }
     
     private func tryLoadAIRecommendations(forceRefresh: Bool = false) async {
-        // Don't set isLoading for background refresh to avoid blocking UI
         if !forceRefresh {
             isLoading = true
-            do { isLoading = false }
+            defer { isLoading = false }
         }
         
         do {
-            // For refresh, always use regenerate endpoint to force new generation
             let endpoint = forceRefresh ? "recommendations/regenerate" : "recommendations/daily"
             let method = forceRefresh ? "POST" : "GET"
-            
-            // For POST requests (regenerate), send empty JSON body
-            // Add timestamp to ensure we get fresh data (no caching)
             let bodyData: Data? = forceRefresh ? try? JSONSerialization.data(withJSONObject: ["forceNew": true, "timestamp": Date().timeIntervalSince1970]) : nil
             
             #if DEBUG
@@ -844,14 +804,12 @@ struct WorkoutSuggestionsView: View {
             }
             #endif
             
-            // Simple request without retry - if it fails, we use built-in data
             let response: RecommendationResponse = try await NetworkManager.shared.request(
                 endpoint,
                 method: method,
                 body: bodyData
             )
             
-            // Check if response has actual recommendations or is empty (AI unavailable)
             let hasMeals = !response.mealPlan.breakfast.isEmpty || 
                           !response.mealPlan.lunch.isEmpty || 
                           !response.mealPlan.dinner.isEmpty || 
@@ -859,7 +817,6 @@ struct WorkoutSuggestionsView: View {
             let hasWorkouts = !response.workoutPlan.exercises.isEmpty
             
             if !hasMeals && !hasWorkouts {
-                // Empty response means AI is unavailable - use fallback data
                 #if DEBUG
                 print("ℹ️ Received empty recommendations (AI unavailable), using built-in data")
                 #endif
@@ -884,17 +841,15 @@ struct WorkoutSuggestionsView: View {
                 print("✅ AI recommendations loaded successfully")
             }
         } catch {
-            // Handle different error types more gracefully
             let errorDescription: String
             if let urlError = error as? URLError {
                 switch urlError.code {
                 case .cancelled:
                     errorDescription = "Request was cancelled"
-                    // Don't log cancellation as an error - it's expected when user refreshes quickly
                     #if DEBUG
                     print("ℹ️ Recommendation request was cancelled (likely due to rapid refresh)")
                     #endif
-                    return // Exit early for cancellations
+                    return
                 case .timedOut:
                     errorDescription = "Request timed out"
                 case .notConnectedToInternet:
@@ -912,11 +867,9 @@ struct WorkoutSuggestionsView: View {
             print("⚠️ AI recommendations unavailable, using built-in data: \(errorDescription)")
             #endif
             
-            // If AI fails and we don't have built-in data yet, load it
             if recommendation == nil {
                 await loadBuiltInRecommendations()
             } else {
-                // Keep existing built-in data, just mark it
                 await MainActor.run {
                     isUsingFallback = true
                 }
