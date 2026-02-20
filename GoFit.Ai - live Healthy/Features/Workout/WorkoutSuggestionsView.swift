@@ -790,7 +790,7 @@ struct WorkoutSuggestionsView: View {
     private func tryLoadAIRecommendations(forceRefresh: Bool = false) async {
         if !forceRefresh {
             isLoading = true
-            defer { isLoading = false }
+            do { isLoading = false }
         }
         
         do {
