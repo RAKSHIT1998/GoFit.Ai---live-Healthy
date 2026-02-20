@@ -48,16 +48,13 @@ struct ManualMealLogView: View {
         }
         .scrollContentBackground(.hidden)
         .modifier(LoadingOverlay(isLoading: isSaving))
-        .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
-            if showSuccess {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        dismiss()
-                    }
-                }
+        .alert("Meal Saved!", isPresented: $showSuccess) {
+            Button("OK") {
+                dismiss()
             }
+        } message: {
+            Text("Your meal has been logged successfully.")
         }
-        .toast(isPresented: $showSuccess, message: "✅ Meal saved successfully!", type: .success)
     }
     
     private var mealTypeSection: some View {
