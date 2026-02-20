@@ -250,34 +250,6 @@ struct ManualMealLogView: View {
             }
         }
     }
-                    }
-                }
-            }
-            .navigationTitle("Log Meal Manually")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        Task {
-                            await saveMeal()
-                        }
-                    }
-                    .disabled(isSaving || !isValid)
-                    .bold()
-                }
-            }
-            .alert("Meal Saved!", isPresented: $showSuccess) {
-                Button("OK") {
-                    dismiss()
-                }
-            }
-        }
-    }
     
     private var isValid: Bool {
         !items.isEmpty && items.allSatisfy { !$0.name.isEmpty && $0.calories > 0 }
