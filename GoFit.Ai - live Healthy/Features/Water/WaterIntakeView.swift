@@ -41,8 +41,8 @@ struct WaterIntakeView: View {
                 
                 // Progress bar with smooth animation
                 SmoothProgressView(
-                    value: waterManager.waterIntakePercentage / 100,
-                    color: waterManager.isGoalMet ? .green : .blue
+                    progress: waterManager.waterIntakePercentage / 100,
+                    height: 8
                 )
             }
             

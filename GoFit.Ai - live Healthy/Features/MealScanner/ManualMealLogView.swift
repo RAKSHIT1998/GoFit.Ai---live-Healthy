@@ -123,7 +123,7 @@ struct ManualMealLogView: View {
             itemNutritionGrid(item: item)
         }
         .padding(.vertical, 4)
-        .transition(.moveAndFade)
+        .transition(.opacity.combined(with: .move(edge: .leading)))
     }
     
     private func itemNutritionGrid(item: Binding<EditableParsedItem>) -> some View {
