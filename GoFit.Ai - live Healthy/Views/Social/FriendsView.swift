@@ -15,72 +15,71 @@ struct FriendsView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                Design.Colors.background
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Header with stats
-                    VStack(spacing: 16) {
+        ZStack {
+            Design.Colors.background
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header with stats
+                VStack(spacing: 16) {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Friends & Social")
+                                .font(Design.Typography.headline)
+                                .foregroundColor(.primary)
+                            Text("\(friendsService.friends.count) friends connected")
+                                .font(Design.Typography.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        
                         HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Friends & Social")
-                                    .font(Design.Typography.headline)
-                                    .foregroundColor(.primary)
-                                Text("\(friendsService.friends.count) friends connected")
-                                    .font(Design.Typography.caption)
+                            VStack(alignment: .center, spacing: 4) {
+                                Text("\(friendsService.friendRequests.count)")
+                                    .font(.headline)
+                                    .foregroundColor(Design.Colors.primary)
+                                Text("Requests")
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            Spacer()
-                            
-                            HStack(spacing: 12) {
-                                VStack(alignment: .center, spacing: 4) {
-                                    Text("\(friendsService.friendRequests.count)")
-                                        .font(.headline)
-                                        .foregroundColor(Design.Colors.primary)
-                                    Text("Requests")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(12)
-                                .background(Design.Colors.cardBackground)
-                                .cornerRadius(12)
-                            }
-                        }
-                        .padding(.horizontal, Design.Spacing.md)
-                        .padding(.vertical, Design.Spacing.md)
-                        
-                        // Tab Picker with modern style
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach([FriendsTab.friends, .activity, .requests, .search], id: \.self) { tab in
-                                    Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: tabIcon(tab))
-                                            Text(tabName(tab))
-                                                .font(.subheadline)
-                                                .fontWeight(.semibold)
-                                        }
-                                        .foregroundColor(selectedTab == tab ? .white : .secondary)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(selectedTab == tab ? Design.Colors.primary : Design.Colors.cardBackground)
-                                        .cornerRadius(10)
-                                    }
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal, Design.Spacing.md)
+                            .frame(maxWidth: .infinity)
+                            .padding(12)
+                            .background(Design.Colors.cardBackground)
+                            .cornerRadius(12)
                         }
                     }
-                    .background(Design.Colors.background)
+                    .padding(.horizontal, Design.Spacing.md)
+                    .padding(.vertical, Design.Spacing.md)
                     
-                    Divider()
-                        .padding(.vertical, 8)
+                    // Tab Picker with modern style
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach([FriendsTab.friends, .activity, .requests, .search], id: \.self) { tab in
+                                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: tabIcon(tab))
+                                        Text(tabName(tab))
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(selectedTab == tab ? .white : .secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(selectedTab == tab ? Design.Colors.primary : Design.Colors.cardBackground)
+                                    .cornerRadius(10)
+                                }
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, Design.Spacing.md)
+                    }
+                }
+                .background(Design.Colors.background)
                 
+                Divider()
+                    .padding(.vertical, 8)
+            
                 // Content based on selected tab
                 ScrollView {
                     VStack(spacing: 0) {
@@ -143,7 +142,6 @@ struct FriendsView: View {
                 
                 Spacer()
             }
-            .navigationBarTitleDisplayMode(.inline)
             .alert("Error", isPresented: $showError) {
                 Button("OK") { }
             } message: {
@@ -722,6 +720,9 @@ struct ActivityFeedView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
+                .onAppear {
+                    loadActivities()
+                }
             } else if activities.isEmpty {
                 VStack(spacing: 24) {
                     Image(systemName: "bolt.slash")
@@ -753,7 +754,9 @@ struct ActivityFeedView: View {
             }
         }
         .onAppear {
-            loadActivities()
+            if isLoading {
+                loadActivities()
+            }
         }
     }
     
