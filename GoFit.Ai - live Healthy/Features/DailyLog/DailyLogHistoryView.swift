@@ -14,44 +14,57 @@ struct DailyLogHistoryView: View {
                     .ignoresSafeArea()
                 
                 if isLoading {
-                    ProgressView()
-                        .scaleEffect(1.5)
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading history...")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, Design.Spacing.md)
+                    }
+                    .smoothFadeIn()
                 } else if logs.isEmpty {
                     emptyStateView
+                        .smoothFadeIn()
                 } else {
                     ScrollView {
                         VStack(spacing: Design.Spacing.lg) {
-                            // Calendar view
                             CalendarProgressView(selectedDate: $selectedDate)
                                 .padding(.horizontal, Design.Spacing.md)
+                                .delayedAppear(0)
                             
-                            // Date selector
                             dateSelectorView
+                                .delayedAppear(0.1)
                             
-                            // Selected date summary
                             if let selectedLog = logStore.getLog(for: selectedDate) {
                                 dailySummaryCard(log: selectedLog)
+                                    .delayedAppear(0.2)
+                                    .transition(.moveAndFade)
                                 
-                                // Meals section
                                 if !selectedLog.meals.isEmpty {
                                     mealsSection(log: selectedLog)
+                                        .delayedAppear(0.3)
+                                        .transition(.moveAndFade)
                                 }
                                 
-                                // Liquid intake section
                                 if !selectedLog.liquidIntake.isEmpty {
                                     liquidIntakeSection(log: selectedLog)
+                                        .delayedAppear(0.4)
+                                        .transition(.moveAndFade)
                                 }
                                 
-                                // Activity section
                                 if selectedLog.caloriesBurned > 0 || selectedLog.steps != nil {
                                     activitySection(log: selectedLog)
+                                        .delayedAppear(0.5)
+                                        .transition(.moveAndFade)
                                 }
                             } else {
                                 noDataForDateView
+                                    .transition(.opacity)
                             }
                             
-                            // Recent days summary
                             recentDaysSummary
+                                .delayedAppear(0.6)
                         }
                         .padding(.horizontal, Design.Spacing.md)
                         .padding(.bottom, Design.Spacing.xl)
@@ -63,7 +76,10 @@ struct DailyLogHistoryView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        loadLogs()
+                        HapticManager.shared.mediumTap()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            loadLogs()
+                        }
                     }) {
                         Image(systemName: "arrow.clockwise")
                             .foregroundColor(Design.Colors.primary)
