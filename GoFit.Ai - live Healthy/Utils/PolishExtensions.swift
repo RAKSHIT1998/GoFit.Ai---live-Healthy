@@ -315,7 +315,7 @@ struct SmoothTabSelection: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .onChange(of: selection) { _ in
+            .onChange(of: selection) {
                 HapticManager.shared.lightTap()
                 withAnimation(.easeInOut(duration: 0.2)) {
                     // Animation

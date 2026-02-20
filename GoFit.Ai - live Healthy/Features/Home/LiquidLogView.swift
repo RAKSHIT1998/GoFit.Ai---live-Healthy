@@ -39,7 +39,7 @@ struct LiquidLogView: View {
                             .tag(type)
                         }
                     }
-                    .onChange(of: beverageType) { _ in
+                    .onChange(of: beverageType) {
                         HapticManager.shared.lightTap()
                     }
                 }
@@ -54,7 +54,7 @@ struct LiquidLogView: View {
                 Section("Amount") {
                     HStack {
                         Slider(value: $amount, in: 0.1...2.0, step: 0.05)
-                            .onChange(of: amount) { _ in
+                            .onChange(of: amount) {
                                 HapticManager.shared.lightTap()
                             }
                         Text("\(String(format: "%.2f", amount))L")
