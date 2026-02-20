@@ -169,7 +169,10 @@ struct AuthView: View {
                     }
                     
                     // Action button with enhanced design
-                    Button(action: handleAuth) {
+                    Button(action: {
+                        HapticManager.shared.mediumTap()
+                        handleAuth()
+                    }) {
                         HStack(spacing: 12) {
                             if isLoading {
                                 ProgressView()
@@ -210,6 +213,7 @@ struct AuthView: View {
                     
                     // Toggle mode with animation
                     Button(action: {
+                        HapticManager.shared.lightTap()
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                             isLoginMode.toggle()
                             errorMessage = nil
@@ -219,7 +223,6 @@ struct AuthView: View {
                                 confirmPassword = ""
                             }
                         }
-                        // Re-animate form after mode change
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation {
                                 animateForm = true
@@ -287,6 +290,7 @@ struct AuthView: View {
                     
                     // Sign in with Apple - Enhanced
                     Button(action: {
+                        HapticManager.shared.mediumTap()
                         handleAppleSignInButton()
                     }) {
                         HStack(spacing: 12) {

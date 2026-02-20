@@ -39,27 +39,38 @@ struct LiquidLogView: View {
                             .tag(type)
                         }
                     }
+                    .onChange(of: beverageType) { _ in
+                        HapticManager.shared.lightTap()
+                    }
                 }
                 
                 if beverageType != "water" {
                     Section("Beverage Name") {
                         TextField("e.g., Coca Cola, Red Wine, Whiskey", text: $beverageName)
+                            .dismissKeyboardOnSwipe()
                     }
                 }
                 
                 Section("Amount") {
                     HStack {
                         Slider(value: $amount, in: 0.1...2.0, step: 0.05)
+                            .onChange(of: amount) { _ in
+                                HapticManager.shared.lightTap()
+                            }
                         Text("\(String(format: "%.2f", amount))L")
                             .frame(width: 60)
                             .font(.headline)
+                            .transition(.scale)
                     }
                     
                     // Quick amount buttons
                     HStack(spacing: 12) {
                         ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { value in
                             Button(action: {
-                                amount = value
+                                HapticManager.shared.lightTap()
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    amount = value
+                                }
                             }) {
                                 Text("\(Int(value * 1000))ml")
                                     .font(.caption)
@@ -68,7 +79,9 @@ struct LiquidLogView: View {
                                     .background(amount == value ? Color.blue : Color.gray.opacity(0.2))
                                     .foregroundColor(amount == value ? .white : .primary)
                                     .cornerRadius(8)
+                                    .transition(.scale)
                             }
+                            .buttonStyle(SmoothButtonStyle())
                         }
                     }
                 }
@@ -81,6 +94,7 @@ struct LiquidLogView: View {
                             Text("\(Int(calculateCalories()))")
                                 .foregroundColor(Design.Colors.calories)
                                 .fontWeight(.semibold)
+                                .transition(.scale)
                         }
                         HStack {
                             Text("Sugar:")
@@ -88,6 +102,7 @@ struct LiquidLogView: View {
                             Text("\(String(format: "%.1f", calculateSugar()))g")
                                 .foregroundColor(Design.Colors.sugar)
                                 .fontWeight(.semibold)
+                                .transition(.scale)
                         }
                         Text("Values are automatically calculated based on beverage type and amount")
                             .font(.caption2)
@@ -100,19 +115,23 @@ struct LiquidLogView: View {
                         Text(error)
                             .foregroundColor(.red)
                             .font(.caption)
+                            .transition(.move(edge: .top))
                     }
                 }
             }
+            .smoothListStyle()
             .navigationTitle("Log Liquid")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
+                        HapticManager.shared.lightTap()
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        HapticManager.shared.mediumTap()
                         Task {
                             await saveLiquid()
                         }

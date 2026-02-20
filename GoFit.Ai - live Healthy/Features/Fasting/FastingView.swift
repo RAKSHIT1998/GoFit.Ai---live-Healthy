@@ -13,34 +13,33 @@ struct FastingView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Adaptive background for dark mode
                 Design.Colors.background
                     .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: Design.Spacing.xl) {
-                        // Timer Circle
                         timerCircle
                             .padding(.top, Design.Spacing.lg)
+                            .delayedAppear(0)
                         
-                        // Status Card
                         statusCard
                             .padding(.horizontal, Design.Spacing.md)
+                            .delayedAppear(0.1)
                         
-                        // Preset Windows
                         if !isFasting {
                             presetWindowsSection
                                 .padding(.horizontal, Design.Spacing.md)
+                                .delayedAppear(0.2)
                         }
                         
-                        // Streak Card
                         streakCard
                             .padding(.horizontal, Design.Spacing.md)
+                            .delayedAppear(0.3)
                         
-                        // Action Button
                         actionButton
                             .padding(.horizontal, Design.Spacing.md)
                             .padding(.bottom, Design.Spacing.xl)
+                            .delayedAppear(0.4)
                     }
                 }
             }
@@ -49,6 +48,7 @@ struct FastingView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
+                        HapticManager.shared.lightTap()
                         dismiss()
                     }
                     .foregroundColor(Design.Colors.primary)
@@ -61,8 +61,8 @@ struct FastingView: View {
             .onAppear {
                 withAnimation(Design.Animation.spring) {
                     animateTimer = true
-        }
-    }
+                }
+            }
         }
     }
     
@@ -161,16 +161,25 @@ struct FastingView: View {
             
             HStack(spacing: Design.Spacing.md) {
                 PresetButton(hours: 16, label: "16:8") {
-                    fastingWindowHours = 16
-                    startFast()
+                    HapticManager.shared.mediumTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        fastingWindowHours = 16
+                        startFast()
+                    }
                 }
                 PresetButton(hours: 18, label: "18:6") {
-                    fastingWindowHours = 18
-                    startFast()
+                    HapticManager.shared.mediumTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        fastingWindowHours = 18
+                        startFast()
+                    }
                 }
                 PresetButton(hours: 20, label: "20:4") {
-                    fastingWindowHours = 20
-                    startFast()
+                    HapticManager.shared.mediumTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        fastingWindowHours = 20
+                        startFast()
+                    }
                 }
             }
         }
@@ -215,10 +224,15 @@ struct FastingView: View {
     // MARK: - Action Button
     private var actionButton: some View {
         Button(action: {
-            if isFasting {
-                endFast()
-            } else {
-                startFast()
+            HapticManager.shared.mediumTap()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if isFasting {
+                    endFast()
+                    HapticManager.shared.warning()
+                } else {
+                    startFast()
+                    HapticManager.shared.success()
+                }
             }
         }) {
             HStack {
@@ -242,7 +256,7 @@ struct FastingView: View {
             .cornerRadius(Design.Radius.large)
             .shadow(color: Design.Colors.primary.opacity(0.3), radius: 12, x: 0, y: 6)
         }
-        .buttonStyle(AnimatedButtonStyle())
+        .buttonStyle(SmoothButtonStyle())
     }
     
     // MARK: - Functions

@@ -28,6 +28,7 @@ struct WaterIntakeView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                             .foregroundColor(.blue)
+                            .transition(.scale)
                         
                         Text("Goal: \(String(format: "%.1f L", waterManager.waterGoal))")
                             .font(.caption)
@@ -38,9 +39,11 @@ struct WaterIntakeView: View {
                 .background(Color(.systemBackground))
                 .cornerRadius(12)
                 
-                // Progress bar
-                ProgressView(value: waterManager.waterIntakePercentage / 100)
-                    .tint(waterManager.isGoalMet ? .green : .blue)
+                // Progress bar with smooth animation
+                SmoothProgressView(
+                    value: waterManager.waterIntakePercentage / 100,
+                    color: waterManager.isGoalMet ? .green : .blue
+                )
             }
             
             // Quick log buttons
@@ -54,17 +57,26 @@ struct WaterIntakeView: View {
                     HStack(spacing: 10) {
                         QuickLogButton(
                             preset: .small,
-                            action: { waterManager.logWaterPreset(amount: .small) }
+                            action: {
+                                HapticManager.shared.lightTap()
+                                waterManager.logWaterPreset(amount: .small)
+                            }
                         )
                         
                         QuickLogButton(
                             preset: .medium,
-                            action: { waterManager.logWaterPreset(amount: .medium) }
+                            action: {
+                                HapticManager.shared.lightTap()
+                                waterManager.logWaterPreset(amount: .medium)
+                            }
                         )
                         
                         QuickLogButton(
                             preset: .large,
-                            action: { waterManager.logWaterPreset(amount: .large) }
+                            action: {
+                                HapticManager.shared.lightTap()
+                                waterManager.logWaterPreset(amount: .large)
+                            }
                         )
                     }
                     
@@ -72,10 +84,18 @@ struct WaterIntakeView: View {
                     HStack(spacing: 10) {
                         QuickLogButton(
                             preset: .bottle,
-                            action: { waterManager.logWaterPreset(amount: .bottle) }
+                            action: {
+                                HapticManager.shared.lightTap()
+                                waterManager.logWaterPreset(amount: .bottle)
+                            }
                         )
                         
-                        Button(action: { showCustomInput = true }) {
+                        Button(action: {
+                            HapticManager.shared.mediumTap()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showCustomInput = true
+                            }
+                        }) {
                             VStack(spacing: 6) {
                                 Image(systemName: "plus.circle")
                                     .font(.title2)
@@ -93,11 +113,12 @@ struct WaterIntakeView: View {
                                     .stroke(Color.blue, lineWidth: 2)
                             )
                         }
+                        .buttonStyle(SmoothButtonStyle())
                     }
                 }
             }
             
-            // Today's intake history
+            // Today's intake history with staggered animations
             if !waterManager.intakeLogs.isEmpty {
                 VStack(spacing: 10) {
                     Text("Today's Intake")
@@ -105,7 +126,7 @@ struct WaterIntakeView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
                     VStack(spacing: 8) {
-                        ForEach(waterManager.intakeLogs.reversed()) { log in
+                        ForEach(Array(waterManager.intakeLogs.reversed().enumerated()), id: \.element.id) { index, log in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(log.formattedVolume)
@@ -127,12 +148,14 @@ struct WaterIntakeView: View {
                             .padding(.horizontal, 12)
                             .background(Color(.systemGray6))
                             .cornerRadius(8)
+                            .transition(.moveAndFade)
+                            .delayedAppear(Double(index) * 0.05)
                         }
                     }
                 }
             }
             
-            // Goal status
+            // Goal status with animation
             if waterManager.isGoalMet {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
@@ -145,6 +168,7 @@ struct WaterIntakeView: View {
                 .padding()
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(10)
+                .transition(.moveAndFade)
             } else if waterManager.waterRemaining > 0 {
                 HStack {
                     Image(systemName: "drop.circle")
