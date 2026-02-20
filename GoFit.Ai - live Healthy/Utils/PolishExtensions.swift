@@ -323,3 +323,9 @@ struct SmoothTabSelection: ViewModifier {
             }
     }
 }
+// MARK: - Custom Transitions
+extension AnyTransition {
+    static var moveAndFade: AnyTransition {
+        AnyTransition.opacity.combined(with: .move(edge: .leading))
+    }
+}
