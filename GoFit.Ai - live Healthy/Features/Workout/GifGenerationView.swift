@@ -305,7 +305,7 @@ struct GifGenerationView_Previews: PreviewProvider {
                 muscleGroups: ["Chest", "Triceps"],
                 equipment: ["None"],
                 gifUrl: nil,
-                videoUrl: nil
+                videoUrl: nil, sources: <#[CitationSource]?#>
             ),
             Exercise(
                 name: "Squats",
@@ -320,7 +320,7 @@ struct GifGenerationView_Previews: PreviewProvider {
                 muscleGroups: ["Quads", "Glutes"],
                 equipment: ["None"],
                 gifUrl: nil,
-                videoUrl: nil
+                videoUrl: nil, sources: <#[CitationSource]?#>
             )
         ]
         
