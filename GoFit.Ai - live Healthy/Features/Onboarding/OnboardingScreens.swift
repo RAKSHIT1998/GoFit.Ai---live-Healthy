@@ -5,6 +5,7 @@ struct OnboardingScreens: View {
     @EnvironmentObject var auth: AuthViewModel
     @State private var showingPermissions = false
     @State private var showingSignup = false
+    @State private var showingPrivacyDisclosure = false
     @FocusState private var isKeyboardVisible: Bool
     
     var body: some View {
@@ -177,6 +178,19 @@ struct OnboardingScreens: View {
                     print("📱 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
                     #endif
                 }
+        }
+        .sheet(isPresented: $showingPrivacyDisclosure) {
+            PrivacyDisclosureView(
+                onAccept: {
+                    showingPrivacyDisclosure = false
+                    UserDefaults.standard.set(true, forKey: "hasSeenAIPrivacyDisclosure")
+                },
+                onDecline: {
+                    showingPrivacyDisclosure = false
+                    // Still mark as seen even if declined, so it doesn't show again
+                    UserDefaults.standard.set(true, forKey: "hasSeenAIPrivacyDisclosure")
+                }
+            )
         }
     }
     
@@ -970,6 +984,7 @@ struct OnboardingSignupView: View {
     @State private var errorMessage: String?
     @State private var showingPaywall = false
     @State private var showingLogin = false
+    @State private var showingPrivacyDisclosure = false
     @State private var isLoginFromSignup = false // Track if login was initiated from signup screen
     
     // Focus state for keyboard management
@@ -1194,6 +1209,27 @@ struct OnboardingSignupView: View {
                 print("📱 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
             }
         }
+        .sheet(isPresented: $showingPrivacyDisclosure) {
+            PrivacyDisclosureView(
+                onAccept: {
+                    showingPrivacyDisclosure = false
+                    UserDefaults.standard.set(true, forKey: "hasSeenAIPrivacyDisclosure")
+                    // Show paywall after privacy disclosure
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showingPaywall = true
+                    }
+                },
+                onDecline: {
+                    showingPrivacyDisclosure = false
+                    // Still mark as seen even if declined
+                    UserDefaults.standard.set(true, forKey: "hasSeenAIPrivacyDisclosure")
+                    // Show paywall after privacy disclosure
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showingPaywall = true
+                    }
+                }
+            )
+        }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
                 .environmentObject(purchases)
@@ -1349,12 +1385,12 @@ struct OnboardingSignupView: View {
                     purchases.initializeTrialForNewUser()
                 }
                 
-                // Show paywall after signup with a small delay to ensure state is updated
-                // Do this on main thread after a brief delay
+                // Show privacy disclosure after signup with a small delay
+                // This ensures the user sees the privacy disclosure once during onboarding
                 await MainActor.run {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        if auth.isLoggedIn && !showingPaywall {
-                            showingPaywall = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if auth.isLoggedIn && !showingPrivacyDisclosure {
+                            showingPrivacyDisclosure = true
                         }
                     }
                 }

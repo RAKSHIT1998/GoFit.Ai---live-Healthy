@@ -76,8 +76,6 @@ struct WorkoutSuggestionsView: View {
     @State private var selectedMealForDemo: RecommendationMealItem?
     @StateObject private var gifGenerator = AIGifGeneratorService.shared
     @State private var showGifGenerationSheet = false
-    @State private var showPrivacyDisclosure = false
-    @AppStorage("hasSeenAIPrivacyDisclosure") private var hasSeenPrivacyDisclosure = false
     
     var body: some View {
         NavigationStack {
@@ -187,27 +185,6 @@ struct WorkoutSuggestionsView: View {
             .sheet(isPresented: $showGifGenerationSheet) {
                 if let rec = recommendation {
                     GifGenerationView(exercises: rec.workoutPlan.exercises)
-                }
-            }
-            .sheet(isPresented: $showPrivacyDisclosure) {
-                PrivacyDisclosureView(
-                    onAccept: {
-                        showPrivacyDisclosure = false
-                        hasSeenPrivacyDisclosure = true
-                    },
-                    onDecline: {
-                        showPrivacyDisclosure = false
-                        // Still mark as seen even if declined
-                        hasSeenPrivacyDisclosure = true
-                    }
-                )
-            }
-            .onAppear {
-                // Only show on first appearance when not previously seen
-                if !hasSeenPrivacyDisclosure {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        showPrivacyDisclosure = true
-                    }
                 }
             }
         }
