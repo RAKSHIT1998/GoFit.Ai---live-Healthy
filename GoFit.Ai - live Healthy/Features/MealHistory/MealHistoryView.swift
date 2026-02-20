@@ -58,22 +58,24 @@ struct MealHistoryView: View {
     private func dailyContentView(log: DailyLog) -> some View {
         ScrollView {
             VStack(spacing: Design.Spacing.lg) {
-                // Quick summary card
                 quickSummaryCard(log: log)
+                    .delayedAppear(0)
                 
-                // Meals section
                 if !log.meals.isEmpty {
                     mealsQuickView(log: log)
+                        .delayedAppear(0.1)
                 }
                 
-                // Liquid intake quick view
                 if !log.liquidIntake.isEmpty {
                     liquidQuickView(log: log)
+                        .delayedAppear(0.2)
                 }
                 
-                // Tap to see more button
                 Button {
-                    showingDailyDetails = true
+                    HapticManager.shared.lightTap()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showingDailyDetails = true
+                    }
                 } label: {
                     HStack {
                         Text("View Full Details")
@@ -86,6 +88,7 @@ struct MealHistoryView: View {
                     .background(Design.Colors.primary)
                     .cornerRadius(Design.Radius.medium)
                 }
+                .buttonStyle(SmoothButtonStyle())
                 .padding(.horizontal, Design.Spacing.md)
             }
             .padding(.vertical, Design.Spacing.md)
