@@ -1347,7 +1347,8 @@ struct FallbackDataService {
                 ingredients: ingredients,
                 instructions: instructions,
                 prepTime: prepTime,
-                servings: servings
+                servings: servings,
+                sources: nil
             )
         }
         
