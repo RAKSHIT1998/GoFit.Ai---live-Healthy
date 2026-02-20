@@ -64,7 +64,7 @@ struct ManualMealLogView: View {
                     Text(type.capitalized).tag(type)
                 }
             }
-            .onChange(of: mealType) { _ in
+            .onChange(of: mealType) {
                 HapticManager.shared.lightTap()
             }
         }
