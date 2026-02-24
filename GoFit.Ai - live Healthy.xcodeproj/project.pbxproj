@@ -313,7 +313,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"${CONFIGURATION}\" == \"Release\" ] && [ -d \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\" ]; then\n  find \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\" -name \"GoogleMobileAds.framework.dSYM\" -exec rm -rf {} + 2>/dev/null || true\n  find \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\" -name \"UserMessagingPlatform.framework.dSYM\" -exec rm -rf {} + 2>/dev/null || true\nfi\n";
+			shellScript = "# Google AdMob dSYMs are included in archive as required by App Store\necho \"Build phase complete\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

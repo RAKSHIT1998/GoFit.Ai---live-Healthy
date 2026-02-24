@@ -3,7 +3,6 @@ import SwiftUI
 struct AIDataConsentView: View {
     @Environment(\.dismiss) var dismiss
     @AppStorage("hasAcceptedAIConsent") private var hasAcceptedAIConsent = false
-    @State private var isShowingDetail = false
     
     var body: some View {
         NavigationView {
@@ -155,7 +154,9 @@ struct AIDataConsentView: View {
                     
                     // Privacy policy link
                     Button {
-                        isShowingDetail = true
+                        if let url = URL(string: "https://gofit-ai-live-healthy-1.onrender.com/privacy") {
+                            UIApplication.shared.open(url)
+                        }
                     } label: {
                         Text("View Full Privacy Policy")
                             .font(.caption)
@@ -173,9 +174,6 @@ struct AIDataConsentView: View {
                         dismiss()
                     }
                 }
-            }
-            .sheet(isPresented: $isShowingDetail) {
-                PrivacyPolicyView()
             }
         }
     }

@@ -58,8 +58,6 @@
 	<string>GoFit.Ai needs permission to save your weight and water intake data to Apple Health to keep your health information synchronized.</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5156494121502262~3452876720</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This allows us to show you personalized ads based on your interests.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
