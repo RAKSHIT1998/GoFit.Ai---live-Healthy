@@ -138,7 +138,8 @@ struct PaywallView: View {
             FeatureRow(icon: "camera.fill", title: "Unlimited AI Scans", description: "Scan meals instantly", delay: 0.1)
             FeatureRow(icon: "sparkles", title: "Smart AI Coach", description: "Daily meal & workout plans", delay: 0.2)
             FeatureRow(icon: "chart.bar.fill", title: "Advanced Insights", description: "Track progress easily", delay: 0.3)
-            FeatureRow(icon: "applewatch", title: "Apple Watch Sync", description: "HealthKit integration", delay: 0.4)
+            FeatureRow(icon: "rectangle.slash", title: "Ad-Free Experience", description: "No interruptions", delay: 0.4)
+            FeatureRow(icon: "applewatch", title: "Apple Watch Sync", description: "HealthKit integration", delay: 0.5)
         }
         .opacity(animateFeatures ? 1 : 0)
     }

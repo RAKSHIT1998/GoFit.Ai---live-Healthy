@@ -12,12 +12,18 @@ struct HomeDashboardView: View {
     @State private var showingWorkout = false
     @State private var showingLiquidLog = false
     @State private var showingShareProgress = false
+    @State private var showingDailyPhotoLog = false
 
     @State private var todayCalories = "—"
     @State private var todayProtein = "—"
     @State private var todayCarbs = "—"
     @State private var todayFat = "—"
     @State private var todaySugar: Double = 0
+    @State private var todayCaloriesValue: Double = 0
+    @State private var todayProteinValue: Double = 0
+    @State private var todayCarbsValue: Double = 0
+    @State private var todayFatValue: Double = 0
+    @State private var todaySugarValue: Double = 0
 
     @State private var fastingStatus = "Not fasting"
     @State private var waterIntake: Double = 0
@@ -54,6 +60,9 @@ struct HomeDashboardView: View {
                     }
                     .padding(.horizontal, Design.Spacing.md)
                     .padding(.bottom, Design.Spacing.xl)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    instantQuickLogButtons
                 }
                 .refreshable {
                     HapticManager.shared.lightTap()
@@ -130,6 +139,10 @@ struct HomeDashboardView: View {
                 )
                 .environmentObject(auth)
             }
+            .sheet(isPresented: $showingDailyPhotoLog) {
+                DailyPhotoLogView()
+                    .environmentObject(auth)
+            }
             .onAppear {
                 withAnimation(Design.Animation.spring) {
                     animateCards = true
@@ -157,11 +170,30 @@ struct HomeDashboardView: View {
                             todayCarbs = "\(Int(localTotals.carbs))g"
                             todayFat = "\(Int(localTotals.fat))g"
                             todaySugar = localTotals.sugar
+                            todayCaloriesValue = localTotals.calories
+                            todayProteinValue = localTotals.protein
+                            todayCarbsValue = localTotals.carbs
+                            todayFatValue = localTotals.fat
+                            todaySugarValue = localTotals.sugar
                         }
                         HapticManager.shared.lightTap()
                     }
+                    syncWatchMetrics(
+                        calories: localTotals.calories,
+                        protein: localTotals.protein,
+                        carbs: localTotals.carbs,
+                        fat: localTotals.fat,
+                        sugar: localTotals.sugar,
+                        water: waterIntake
+                    )
                     await loadSummary()
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openMealScannerFromWatch)) { _ in
+                showingScanner = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openWaterLogFromWatch)) { _ in
+                showingLiquidLog = true
             }
         }
     }
@@ -398,6 +430,38 @@ struct HomeDashboardView: View {
                 }
                 .buttonStyle(SmoothButtonStyle())
             }
+
+            Button {
+                HapticManager.shared.mediumTap()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingDailyPhotoLog = true
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.crop.square.filled.and.at.rectangle")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 50, height: 50)
+                        .background(Design.Colors.primary)
+                        .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Daily Photo")
+                            .font(Design.Typography.headline)
+                            .foregroundColor(.primary)
+                        Text("Log your daily photo")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                }
+                .padding(Design.Spacing.md)
+                .background(Design.Colors.cardBackground)
+                .cornerRadius(16)
+                .shadow(color: Color.primary.opacity(0.06), radius: 8, x: 0, y: 2)
+            }
+            .buttonStyle(SmoothButtonStyle())
         }
     }
 
@@ -689,7 +753,20 @@ struct HomeDashboardView: View {
             todayCarbs = "\(Int(localTotals.carbs))g"
             todayFat = "\(Int(localTotals.fat))g"
             todaySugar = localTotals.sugar
+            todayCaloriesValue = localTotals.calories
+            todayProteinValue = localTotals.protein
+            todayCarbsValue = localTotals.carbs
+            todayFatValue = localTotals.fat
+            todaySugarValue = localTotals.sugar
         }
+        syncWatchMetrics(
+            calories: localTotals.calories,
+            protein: localTotals.protein,
+            carbs: localTotals.carbs,
+            fat: localTotals.fat,
+            sugar: localTotals.sugar,
+            water: waterIntake
+        )
         print("✅ Loaded from local cache: \(Int(localTotals.calories)) kcal")
         
         // THEN: Sync with backend in background (non-blocking)
@@ -733,7 +810,20 @@ struct HomeDashboardView: View {
                 todayCarbs = "\(Int(carbs))g"
                 todayFat = "\(Int(fat))g"
                 todaySugar = sugar
+                todayCaloriesValue = calories
+                todayProteinValue = protein
+                todayCarbsValue = carbs
+                todayFatValue = fat
+                todaySugarValue = sugar
             }
+            syncWatchMetrics(
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                sugar: sugar,
+                water: waterIntake
+            )
             print("✅ Synced with backend: \(Int(calories)) kcal")
         } catch {
             print("⚠️ Backend sync failed, using local cache: \(error.localizedDescription)")
@@ -832,9 +922,70 @@ struct HomeDashboardView: View {
             await MainActor.run {
                 waterIntake = summary.today.water ?? 0
             }
+            syncWatchMetrics(
+                calories: todayCaloriesValue,
+                protein: todayProteinValue,
+                carbs: todayCarbsValue,
+                fat: todayFatValue,
+                sugar: todaySugarValue,
+                water: summary.today.water ?? 0
+            )
         } catch {
             print("⚠️ Failed to load water intake: \(error.localizedDescription)")
         }
+    }
+
+    private func syncWatchMetrics(
+        calories: Double,
+        protein: Double,
+        carbs: Double,
+        fat: Double,
+        sugar: Double,
+        water: Double
+    ) {
+        let payload = WatchNutritionPayload(
+            timestamp: Date(),
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            fiber: 0,
+            sugar: sugar,
+            water: water
+        )
+        WatchSyncManager.shared.sendNutritionUpdate(payload)
+    }
+
+    private var instantQuickLogButtons: some View {
+        VStack(spacing: 12) {
+            Button {
+                HapticManager.shared.lightTap()
+                showingScanner = true
+            } label: {
+                Image(systemName: "camera.fill")
+                    .font(.title3)
+                    .foregroundColor(.white)
+                    .frame(width: 52, height: 52)
+                    .background(Design.Colors.primary)
+                    .clipShape(Circle())
+                    .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 4)
+            }
+
+            Button {
+                HapticManager.shared.lightTap()
+                showingLiquidLog = true
+            } label: {
+                Image(systemName: "drop.fill")
+                    .font(.title3)
+                    .foregroundColor(.white)
+                    .frame(width: 52, height: 52)
+                    .background(Design.Colors.water)
+                    .clipShape(Circle())
+                    .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 4)
+            }
+        }
+        .padding(.trailing, 20)
+        .padding(.bottom, 20)
     }
     
     // Load health data from backend (steps, calories)

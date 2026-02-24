@@ -10,6 +10,7 @@
 		B22104E42F20F580002672E4 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24022212EED789700CDE033 /* StoreKit.framework */; };
 		B22104E72F20F582002672E4 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B27DDA162EEF07D70047CE53 /* HealthKit.framework */; };
 		B22104E92F20F583002672E4 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F86E432EED7C1E009F03C0 /* WatchConnectivity.framework */; };
+		B2F8D1402F49F26A00F6535E /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = B2F8D13F2F49F26A00F6535E /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +94,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B2F8D1402F49F26A00F6535E /* GoogleMobileAds in Frameworks */,
 				B22104E72F20F582002672E4 /* HealthKit.framework in Frameworks */,
 				B22104E42F20F580002672E4 /* StoreKit.framework in Frameworks */,
 				B22104E92F20F583002672E4 /* WatchConnectivity.framework in Frameworks */,
@@ -170,6 +172,7 @@
 			);
 			name = "GoFit.Ai - live Healthy";
 			packageProductDependencies = (
+				B2F8D13F2F49F26A00F6535E /* GoogleMobileAds */,
 			);
 			productName = "GoFit.Ai - live Healthy";
 			productReference = B2484A8D2EEC79A2009D604B /* GoFit.Ai - live Healthy.app */;
@@ -253,6 +256,9 @@
 			);
 			mainGroup = B2484A842EEC79A2009D604B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B2F8D13E2F49F1CC00F6535E /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B2484A8E2EEC79A2009D604B /* Products */;
 			projectDirPath = "";
@@ -519,6 +525,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -652,6 +659,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B2F8D13E2F49F1CC00F6535E /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B2F8D13F2F49F26A00F6535E /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B2F8D13E2F49F1CC00F6535E /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B2484A852EEC79A2009D604B /* Project object */;
 }

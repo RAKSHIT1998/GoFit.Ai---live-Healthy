@@ -4,8 +4,10 @@ struct RootView: View {
     @StateObject private var auth = AuthViewModel()
     @StateObject private var purchases = PurchaseManager()
     @StateObject private var healthKit = HealthKitService.shared
+    @EnvironmentObject var adManager: AdManager
     
     @State private var hasCheckedSubscriptionAfterLogin = false
+    @State private var hasShownInitialAd = false
     
     var body: some View {
         Group {
@@ -36,6 +38,9 @@ struct RootView: View {
             }
         }
         .onAppear {
+            // Connect AdManager to PurchaseManager
+            adManager.setPurchaseManager(purchases)
+            
             purchases.loadProducts()
             
             // Check subscription and trial status on app launch
@@ -46,6 +51,14 @@ struct RootView: View {
                     await purchases.checkTrialAndSubscriptionStatus()
                     await MainActor.run {
                         hasCheckedSubscriptionAfterLogin = true
+                    }
+                    
+                    // Show app open ad if user doesn't have subscription
+                    if !hasShownInitialAd && !purchases.hasActiveSubscription {
+                        // Delay ad slightly to let app fully load
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+                        adManager.showAppOpenAd()
+                        hasShownInitialAd = true
                     }
                 }
             }
@@ -67,6 +80,7 @@ struct RootView: View {
                 // When user logs in/signs up, initialize trial and check subscription
                 // Reset the flag to prevent premature paywall display
                 hasCheckedSubscriptionAfterLogin = false
+                hasShownInitialAd = false
                 
                 Task {
                     // Give paywall time to show after signup if needed
@@ -81,6 +95,14 @@ struct RootView: View {
                         hasCheckedSubscriptionAfterLogin = true
                     }
                     
+                    // Show app open ad if user doesn't have subscription
+                    if !hasShownInitialAd && !purchases.hasActiveSubscription {
+                        // Delay ad slightly to let app fully load
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+                        adManager.showAppOpenAd()
+                        hasShownInitialAd = true
+                    }
+                    
                     healthKit.checkAuthorizationStatus()
                     if healthKit.isAuthorized {
                         healthKit.startPeriodicSync()
@@ -91,6 +113,7 @@ struct RootView: View {
             } else {
                 // When user logs out, stop HealthKit sync and reset flag
                 hasCheckedSubscriptionAfterLogin = false
+                hasShownInitialAd = false
                 healthKit.stopPeriodicSync()
             }
         }

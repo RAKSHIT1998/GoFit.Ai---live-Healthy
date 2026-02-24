@@ -3,9 +3,12 @@ import SwiftUI
 struct OnboardingScreens: View {
     @StateObject private var viewModel = OnboardingViewModel()
     @EnvironmentObject var auth: AuthViewModel
+    @EnvironmentObject var purchases: PurchaseManager
     @State private var showingPermissions = false
     @State private var showingSignup = false
     @State private var showingPrivacyDisclosure = false
+    @State private var showingSubscription = false
+    @State private var shouldSkipWithAds = false
     @FocusState private var isKeyboardVisible: Bool
     
     var body: some View {
@@ -159,6 +162,7 @@ struct OnboardingScreens: View {
         .sheet(isPresented: $showingSignup) {
             OnboardingSignupView(viewModel: viewModel)
                 .environmentObject(auth)
+                .environmentObject(purchases)
                 .presentationDetents([.large]) // Ensure full screen on iPad
                 .presentationDragIndicator(.visible)
                 .onAppear {
@@ -177,6 +181,24 @@ struct OnboardingScreens: View {
                     print("📱 auth.name: '\(auth.name)'")
                     print("📱 auth.onboardingData?.name: '\(auth.onboardingData?.name ?? "nil")'")
                     #endif
+                }
+                .onDisappear {
+                    // After signup completes, show subscription screen
+                    if auth.isLoggedIn {
+                        showingSubscription = true
+                    }
+                }
+        }
+        .sheet(isPresented: $showingSubscription) {
+            OnboardingSubscriptionView(shouldSkipWithAds: $shouldSkipWithAds)
+                .environmentObject(purchases)
+                .interactiveDismissDisabled(true)
+                .onDisappear {
+                    // If user skipped with ads or completed subscription, finish onboarding
+                    if shouldSkipWithAds || purchases.hasActiveSubscription {
+                        auth.didFinishOnboarding = true
+                        auth.saveLocalState()
+                    }
                 }
         }
         .sheet(isPresented: $showingPrivacyDisclosure) {
@@ -1375,24 +1397,10 @@ struct OnboardingSignupView: View {
                 )
                 print("✅ Signup successful from OnboardingSignupView")
                 
-                // Mark onboarding as complete first
+                // Dismiss signup so subscription screen can appear
                 await MainActor.run {
                     isLoading = false // Reset loading state after successful signup
-                    auth.didFinishOnboarding = true
-                    auth.saveLocalState()
-                    
-                    // Initialize trial for new user after successful signup
-                    purchases.initializeTrialForNewUser()
-                }
-                
-                // Show privacy disclosure after signup with a small delay
-                // This ensures the user sees the privacy disclosure once during onboarding
-                await MainActor.run {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        if auth.isLoggedIn && !showingPrivacyDisclosure {
-                            showingPrivacyDisclosure = true
-                        }
-                    }
+                    dismiss()
                 }
             } catch {
                 print("❌ Signup failed in OnboardingSignupView: \(error.localizedDescription)")

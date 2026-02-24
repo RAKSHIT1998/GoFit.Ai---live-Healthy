@@ -3,9 +3,13 @@ import StoreKit
 
 @MainActor
 class PurchaseManager: ObservableObject {
+    
+    // MARK: - Shared Instance (for AdManager)
+    static var shared: PurchaseManager?
 
     // MARK: - Published State
     @Published var hasActiveSubscription = false
+    @Published var isPremiumActive = false
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var products: [Product] = []
@@ -58,6 +62,9 @@ class PurchaseManager: ObservableObject {
         startStatusMonitoring()
         // Don't initialize trial here - only when user signs up or first uses the app
         // This prevents premature trial start for users who haven't signed up yet
+        
+        // Set shared instance
+        PurchaseManager.shared = self
     }
     
     // MARK: - Trial Management
@@ -262,6 +269,7 @@ class PurchaseManager: ObservableObject {
                 await transaction.finish()
 
                 hasActiveSubscription = true
+                isPremiumActive = true
                 
                 // Recheck trial and subscription status after purchase
                 await checkTrialAndSubscriptionStatus()
@@ -369,6 +377,7 @@ class PurchaseManager: ObservableObject {
         // Active subscription includes both .active and .trial statuses
         // But we prioritize .active for paid subscriptions
         hasActiveSubscription = (highestStatus == .active || highestStatus == .trial)
+        isPremiumActive = (highestStatus == .active)
 
         if let product = highestProduct {
             currentSubscription = CurrentSubscriptionInfo(
@@ -622,6 +631,7 @@ class PurchaseManager: ObservableObject {
             
             await MainActor.run {
                 hasActiveSubscription = backendResponse.hasActiveSubscription
+                isPremiumActive = backendResponse.isPremiumActive ?? (newStatus == .active)
                 subscriptionStatus = newStatus
                 
                 // Update trial days remaining only if backend indicates trial

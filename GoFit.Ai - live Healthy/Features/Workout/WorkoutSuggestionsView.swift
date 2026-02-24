@@ -63,6 +63,8 @@ struct HydrationGoal: Codable {
 // MARK: - Main View
 struct WorkoutSuggestionsView: View {
     @EnvironmentObject var auth: AuthViewModel
+    @EnvironmentObject var purchases: PurchaseManager
+    @StateObject private var featureGate = FeatureGateService.shared
     @State private var recommendation: RecommendationResponse?
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -76,6 +78,7 @@ struct WorkoutSuggestionsView: View {
     @State private var selectedMealForDemo: RecommendationMealItem?
     @StateObject private var gifGenerator = AIGifGeneratorService.shared
     @State private var showGifGenerationSheet = false
+    @State private var showPremiumUpsell = false
     
     var body: some View {
         NavigationStack {
@@ -168,7 +171,11 @@ struct WorkoutSuggestionsView: View {
                 }
             }
             .task {
+                featureGate.setPurchaseManager(purchases)
                 await loadRecommendations()
+            }
+            .onChange(of: purchases.hasActiveSubscription) { oldValue, newValue in
+                featureGate.updatePremiumStatus()
             }
             .sheet(item: $selectedExerciseForDemo) { exercise in
                 ExerciseDemoView(exercise: exercise)
@@ -187,6 +194,10 @@ struct WorkoutSuggestionsView: View {
                     GifGenerationView(exercises: rec.workoutPlan.exercises)
                 }
             }
+            .sheet(isPresented: $showPremiumUpsell) {
+                PaywallView()
+                    .environmentObject(purchases)
+            }
         }
     }
     
@@ -198,6 +209,30 @@ struct WorkoutSuggestionsView: View {
                     .foregroundColor(Design.Colors.primary)
                     .font(.title2)
                 VStack(alignment: .leading, spacing: 4) {
+                    
+                    // Show recommendation limit for free users
+                    if !featureGate.isPremiumUser {
+                        HStack(spacing: 4) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                            Text("Limited to \(featureGate.freeUserRecommendationsLimit) recommendations")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                            Button(action: {
+                                showPremiumUpsell = true
+                            }) {
+                                Text("Upgrade")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Design.Colors.primary)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
                     Text(isUsingFallback ? "Built-in Recipes & Workouts" : "AI Recommendations")
                         .font(Design.Typography.headline)
                         .foregroundColor(.primary)
