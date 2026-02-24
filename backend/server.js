@@ -205,6 +205,17 @@ app.get('/invite', (req, res) => {
   res.sendFile('invite.html', { root: 'public' });
 });
 
+// Invite shortcut (universal link trigger)
+app.get('/i', (req, res) => {
+  res.sendFile('invite.html', { root: 'public' });
+});
+
+// Apple App Site Association (Universal Links)
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.sendFile('apple-app-site-association', { root: 'public/.well-known' });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/photo', photoRoutes);

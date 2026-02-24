@@ -57,17 +57,22 @@
     const params = new URLSearchParams(window.location.search);
     const from = params.get("from");
     const deepLink = from ? `gofitai://invite?from=${encodeURIComponent(from)}` : "gofitai://invite";
+    const universalLink = from ? `https://gofit-ai-live-healthy-1.onrender.com/i?from=${encodeURIComponent(from)}` : "https://gofit-ai-live-healthy-1.onrender.com/i";
     const appStoreLink = "https://apps.apple.com/in/app/gofit-ai-live-healthy/id6758199913";
     const openBtn = document.getElementById("openApp");
     const fallback = document.getElementById("fallback");
-    openBtn.href = deepLink;
+    openBtn.href = universalLink;
     fallback.href = appStoreLink;
 
     // Open app on tap, fallback to App Store if not installed
     openBtn.addEventListener("click", (e) => {
       e.preventDefault();
       const start = Date.now();
-      window.location.href = deepLink;
+      window.location.href = universalLink;
+      // Fallback: try custom scheme if universal link doesn't open (some in-app browsers)
+      setTimeout(() => {
+        window.location.href = deepLink;
+      }, 200);
       setTimeout(() => {
         if (Date.now() - start < 1500) {
           window.location.href = appStoreLink;

@@ -142,8 +142,14 @@ struct RootView: View {
     }
 
     private func handleInviteURL(_ url: URL) {
-        guard url.scheme?.lowercased() == "gofitai" else { return }
-        guard url.host?.lowercased() == "invite" else { return }
+        let scheme = url.scheme?.lowercased()
+        let host = url.host?.lowercased()
+        let path = url.path.lowercased()
+
+        let isCustomScheme = (scheme == "gofitai" && host == "invite")
+        let isUniversalLink = (scheme == "https" && host == "gofit-ai-live-healthy-1.onrender.com" && (path == "/invite" || path == "/i"))
+
+        guard isCustomScheme || isUniversalLink else { return }
 
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let inviterId = components?.queryItems?.first(where: { $0.name == "from" })?.value

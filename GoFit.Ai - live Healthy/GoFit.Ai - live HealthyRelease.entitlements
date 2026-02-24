@@ -18,6 +18,10 @@
 	<true/>
 	<key>com.apple.developer.healthkit.recalibrate-estimates</key>
 	<true/>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:gofit-ai-live-healthy-1.onrender.com</string>
+	</array>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<key>com.apple.security.files.user-selected.read-only</key>

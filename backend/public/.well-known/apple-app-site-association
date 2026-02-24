@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "48TGY734WW.com.rakshit.gofitai",
+        "paths": [
+          "/invite*",
+          "/i*"
+        ]
+      }
+    ]
+  }
+}
