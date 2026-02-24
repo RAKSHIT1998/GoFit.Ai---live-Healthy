@@ -152,6 +152,9 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Serve static files (privacy policy, terms of service, etc.)
+app.use(express.static('public'));
+
 // Root route - API information
 app.get('/', (req, res) => {
   res.json({
@@ -190,6 +193,11 @@ app.get('/', (req, res) => {
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Privacy policy
+app.get('/privacy', (req, res) => {
+  res.sendFile('privacy.html', { root: 'public' });
 });
 
 // API routes
