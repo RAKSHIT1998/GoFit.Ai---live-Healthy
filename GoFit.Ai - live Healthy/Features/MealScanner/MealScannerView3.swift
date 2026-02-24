@@ -452,6 +452,20 @@ struct MealScannerView3: View {
                 ManualMealLogView()
                     .environmentObject(authVM)
             }
+            .sheet(isPresented: $showingAIConsentSheet) {
+                AIDataConsentView()
+                    .onDisappear {
+                        // If user accepted consent, process the captured image
+                        if hasAcceptedAIConsent, let image = capturedImage {
+                            Task {
+                                await uploadImage(image)
+                            }
+                        } else {
+                            // User declined, clear the captured image
+                            capturedImage = nil
+                        }
+                    }
+            }
             .sheet(isPresented: $showEditScreen) {
                 NavigationView {
                     EditParsedItemsView(items: $editableItems) { finalItems in

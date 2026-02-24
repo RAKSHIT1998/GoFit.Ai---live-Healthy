@@ -1,4 +1,8 @@
 // Calculate recommended calorie intake based on user data
+// References:
+// - Mifflin-St Jeor Equation: https://pubmed.ncbi.nlm.nih.gov/2305711/
+// - WHO Physical Activity Guidelines: https://www.who.int/news-room/fact-sheets/detail/physical-activity
+// - Mayo Clinic Weight Loss: https://www.mayoclinic.org/healthy-lifestyle/weight-loss/in-depth/calories/art-20048065
 export function calculateCalories(user) {
   const { weightKg, heightCm, activityLevel, goals, age = 30 } = user.metrics || {};
   
@@ -7,24 +11,29 @@ export function calculateCalories(user) {
   }
 
   // Calculate BMR using Mifflin-St Jeor Equation
+  // Reference: Mifflin MD, St Jeor ST, et al. "A new predictive equation for resting energy expenditure in healthy individuals."
+  // Am J Clin Nutr. 1990 Feb;51(2):241-7. PMID: 2305711
   // BMR = 10 × weight(kg) + 6.25 × height(cm) - 5 × age(years) + 5 (for men)
   // BMR = 10 × weight(kg) + 6.25 × height(cm) - 5 × age(years) - 161 (for women)
   // Using average (assuming gender-neutral calculation)
   const bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
 
-  // Activity multipliers
+  // Activity multipliers based on WHO Physical Activity Level (PAL) guidelines
+  // Reference: World Health Organization. "Physical activity" Fact Sheet. https://www.who.int/news-room/fact-sheets/detail/physical-activity
   const activityMultipliers = {
-    sedentary: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    active: 1.725,
-    very_active: 1.9
+    sedentary: 1.2,     // Little or no exercise
+    light: 1.375,       // Light exercise/sports 1-3 days/week
+    moderate: 1.55,     // Moderate exercise/sports 3-5 days/week
+    active: 1.725,      // Hard exercise/sports 6-7 days a week
+    very_active: 1.9    // Very hard exercise & physical job
   };
 
   const multiplier = activityMultipliers[activityLevel] || 1.55;
   let tdee = bmr * multiplier;
 
   // Adjust based on goals
+  // Safe weight loss/gain rate: ~1 lb/week = ~500 calorie deficit/surplus per day
+  // Reference: Mayo Clinic. "Calorie calculator". https://www.mayoclinic.org/healthy-lifestyle/weight-loss/in-depth/calories/art-20048065
   const goalAdjustments = {
     lose: -500, // 500 calorie deficit for ~1 lb/week weight loss
     maintain: 0,

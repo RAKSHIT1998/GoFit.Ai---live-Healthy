@@ -6,6 +6,34 @@ import { authMiddleware } from '../middleware/authMiddleware.js';
 import { Queue } from 'bullmq';
 import { getRedis, isRedisEnabled } from '../config/redis.js';
 
+/**
+ * Photo Analysis Route - AI-Powered Meal Recognition
+ * 
+ * DATA PRIVACY & AI USAGE:
+ * This endpoint sends user-uploaded food photos to OpenAI's GPT-4 Vision API for analysis.
+ * 
+ * Data Sent to OpenAI:
+ * - Food photos (base64-encoded images)
+ * - Timestamp of upload
+ * - Analysis request prompts
+ * 
+ * Data NOT Sent:
+ * - User's name, email, or personal identification
+ * - User's location or device information
+ * - Any health records or medical history
+ * 
+ * OpenAI Privacy Policy: https://openai.com/policies/privacy-policy
+ * OpenAI API Terms: https://openai.com/policies/terms-of-use
+ * 
+ * Data Retention:
+ * - OpenAI: As per their data retention policy (30 days for API calls as of Feb 2024)
+ * - Our Storage: Images stored in AWS S3 (if configured) with user's explicit consent
+ * 
+ * Nutritional Data Sources:
+ * - USDA FoodData Central: https://fdc.nal.usda.gov/
+ * - Established nutritional databases used by AI model training
+ */
+
 const router = express.Router();
 
 // Configure multer for memory storage
