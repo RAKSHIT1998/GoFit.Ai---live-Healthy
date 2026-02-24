@@ -313,7 +313,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Google AdMob dSYMs are included in archive as required by App Store\necho \"Build phase complete\"\n";
+			shellScript = "# Ensure Google AdMob dSYMs are copied into the archive\nif [ \"${CONFIGURATION}\" == \"Release\" ]; then\n  echo \"🔎 Searching for Google framework dSYMs...\"\n  FOUND=0\n  for NAME in \"GoogleMobileAds.framework.dSYM\" \"UserMessagingPlatform.framework.dSYM\"; do\n    if [ -d \"${BUILT_PRODUCTS_DIR}/${NAME}\" ]; then\n      rsync -a \"${BUILT_PRODUCTS_DIR}/${NAME}\" \"${DWARF_DSYM_FOLDER_PATH}/\"\n      FOUND=1\n    else\n      FOUND_PATH=$(find \"${BUILD_DIR}\" -name \"${NAME}\" -maxdepth 6 2>/dev/null | head -n 1)\n      if [ -n \"${FOUND_PATH}\" ]; then\n        rsync -a \"${FOUND_PATH}\" \"${DWARF_DSYM_FOLDER_PATH}/\"\n        FOUND=1\n      fi\n    fi\n  done\n  if [ \"${FOUND}\" -eq 0 ]; then\n    echo \"⚠️ Google dSYMs not found to copy\"\n  fi\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
