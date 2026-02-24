@@ -361,6 +361,121 @@ router.get('/search', authenticateToken, async (req, res) => {
     }
 });
 
+// MARK: - Nearby People
+
+/**
+ * Update current user location (opt-in required)
+ * POST /api/friends/location
+ */
+router.post('/location', authenticateToken, async (req, res) => {
+    const { userId } = req.user;
+    const { latitude, longitude, optIn } = req.body || {};
+
+    try {
+        if (optIn === false) {
+            await User.findByIdAndUpdate(userId, {
+                nearbyOptIn: false,
+                $unset: { location: 1, locationUpdatedAt: 1 }
+            });
+            return res.status(200).json({ message: 'Nearby disabled' });
+        }
+
+        if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+            return res.status(400).json({ error: 'Valid latitude and longitude are required' });
+        }
+
+        await User.findByIdAndUpdate(userId, {
+            nearbyOptIn: true,
+            location: { type: 'Point', coordinates: [longitude, latitude] },
+            locationUpdatedAt: new Date()
+        });
+
+        return res.status(200).json({ message: 'Location updated' });
+    } catch (error) {
+        logger.error(`❌ Error updating location: ${error.message}`);
+        res.status(500).json({ error: 'Failed to update location' });
+    }
+});
+
+/**
+ * Get nearby users
+ * GET /api/friends/nearby?radiusKm=5&limit=20
+ */
+router.get('/nearby', authenticateToken, async (req, res) => {
+    const { userId } = req.user;
+    const radiusKm = parseFloat(req.query.radiusKm || '5');
+    const limit = parseInt(req.query.limit || '20');
+
+    try {
+        const me = await User.findById(userId).select('location nearbyOptIn');
+        if (!me?.nearbyOptIn || !me.location?.coordinates?.length) {
+            return res.status(400).json({ error: 'Nearby is not enabled' });
+        }
+
+        const [lon, lat] = me.location.coordinates;
+
+        const users = await User.aggregate([
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [lon, lat] },
+                    distanceField: 'distanceMeters',
+                    maxDistance: radiusKm * 1000,
+                    spherical: true,
+                    query: {
+                        _id: { $ne: me._id },
+                        nearbyOptIn: true
+                    }
+                }
+            },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    profileImageUrl: 1,
+                    distanceMeters: 1
+                }
+            }
+        ]);
+
+        const results = await Promise.all(users.map(async (user) => {
+            const friendship = await Friend.findOne({
+                $or: [
+                    { userId, friendId: user._id },
+                    { userId: user._id, friendId: userId }
+                ]
+            });
+
+            let friendStatus = 'not_friends';
+            if (friendship) {
+                if (friendship.status === 'accepted') {
+                    friendStatus = 'friends';
+                } else if (friendship.status === 'pending') {
+                    if (friendship.userId.toString() === userId) {
+                        friendStatus = 'request_sent';
+                    } else {
+                        friendStatus = 'request_received';
+                    }
+                }
+            }
+
+            return {
+                id: user._id.toString(),
+                username: user.name,
+                fullName: user.name,
+                profileImageUrl: user.profileImageUrl || null,
+                friendStatus,
+                distanceMeters: user.distanceMeters
+            };
+        }));
+
+        res.status(200).json({ results, count: results.length });
+    } catch (error) {
+        logger.error(`❌ Error fetching nearby users: ${error.message}`);
+        res.status(500).json({ error: 'Failed to fetch nearby users' });
+    }
+});
+
 // MARK: - Block User
 
 /**

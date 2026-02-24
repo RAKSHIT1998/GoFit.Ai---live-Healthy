@@ -111,6 +111,26 @@ const userSchema = new mongoose.Schema({
     default: null,
     sparse: true
   },
+  // Nearby discovery (optional, opt-in)
+  nearbyOptIn: {
+    type: Boolean,
+    default: false
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      default: undefined
+    }
+  },
+  locationUpdatedAt: {
+    type: Date,
+    default: undefined
+  },
   onboardingData: {
     workoutPreferences: [String],
     favoriteCuisines: [String],
@@ -176,6 +196,9 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Geospatial index for nearby discovery
+userSchema.index({ location: '2dsphere' });
 
 // Clean up subscription.plan if it's null/undefined before validation
 userSchema.pre('validate', function(next) {

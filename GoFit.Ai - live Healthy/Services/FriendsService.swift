@@ -6,6 +6,7 @@ class FriendsService: NSObject, ObservableObject {
     @Published var friends: [Friend] = []
     @Published var friendRequests: [FriendRequest] = []
     @Published var searchResults: [SearchResult] = []
+    @Published var nearbyUsers: [NearbyUser] = []
     @Published var isLoading = false
     @Published var error: String?
     
@@ -300,6 +301,97 @@ class FriendsService: NSObject, ObservableObject {
                 do {
                     let response = try JSONDecoder().decode(SearchUsersResponse.self, from: data)
                     self?.searchResults = response.results
+                    completion(.success(response.results))
+                } catch {
+                    self?.error = error.localizedDescription
+                    completion(.failure(error))
+                }
+            }
+        }.resume()
+    }
+
+    // MARK: - Nearby People
+
+    /// Update current user's location for nearby discovery
+    func updateNearbyLocation(latitude: Double, longitude: Double, optIn: Bool, completion: @escaping (Result<String, Error>) -> Void) {
+        let endpoint = "\(baseURL)/api/friends/location"
+        guard let url = URL(string: endpoint) else {
+            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let payload: [String: Any] = [
+            "latitude": latitude,
+            "longitude": longitude,
+            "optIn": optIn
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.error = error.localizedDescription
+                    completion(.failure(error))
+                    return
+                }
+
+                guard let data = data else {
+                    completion(.failure(NSError(domain: "No data", code: -1)))
+                    return
+                }
+
+                do {
+                    let response = try JSONDecoder().decode(FriendResponse.self, from: data)
+                    completion(.success(response.message))
+                } catch {
+                    self?.error = error.localizedDescription
+                    completion(.failure(error))
+                }
+            }
+        }.resume()
+    }
+
+    /// Fetch nearby users within a radius (km)
+    func fetchNearby(radiusKm: Double = 5, completion: @escaping (Result<[NearbyUser], Error>) -> Void) {
+        let endpoint = "\(baseURL)/api/friends/nearby?radiusKm=\(radiusKm)&limit=20"
+        guard let url = URL(string: endpoint) else {
+            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        isLoading = true
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                if let error = error {
+                    self?.error = error.localizedDescription
+                    completion(.failure(error))
+                    return
+                }
+
+                guard let data = data else {
+                    completion(.failure(NSError(domain: "No data", code: -1)))
+                    return
+                }
+
+                do {
+                    let response = try JSONDecoder().decode(NearbyUsersResponse.self, from: data)
+                    self?.nearbyUsers = response.results
                     completion(.success(response.results))
                 } catch {
                     self?.error = error.localizedDescription

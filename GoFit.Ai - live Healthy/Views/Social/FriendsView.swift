@@ -1,8 +1,12 @@
 import SwiftUI
+import CoreLocation
 
 struct FriendsView: View {
     @StateObject private var friendsService = FriendsService()
     @EnvironmentObject private var auth: AuthViewModel
+    @StateObject private var locationService = LocationService()
+    @AppStorage("nearbyOptIn") private var nearbyOptIn: Bool = false
+    @State private var nearbyRadiusKm: Double = 5
     @State private var searchText = ""
     @State private var selectedTab: FriendsTab = .friends
     @State private var showError = false
@@ -13,6 +17,7 @@ struct FriendsView: View {
         case activity
         case requests
         case search
+        case nearby
     }
     
     var body: some View {
@@ -72,7 +77,7 @@ struct FriendsView: View {
                     // Tab Picker with modern style
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach([FriendsTab.friends, .activity, .requests, .search], id: \.self) { tab in
+                            ForEach([FriendsTab.friends, .activity, .requests, .search, .nearby], id: \.self) { tab in
                                 Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
                                     HStack(spacing: 6) {
                                         Image(systemName: tabIcon(tab))
@@ -153,6 +158,33 @@ struct FriendsView: View {
                                     }
                                 }
                             )
+                        case .nearby:
+                            NearbyPeopleView(
+                                nearbyUsers: friendsService.nearbyUsers,
+                                isLoading: friendsService.isLoading,
+                                optIn: $nearbyOptIn,
+                                radiusKm: $nearbyRadiusKm,
+                                authorizationStatus: locationService.authorizationStatus,
+                                onRequestPermission: {
+                                    locationService.requestPermission()
+                                },
+                                onRefresh: {
+                                    refreshNearby()
+                                },
+                                onAddFriend: { userId in
+                                    friendsService.sendFriendRequest(to: userId) { result in
+                                        DispatchQueue.main.async {
+                                            if case .success(let message) = result {
+                                                errorMessage = message
+                                                showError = true
+                                            } else {
+                                                errorMessage = "Failed to send request"
+                                                showError = true
+                                            }
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
                     .padding(.vertical, Design.Spacing.md)
@@ -169,6 +201,26 @@ struct FriendsView: View {
         .onAppear {
             friendsService.fetchFriends { _ in }
         }
+        .onChange(of: nearbyOptIn) { _, newValue in
+            if newValue {
+                locationService.requestPermission()
+                if let loc = locationService.currentLocation {
+                    friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
+                        friendsService.fetchNearby(radiusKm: nearbyRadiusKm) { _ in }
+                    }
+                }
+            } else {
+                friendsService.nearbyUsers = []
+                friendsService.updateNearbyLocation(latitude: 0, longitude: 0, optIn: false) { _ in }
+                locationService.stopUpdating()
+            }
+        }
+        .onChange(of: locationService.currentLocation) { _, newValue in
+            guard nearbyOptIn, let loc = newValue else { return }
+            friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
+                friendsService.fetchNearby(radiusKm: nearbyRadiusKm) { _ in }
+            }
+        }
     }
     
     private func tabName(_ tab: FriendsTab) -> String {
@@ -177,6 +229,7 @@ struct FriendsView: View {
         case .activity: return "Activity"
         case .requests: return "Requests"
         case .search: return "Search"
+        case .nearby: return "Nearby"
         }
     }
     
@@ -186,12 +239,20 @@ struct FriendsView: View {
         case .activity: return "bolt.fill"
         case .requests: return "envelope"
         case .search: return "magnifyingglass"
+        case .nearby: return "location.fill"
         }
     }
 
     private var inviteLink: URL? {
         guard let userId = auth.userId, !userId.isEmpty else { return nil }
         return URL(string: "https://gofit-ai-live-healthy-1.onrender.com/invite?from=\(userId)")
+    }
+
+    private func refreshNearby() {
+        guard nearbyOptIn, let loc = locationService.currentLocation else { return }
+        friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
+            friendsService.fetchNearby(radiusKm: nearbyRadiusKm) { _ in }
+        }
     }
 }
 
@@ -613,6 +674,7 @@ struct SearchFriendsView: View {
 // MARK: - Friend Details View
 struct FriendDetailsView: View {
     let friend: Friend
+    @EnvironmentObject private var auth: AuthViewModel
     @StateObject private var friendsService = FriendsService()
     @State private var friendStats: FriendStats?
     @State private var isLoading = true
@@ -660,6 +722,37 @@ struct FriendDetailsView: View {
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
             }
+
+            HStack(spacing: 12) {
+                NavigationLink(destination: ChatView(friend: friend, currentUserId: auth.userId ?? "")) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.right.fill")
+                        Text("Message")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(Design.Colors.primary)
+                    .cornerRadius(10)
+                }
+
+                NavigationLink(destination: ChatView(friend: friend, currentUserId: auth.userId ?? "")) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.bar.fill")
+                        Text("Share Log")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(Design.Colors.primary)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(Design.Colors.primary.opacity(0.1))
+                    .cornerRadius(10)
+                }
+            }
+            .padding(.top, 8)
             
             Spacer()
         }
@@ -723,6 +816,140 @@ struct SearchBar: View {
         .padding(8)
         .background(Color(.systemGray6))
         .cornerRadius(8)
+    }
+}
+
+// MARK: - Nearby People View
+struct NearbyPeopleView: View {
+    let nearbyUsers: [NearbyUser]
+    let isLoading: Bool
+    @Binding var optIn: Bool
+    @Binding var radiusKm: Double
+    let authorizationStatus: CLAuthorizationStatus
+    let onRequestPermission: () -> Void
+    let onRefresh: () -> Void
+    let onAddFriend: (String) -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $optIn) {
+                    VStack(alignment: .leading) {
+                        Text("Nearby People")
+                            .font(Design.Typography.headline)
+                        Text("Show people near you for quick connections")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                if optIn {
+                    if authorizationStatus == .denied || authorizationStatus == .restricted {
+                        Button("Enable Location in Settings") {
+                            onRequestPermission()
+                        }
+                        .font(.caption)
+                    } else {
+                        HStack {
+                            Text("Radius: \(Int(radiusKm)) km")
+                                .font(.caption)
+                            Slider(value: $radiusKm, in: 1...20, step: 1) {
+                                Text("Radius")
+                            }
+                        }
+
+                        Button("Refresh Nearby") {
+                            onRefresh()
+                        }
+                        .font(.caption)
+                    }
+                }
+            }
+            .padding()
+            .background(Design.Colors.cardBackground)
+            .cornerRadius(12)
+
+            if !optIn {
+                emptyState(title: "Nearby is off", subtitle: "Enable Nearby to discover people around you.")
+            } else if isLoading {
+                ProgressView()
+                    .padding(.top, 12)
+            } else if nearbyUsers.isEmpty {
+                emptyState(title: "No nearby users", subtitle: "Try increasing the radius or check back later.")
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(nearbyUsers) { user in
+                        nearbyCard(user)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, Design.Spacing.md)
+    }
+
+    private func nearbyCard(_ user: NearbyUser) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Circle()
+                    .fill(Design.Colors.primary.opacity(0.2))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Text(String(user.username.prefix(1)).uppercased())
+                            .foregroundColor(Design.Colors.primary)
+                            .font(.headline)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(user.fullName ?? user.username)
+                        .font(Design.Typography.subheadline)
+                    Text(String(format: "%.1f km away", user.distanceMeters / 1000.0))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                if user.friendStatus == "not_friends" {
+                    Button("Add") {
+                        onAddFriend(user.id)
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Design.Colors.primary)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                } else if user.friendStatus == "request_sent" {
+                    Text("Requested")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else if user.friendStatus == "friends" {
+                    Text("Friends")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(12)
+        .background(Design.Colors.cardBackground)
+        .cornerRadius(12)
+    }
+
+    private func emptyState(title: String, subtitle: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "location.slash")
+                .font(.system(size: 48))
+                .foregroundColor(Design.Colors.primary.opacity(0.3))
+            Text(title)
+                .font(Design.Typography.headline)
+            Text(subtitle)
+                .font(Design.Typography.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, 20)
     }
 }
 
