@@ -19,6 +19,8 @@ struct ProfileView: View {
     @State private var showingImagePicker = false
     @State private var selectedProfileImage: UIImage? = nil
     @State private var isUploadingProfilePicture = false
+    @State private var showingAIConsent = false
+    @State private var showingMedicalCitations = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
@@ -91,6 +93,12 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingWorkoutPreferences) {
                 WorkoutPreferenceSettingsView().environmentObject(auth)
+            }
+            .sheet(isPresented: $showingAIConsent) {
+                AIDataConsentView()
+            }
+            .sheet(isPresented: $showingMedicalCitations) {
+                MedicalCitationsView()
             }
             .onAppear {
                 // Refresh subscription status when profile appears
@@ -772,6 +780,36 @@ struct ProfileView: View {
     // MARK: - Privacy
     private var privacySection: some View {
         SettingsSection(title: "Privacy & Data") {
+            SettingsRow(
+                icon: "doc.text.fill",
+                iconColor: .blue,
+                title: "Medical Citations",
+                subtitle: "View health data sources",
+                showChevron: true,
+                action: { showingMedicalCitations = true }
+            )
+            
+            SettingsRow(
+                icon: "brain",
+                iconColor: .purple,
+                title: "AI Data Usage",
+                subtitle: "How we use AI services",
+                showChevron: true,
+                action: { showingAIConsent = true }
+            )
+            
+            SettingsRow(
+                icon: "hand.raised.fill",
+                iconColor: .green,
+                title: "Privacy Policy",
+                showChevron: true,
+                action: {
+                    if let url = URL(string: "https://gofit-ai-live-healthy-1.onrender.com/privacy") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            )
+            
             SettingsRow(
                 icon: "square.and.arrow.up.fill",
                 iconColor: .blue,

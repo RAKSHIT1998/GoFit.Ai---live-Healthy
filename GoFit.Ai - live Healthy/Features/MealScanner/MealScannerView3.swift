@@ -32,10 +32,12 @@ struct NutritionMetricCard: View {
 
 struct MealScannerView3: View {
     @EnvironmentObject var authVM: AuthViewModel
+    @AppStorage("hasAcceptedAIConsent") private var hasAcceptedAIConsent = false
 
     @State private var capturedImage: UIImage? = nil
     @State private var captureTrigger: Int = 0
     @State private var showPicker = false
+    @State private var showingAIConsentSheet = false
 
     @State private var isUploading = false
     @State private var uploadResult: ServerMealResponse? = nil
@@ -428,6 +430,12 @@ struct MealScannerView3: View {
                 // Prevent multiple simultaneous uploads
                 guard !isUploading else {
                     print("⚠️ Already uploading, skipping new image")
+                    return
+                }
+                
+                // Check if user has accepted AI consent
+                if !hasAcceptedAIConsent {
+                    showingAIConsentSheet = true
                     return
                 }
                 
