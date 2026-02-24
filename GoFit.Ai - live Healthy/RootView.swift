@@ -5,6 +5,8 @@ struct RootView: View {
     @StateObject private var purchases = PurchaseManager()
     @StateObject private var healthKit = HealthKitService.shared
     @EnvironmentObject var adManager: AdManager
+
+    @AppStorage("pendingFriendInviteId") private var pendingFriendInviteId: String = ""
     
     @State private var hasCheckedSubscriptionAfterLogin = false
     @State private var hasShownInitialAd = false
@@ -110,6 +112,12 @@ struct RootView: View {
                         try? await healthKit.syncToBackend()
                     }
                 }
+
+                if !pendingFriendInviteId.isEmpty {
+                    FriendsService.shared.sendFriendRequest(to: pendingFriendInviteId) { _ in
+                        pendingFriendInviteId = ""
+                    }
+                }
             } else {
                 // When user logs out, stop HealthKit sync and reset flag
                 hasCheckedSubscriptionAfterLogin = false
@@ -127,6 +135,25 @@ struct RootView: View {
                     await purchases.checkTrialAndSubscriptionStatus()
                 }
             }
+        }
+        .onOpenURL { url in
+            handleInviteURL(url)
+        }
+    }
+
+    private func handleInviteURL(_ url: URL) {
+        guard url.scheme?.lowercased() == "gofitai" else { return }
+        guard url.host?.lowercased() == "invite" else { return }
+
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let inviterId = components?.queryItems?.first(where: { $0.name == "from" })?.value
+
+        guard let inviterId = inviterId, !inviterId.isEmpty else { return }
+
+        if auth.isLoggedIn {
+            FriendsService.shared.sendFriendRequest(to: inviterId) { _ in }
+        } else {
+            pendingFriendInviteId = inviterId
         }
     }
 }

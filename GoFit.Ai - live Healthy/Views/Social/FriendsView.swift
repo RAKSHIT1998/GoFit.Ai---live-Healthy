@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FriendsView: View {
     @StateObject private var friendsService = FriendsService()
+    @EnvironmentObject private var auth: AuthViewModel
     @State private var searchText = ""
     @State private var selectedTab: FriendsTab = .friends
     @State private var showError = false
@@ -46,6 +47,23 @@ struct FriendsView: View {
                             .padding(12)
                             .background(Design.Colors.cardBackground)
                             .cornerRadius(12)
+
+                            if let inviteURL = inviteLink {
+                                ShareLink(item: inviteURL, subject: Text("Add me on GoFit.Ai"), message: Text("Join me on GoFit.Ai and connect as friends: \(inviteURL.absoluteString)")) {
+                                    VStack(alignment: .center, spacing: 4) {
+                                        Image(systemName: "person.badge.plus")
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                        Text("Invite")
+                                            .font(.caption)
+                                            .foregroundColor(.white)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(12)
+                                    .background(Design.Colors.primary)
+                                    .cornerRadius(12)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, Design.Spacing.md)
@@ -169,6 +187,11 @@ struct FriendsView: View {
         case .requests: return "envelope"
         case .search: return "magnifyingglass"
         }
+    }
+
+    private var inviteLink: URL? {
+        guard let userId = auth.userId, !userId.isEmpty else { return nil }
+        return URL(string: "https://gofit-ai-live-healthy-1.onrender.com/invite?from=\(userId)")
     }
 }
 

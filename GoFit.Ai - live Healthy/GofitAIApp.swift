@@ -44,7 +44,7 @@ struct GoFitAiApp: App {
                     _ = NotificationService.shared
                     
                     // Connect to WebSocket if authenticated
-                    if UserDefaults.standard.string(forKey: "authToken") != nil {
+                    if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
                         webSocketService.connect()
                     }
                 }

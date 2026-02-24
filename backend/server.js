@@ -200,6 +200,11 @@ app.get('/privacy', (req, res) => {
   res.sendFile('privacy.html', { root: 'public' });
 });
 
+// Friend invite landing page
+app.get('/invite', (req, res) => {
+  res.sendFile('invite.html', { root: 'public' });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/photo', photoRoutes);
