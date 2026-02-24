@@ -1,3 +1,4 @@
+#if os(watchOS)
 import SwiftUI
 
 struct WatchDashboardView: View {
@@ -53,3 +54,4 @@ struct WatchDashboardView: View {
         }
     }
 }
+#endif

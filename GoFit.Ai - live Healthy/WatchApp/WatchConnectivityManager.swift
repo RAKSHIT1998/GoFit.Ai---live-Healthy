@@ -1,7 +1,7 @@
+#if os(watchOS)
 import Foundation
 import WatchConnectivity
 
-@MainActor
 final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchConnectivityManager()
 
@@ -17,7 +17,9 @@ final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        activationState = session.activationState
+        Task { @MainActor in
+            self.activationState = session.activationState
+        }
 
         if let data = session.receivedApplicationContext["nutrition"] as? Data {
             decodeNutrition(data)
@@ -41,19 +43,24 @@ final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
 
     // MARK: - WCSessionDelegate
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        self.activationState = activationState
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        Task { @MainActor in
+            self.activationState = activationState
+        }
         if let error = error {
             print("❌ Watch session activation failed: \(error.localizedDescription)")
         }
     }
 
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {
         if let data = applicationContext["nutrition"] as? Data {
-            decodeNutrition(data)
+            Task { @MainActor in
+                self.decodeNutrition(data)
+            }
         }
     }
 
+    @MainActor
     private func decodeNutrition(_ data: Data) {
         do {
             let payload = try JSONDecoder().decode(WatchNutritionPayload.self, from: data)
@@ -63,3 +70,4 @@ final class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDeleg
         }
     }
 }
+#endif

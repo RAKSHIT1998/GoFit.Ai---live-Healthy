@@ -1,7 +1,6 @@
 import Foundation
 import WatchConnectivity
 
-@MainActor
 final class WatchSyncManager: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchSyncManager()
 
@@ -18,7 +17,9 @@ final class WatchSyncManager: NSObject, ObservableObject, WCSessionDelegate {
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        updateStatus(session)
+        Task { @MainActor in
+            self.updateStatus(session)
+        }
     }
 
     func sendNutritionUpdate(_ payload: WatchNutritionPayload) {
@@ -36,27 +37,31 @@ final class WatchSyncManager: NSObject, ObservableObject, WCSessionDelegate {
 
     // MARK: - WCSessionDelegate
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        updateStatus(session)
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        Task { @MainActor in
+            self.updateStatus(session)
+        }
         if let error = error {
             print("❌ Watch session activation failed: \(error.localizedDescription)")
         }
     }
 
     #if os(iOS)
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-    func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
     }
     #endif
 
-    func sessionReachabilityDidChange(_ session: WCSession) {
-        updateStatus(session)
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        Task { @MainActor in
+            self.updateStatus(session)
+        }
     }
 
-    func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
         guard let action = message["action"] as? String else { return }
-        DispatchQueue.main.async {
+        Task { @MainActor in
             switch action {
             case "openScanner":
                 NotificationCenter.default.post(name: .openMealScannerFromWatch, object: nil)
@@ -72,6 +77,7 @@ final class WatchSyncManager: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
+    @MainActor
     private func updateStatus(_ session: WCSession) {
         isPaired = session.isPaired
         isWatchAppInstalled = session.isWatchAppInstalled
