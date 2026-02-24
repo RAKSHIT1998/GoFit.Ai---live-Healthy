@@ -309,10 +309,11 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"${CONFIGURATION}\" == \"Release\" ]; then\n  DSYM_DIR=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\n\n  find \"$DSYM_DIR\" -name \"GoogleMobileAds.framework.dSYM\" -print\n  find \"$DSYM_DIR\" -name \"UserMessagingPlatform.framework.dSYM\" -print\nfi\n";
+			shellScript = "if [ \"${CONFIGURATION}\" == \"Release\" ] && [ -d \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\" ]; then\n  find \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\" -name \"GoogleMobileAds.framework.dSYM\" -exec rm -rf {} + 2>/dev/null || true\n  find \"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\" -name \"UserMessagingPlatform.framework.dSYM\" -exec rm -rf {} + 2>/dev/null || true\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
