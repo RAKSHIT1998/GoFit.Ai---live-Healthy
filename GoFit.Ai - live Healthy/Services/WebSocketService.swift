@@ -32,7 +32,7 @@ class WebSocketService: ObservableObject {
     
     private let baseURL: String
     private var authToken: String? {
-        UserDefaults.standard.string(forKey: "authToken")
+        AuthService.shared.readToken()?.accessToken
     }
     
     // MARK: - Initialization

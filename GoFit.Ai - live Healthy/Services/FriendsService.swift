@@ -36,7 +36,7 @@ class FriendsService: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -78,7 +78,7 @@ class FriendsService: NSObject, ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -121,7 +121,7 @@ class FriendsService: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -160,7 +160,7 @@ class FriendsService: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -192,7 +192,7 @@ class FriendsService: NSObject, ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -239,7 +239,7 @@ class FriendsService: NSObject, ObservableObject {
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -276,7 +276,7 @@ class FriendsService: NSObject, ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
@@ -324,7 +324,7 @@ class FriendsService: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
