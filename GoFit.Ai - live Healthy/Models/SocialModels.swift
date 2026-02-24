@@ -78,6 +78,31 @@ struct SearchUsersResponse: Codable {
     let count: Int
 }
 
+// MARK: - Nearby People
+
+struct NearbyUser: Codable, Identifiable {
+    let id: String
+    let username: String
+    let fullName: String?
+    let profileImageUrl: String?
+    let friendStatus: String
+    let distanceMeters: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case username
+        case fullName = "full_name"
+        case profileImageUrl = "profile_image_url"
+        case friendStatus = "friend_status"
+        case distanceMeters = "distance_meters"
+    }
+}
+
+struct NearbyUsersResponse: Codable {
+    let results: [NearbyUser]
+    let count: Int
+}
+
 struct FriendStats: Codable {
     let totalMealsLogged: Int
     let totalWorkoutsCompleted: Int
@@ -96,6 +121,40 @@ struct FriendStats: Codable {
 
 struct FriendStatsResponse: Codable {
     let stats: FriendStats
+}
+
+// MARK: - Messaging Models
+
+struct MessageItem: Codable, Identifiable {
+    let id: String
+    let senderId: String
+    let senderName: String
+    let senderImage: String?
+    let message: String
+    let messageType: String
+    let isRead: Bool
+    let createdAt: Date
+}
+
+struct MessagesResponse: Codable {
+    let messages: [MessageItem]
+    let count: Int
+}
+
+struct ConversationSummary: Codable, Identifiable {
+    var id: String { conversationId }
+    let friendId: String
+    let friendName: String
+    let friendImage: String?
+    let lastMessage: String?
+    let lastMessageTime: Date?
+    let unreadCount: Int
+    let conversationId: String
+}
+
+struct ConversationsResponse: Codable {
+    let conversations: [ConversationSummary]
+    let count: Int
 }
 
 // MARK: - Challenge Models

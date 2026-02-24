@@ -63,6 +63,8 @@
 	<string>GoFit.ai needs photo library access to choose meal photos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>GoFit.ai needs to save images for your meal logs.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GoFit.ai uses your location to show nearby people and connect with friends. Your location is only shared when you enable Nearby.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>GoFit.Ai needs access to your health data to track your steps, calories, heart rate, and other fitness metrics to provide personalized recommendations.</string>
 	<key>NSHealthUpdateUsageDescription</key>
