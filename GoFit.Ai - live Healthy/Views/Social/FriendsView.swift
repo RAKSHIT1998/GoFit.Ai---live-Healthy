@@ -4,12 +4,6 @@ import CoreLocation
 struct FriendsView: View {
     @StateObject private var friendsService = FriendsService()
     @EnvironmentObject private var auth: AuthViewModel
-    @StateObject private var locationService = LocationService()
-    @AppStorage("nearbyOptIn") private var nearbyOptIn: Bool = false
-    @State private var nearbyRadiusKm: Double = 5
-    @State private var nearbyAgeMin: Int = 18
-    @State private var nearbyAgeMax: Int = 40
-    @State private var nearbyGoal: String = "any"
     @State private var searchText = ""
     @State private var selectedTab: FriendsTab = .friends
     @State private var showError = false
@@ -17,10 +11,8 @@ struct FriendsView: View {
     
     enum FriendsTab {
         case friends
-        case activity
         case requests
         case search
-        case nearby
         case conversations
     }
     
@@ -81,7 +73,7 @@ struct FriendsView: View {
                     // Tab Picker with modern style
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach([FriendsTab.friends, .activity, .requests, .search, .nearby, .conversations], id: \.self) { tab in
+                            ForEach([FriendsTab.friends, .requests, .search, .conversations], id: \.self) { tab in
                                 Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
                                     HStack(spacing: 6) {
                                         Image(systemName: tabIcon(tab))
@@ -116,9 +108,6 @@ struct FriendsView: View {
                                 .onAppear {
                                     friendsService.fetchFriends { _ in }
                                 }
-                            
-                        case .activity:
-                            ActivityFeedView()
                             
                         case .requests:
                             FriendRequestsView(
@@ -162,36 +151,6 @@ struct FriendsView: View {
                                     }
                                 }
                             )
-                        case .nearby:
-                            NearbyPeopleView(
-                                nearbyUsers: friendsService.nearbyUsers,
-                                isLoading: friendsService.isLoading,
-                                optIn: $nearbyOptIn,
-                                radiusKm: $nearbyRadiusKm,
-                                ageMin: $nearbyAgeMin,
-                                ageMax: $nearbyAgeMax,
-                                goal: $nearbyGoal,
-                                authorizationStatus: locationService.authorizationStatus,
-                                onRequestPermission: {
-                                    locationService.requestPermission()
-                                },
-                                onRefresh: {
-                                    refreshNearby()
-                                },
-                                onAddFriend: { userId in
-                                    friendsService.sendFriendRequest(to: userId) { result in
-                                        DispatchQueue.main.async {
-                                            if case .success(let message) = result {
-                                                errorMessage = message
-                                                showError = true
-                                            } else {
-                                                errorMessage = "Failed to send request"
-                                                showError = true
-                                            }
-                                        }
-                                    }
-                                }
-                            )
                         case .conversations:
                             ConversationsView()
                         }
@@ -210,35 +169,13 @@ struct FriendsView: View {
         .onAppear {
             friendsService.fetchFriends { _ in }
         }
-        .onChange(of: nearbyOptIn) { _, newValue in
-            if newValue {
-                locationService.requestPermission()
-                if let loc = locationService.currentLocation {
-                    friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
-                        friendsService.fetchNearby(radiusKm: nearbyRadiusKm, ageMin: nearbyAgeMin, ageMax: nearbyAgeMax, goal: nearbyGoal) { _ in }
-                    }
-                }
-            } else {
-                friendsService.nearbyUsers = []
-                friendsService.updateNearbyLocation(latitude: 0, longitude: 0, optIn: false) { _ in }
-                locationService.stopUpdating()
-            }
-        }
-        .onChange(of: locationService.currentLocation) { _, newValue in
-            guard nearbyOptIn, let loc = newValue else { return }
-            friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
-                friendsService.fetchNearby(radiusKm: nearbyRadiusKm, ageMin: nearbyAgeMin, ageMax: nearbyAgeMax, goal: nearbyGoal) { _ in }
-            }
-        }
     }
     
     private func tabName(_ tab: FriendsTab) -> String {
         switch tab {
         case .friends: return "Friends"
-        case .activity: return "Activity"
         case .requests: return "Requests"
         case .search: return "Search"
-        case .nearby: return "Nearby"
         case .conversations: return "Chats"
         }
     }
@@ -246,10 +183,8 @@ struct FriendsView: View {
     private func tabIcon(_ tab: FriendsTab) -> String {
         switch tab {
         case .friends: return "person.2"
-        case .activity: return "bolt.fill"
         case .requests: return "envelope"
         case .search: return "magnifyingglass"
-        case .nearby: return "location.fill"
         case .conversations: return "bubble.left.and.bubble.right"
         }
     }
@@ -259,12 +194,6 @@ struct FriendsView: View {
         return URL(string: "https://gofit-ai-live-healthy-1.onrender.com/invite?from=\(userId)")
     }
 
-    private func refreshNearby() {
-        guard nearbyOptIn, let loc = locationService.currentLocation else { return }
-        friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
-            friendsService.fetchNearby(radiusKm: nearbyRadiusKm, ageMin: nearbyAgeMin, ageMax: nearbyAgeMax, goal: nearbyGoal) { _ in }
-        }
-    }
 }
 
 // MARK: - Friends List View (Enhanced)

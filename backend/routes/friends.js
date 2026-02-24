@@ -304,16 +304,29 @@ router.get('/search', authenticateToken, async (req, res) => {
         if (!q || q.length < 2) {
             return res.status(400).json({ error: 'Search query must be at least 2 characters' });
         }
+
+        const blockedRelations = await Friend.find({
+            status: 'blocked',
+            $or: [
+                { userId },
+                { friendId: userId }
+            ]
+        }).select('userId friendId');
+
+        const blockedIds = blockedRelations.map(rel => {
+            return rel.userId.toString() === userId ? rel.friendId.toString() : rel.userId.toString();
+        });
         
         // Build search regex for case-insensitive search
         const searchRegex = new RegExp(q, 'i');
         
         // Search for users matching the query
         const users = await User.find({
-            _id: { $ne: userId }, // Exclude current user
+            _id: { $ne: userId, $nin: blockedIds }, // Exclude current user + blocked
             $or: [
                 { name: searchRegex },
-                { email: searchRegex }
+                { email: searchRegex },
+                { phone: searchRegex }
             ]
         })
         .select('_id name email profileImageUrl')
@@ -415,10 +428,22 @@ router.get('/nearby', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Nearby is not enabled' });
         }
 
+        const blockedRelations = await Friend.find({
+            status: 'blocked',
+            $or: [
+                { userId },
+                { friendId: userId }
+            ]
+        }).select('userId friendId');
+
+        const blockedIds = blockedRelations.map(rel => {
+            return rel.userId.toString() === userId ? rel.friendId.toString() : rel.userId.toString();
+        });
+
         const [lon, lat] = me.location.coordinates;
 
         const geoQuery = {
-            _id: { $ne: me._id },
+            _id: { $ne: me._id, $nin: blockedIds },
             nearbyOptIn: true
         };
 

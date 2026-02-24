@@ -34,7 +34,7 @@ class FriendsService: NSObject, ObservableObject {
         }
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
@@ -119,7 +119,7 @@ class FriendsService: NSObject, ObservableObject {
         }
         
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
