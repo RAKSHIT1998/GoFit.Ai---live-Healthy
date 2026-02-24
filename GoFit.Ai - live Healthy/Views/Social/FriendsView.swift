@@ -925,21 +925,6 @@ struct NearbyPeopleView: View {
                 }
             }
 
-            NavigationLink {
-                ChatView(friend: friend, currentUserId: currentUserId)
-            } label: {
-                HStack {
-                    Image(systemName: "bubble.right.fill")
-                    Text("Message")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Design.Colors.primary)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-            }
-
             Spacer()
         }
         .padding(.horizontal, Design.Spacing.md)
