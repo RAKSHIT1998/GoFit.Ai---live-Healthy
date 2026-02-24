@@ -20,6 +20,7 @@ class WebSocketService: ObservableObject {
     @Published var latestFriendRequest: FriendRequestNotification?
     @Published var latestChallenge: ChallengeNotification?
     @Published var latestAchievement: AchievementNotification?
+    @Published var latestMessage: MessageNotification?
     @Published var onlineUsers: Set<String> = []
     
     // MARK: - Private Properties
@@ -264,6 +265,9 @@ class WebSocketService: ObservableObject {
                 
             case "friends:online_list":
                 self.handleOnlineList(data)
+
+            case "message:received":
+                self.handleMessageReceived(data)
                 
             default:
                 print("⚠️ WebSocket: Unknown event - \(event)")
@@ -402,6 +406,37 @@ class WebSocketService: ObservableObject {
             self.onlineUsers = Set(userIds)
             print("👥 Online users: \(userIds.count)")
         }
+    }
+
+    private func handleMessageReceived(_ data: [String: Any]) {
+        guard let messageId = data["messageId"] as? String,
+              let conversationId = data["conversationId"] as? String,
+              let from = data["from"] as? [String: Any],
+              let senderId = from["id"] as? String,
+              let senderName = from["username"] as? String,
+              let message = data["message"] as? String else {
+            return
+        }
+
+        let timestamp: Date
+        if let ts = data["timestamp"] as? String, let parsed = ISO8601DateFormatter().date(from: ts) {
+            timestamp = parsed
+        } else {
+            timestamp = Date()
+        }
+
+        let notification = MessageNotification(
+            messageId: messageId,
+            conversationId: conversationId,
+            senderId: senderId,
+            senderName: senderName,
+            senderImage: from["profileImageUrl"] as? String,
+            message: message,
+            messageType: data["messageType"] as? String ?? "text",
+            timestamp: timestamp
+        )
+
+        self.latestMessage = notification
     }
     
     // MARK: - Connection Lifecycle
@@ -551,6 +586,22 @@ struct AchievementNotification: Identifiable, Equatable {
     let timestamp: Date
     
     static func == (lhs: AchievementNotification, rhs: AchievementNotification) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+struct MessageNotification: Identifiable, Equatable {
+    let id = UUID()
+    let messageId: String
+    let conversationId: String
+    let senderId: String
+    let senderName: String
+    let senderImage: String?
+    let message: String
+    let messageType: String
+    let timestamp: Date
+
+    static func == (lhs: MessageNotification, rhs: MessageNotification) -> Bool {
         lhs.id == rhs.id
     }
 }

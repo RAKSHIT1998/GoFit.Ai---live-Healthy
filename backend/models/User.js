@@ -93,6 +93,7 @@ const userSchema = new mongoose.Schema({
     cancelledAt: Date // When subscription was cancelled (user still has access until endDate)
   },
   metrics: {
+    age: Number,
     weightKg: Number,
     heightCm: Number,
     targetWeightKg: Number,

@@ -5,6 +5,7 @@ struct ChatView: View {
     let currentUserId: String
 
     @StateObject private var messagesService = MessagesService.shared
+    @ObservedObject private var webSocketService = WebSocketService.shared
     @ObservedObject private var cache = UserDataCache.shared
 
     @State private var messages: [MessageItem] = []
@@ -61,6 +62,21 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadMessages()
+        }
+        .onChange(of: webSocketService.latestMessage) { _, newValue in
+            guard let message = newValue, message.senderId == friend.id else { return }
+
+            let item = MessageItem(
+                id: message.messageId,
+                senderId: message.senderId,
+                senderName: message.senderName,
+                senderImage: message.senderImage,
+                message: message.message,
+                messageType: message.messageType,
+                isRead: false,
+                createdAt: message.timestamp
+            )
+            messages.append(item)
         }
     }
 

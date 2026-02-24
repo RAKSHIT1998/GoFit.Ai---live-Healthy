@@ -16,6 +16,49 @@ final class MessagesService: ObservableObject {
         }
     }
 
+    private func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+
+    func fetchConversations(completion: @escaping (Result<[ConversationSummary], Error>) -> Void) {
+        let endpoint = "\(baseURL)/api/messages"
+        guard let url = URL(string: endpoint) else {
+            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = AuthService.shared.readToken()?.accessToken, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        isLoading = true
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                if let error = error {
+                    self?.error = error.localizedDescription
+                    completion(.failure(error))
+                    return
+                }
+                guard let data = data else {
+                    completion(.failure(NSError(domain: "No data", code: -1)))
+                    return
+                }
+                do {
+                    let decoded = try self?.makeDecoder().decode(ConversationsResponse.self, from: data)
+                    completion(.success(decoded?.conversations ?? []))
+                } catch {
+                    self?.error = error.localizedDescription
+                    completion(.failure(error))
+                }
+            }
+        }.resume()
+    }
+
     func fetchConversation(friendId: String, completion: @escaping (Result<[MessageItem], Error>) -> Void) {
         let endpoint = "\(baseURL)/api/messages/\(friendId)"
         guard let url = URL(string: endpoint) else {
@@ -43,8 +86,8 @@ final class MessagesService: ObservableObject {
                     return
                 }
                 do {
-                    let decoded = try JSONDecoder().decode(MessagesResponse.self, from: data)
-                    completion(.success(decoded.messages))
+                    let decoded = try self?.makeDecoder().decode(MessagesResponse.self, from: data)
+                    completion(.success(decoded?.messages ?? []))
                 } catch {
                     self?.error = error.localizedDescription
                     completion(.failure(error))
@@ -82,8 +125,12 @@ final class MessagesService: ObservableObject {
                     return
                 }
                 do {
-                    let decoded = try JSONDecoder().decode(MessageSendResponse.self, from: data)
-                    completion(.success(decoded.data))
+                    let decoded = try self?.makeDecoder().decode(MessageSendResponse.self, from: data)
+                    if let decoded = decoded {
+                        completion(.success(decoded.data))
+                    } else {
+                        completion(.failure(NSError(domain: "DecodeError", code: -1)))
+                    }
                 } catch {
                     self?.error = error.localizedDescription
                     completion(.failure(error))

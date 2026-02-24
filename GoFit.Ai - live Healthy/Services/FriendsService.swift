@@ -360,8 +360,12 @@ class FriendsService: NSObject, ObservableObject {
     }
 
     /// Fetch nearby users within a radius (km)
-    func fetchNearby(radiusKm: Double = 5, completion: @escaping (Result<[NearbyUser], Error>) -> Void) {
-        let endpoint = "\(baseURL)/api/friends/nearby?radiusKm=\(radiusKm)&limit=20"
+    func fetchNearby(radiusKm: Double = 5, ageMin: Int? = nil, ageMax: Int? = nil, goal: String? = nil, completion: @escaping (Result<[NearbyUser], Error>) -> Void) {
+        var queryItems: [String] = ["radiusKm=\(radiusKm)", "limit=20"]
+        if let ageMin = ageMin { queryItems.append("ageMin=\(ageMin)") }
+        if let ageMax = ageMax { queryItems.append("ageMax=\(ageMax)") }
+        if let goal = goal, goal != "any" { queryItems.append("goal=\(goal)") }
+        let endpoint = "\(baseURL)/api/friends/nearby?\(queryItems.joined(separator: "&"))"
         guard let url = URL(string: endpoint) else {
             completion(.failure(NSError(domain: "Invalid URL", code: -1)))
             return

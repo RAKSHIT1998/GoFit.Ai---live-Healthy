@@ -7,6 +7,9 @@ struct FriendsView: View {
     @StateObject private var locationService = LocationService()
     @AppStorage("nearbyOptIn") private var nearbyOptIn: Bool = false
     @State private var nearbyRadiusKm: Double = 5
+    @State private var nearbyAgeMin: Int = 18
+    @State private var nearbyAgeMax: Int = 40
+    @State private var nearbyGoal: String = "any"
     @State private var searchText = ""
     @State private var selectedTab: FriendsTab = .friends
     @State private var showError = false
@@ -18,6 +21,7 @@ struct FriendsView: View {
         case requests
         case search
         case nearby
+        case conversations
     }
     
     var body: some View {
@@ -77,7 +81,7 @@ struct FriendsView: View {
                     // Tab Picker with modern style
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach([FriendsTab.friends, .activity, .requests, .search, .nearby], id: \.self) { tab in
+                            ForEach([FriendsTab.friends, .activity, .requests, .search, .nearby, .conversations], id: \.self) { tab in
                                 Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
                                     HStack(spacing: 6) {
                                         Image(systemName: tabIcon(tab))
@@ -108,7 +112,7 @@ struct FriendsView: View {
                     VStack(spacing: 0) {
                         switch selectedTab {
                         case .friends:
-                            FriendsListView(friends: friendsService.friends)
+                            FriendsListView(friends: friendsService.friends, currentUserId: auth.userId ?? "")
                                 .onAppear {
                                     friendsService.fetchFriends { _ in }
                                 }
@@ -164,6 +168,9 @@ struct FriendsView: View {
                                 isLoading: friendsService.isLoading,
                                 optIn: $nearbyOptIn,
                                 radiusKm: $nearbyRadiusKm,
+                                ageMin: $nearbyAgeMin,
+                                ageMax: $nearbyAgeMax,
+                                goal: $nearbyGoal,
                                 authorizationStatus: locationService.authorizationStatus,
                                 onRequestPermission: {
                                     locationService.requestPermission()
@@ -185,6 +192,8 @@ struct FriendsView: View {
                                     }
                                 }
                             )
+                        case .conversations:
+                            ConversationsView()
                         }
                     }
                     .padding(.vertical, Design.Spacing.md)
@@ -206,7 +215,7 @@ struct FriendsView: View {
                 locationService.requestPermission()
                 if let loc = locationService.currentLocation {
                     friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
-                        friendsService.fetchNearby(radiusKm: nearbyRadiusKm) { _ in }
+                        friendsService.fetchNearby(radiusKm: nearbyRadiusKm, ageMin: nearbyAgeMin, ageMax: nearbyAgeMax, goal: nearbyGoal) { _ in }
                     }
                 }
             } else {
@@ -218,7 +227,7 @@ struct FriendsView: View {
         .onChange(of: locationService.currentLocation) { _, newValue in
             guard nearbyOptIn, let loc = newValue else { return }
             friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
-                friendsService.fetchNearby(radiusKm: nearbyRadiusKm) { _ in }
+                friendsService.fetchNearby(radiusKm: nearbyRadiusKm, ageMin: nearbyAgeMin, ageMax: nearbyAgeMax, goal: nearbyGoal) { _ in }
             }
         }
     }
@@ -230,6 +239,7 @@ struct FriendsView: View {
         case .requests: return "Requests"
         case .search: return "Search"
         case .nearby: return "Nearby"
+        case .conversations: return "Chats"
         }
     }
     
@@ -240,6 +250,7 @@ struct FriendsView: View {
         case .requests: return "envelope"
         case .search: return "magnifyingglass"
         case .nearby: return "location.fill"
+        case .conversations: return "bubble.left.and.bubble.right"
         }
     }
 
@@ -251,7 +262,7 @@ struct FriendsView: View {
     private func refreshNearby() {
         guard nearbyOptIn, let loc = locationService.currentLocation else { return }
         friendsService.updateNearbyLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude, optIn: true) { _ in
-            friendsService.fetchNearby(radiusKm: nearbyRadiusKm) { _ in }
+            friendsService.fetchNearby(radiusKm: nearbyRadiusKm, ageMin: nearbyAgeMin, ageMax: nearbyAgeMax, goal: nearbyGoal) { _ in }
         }
     }
 }
@@ -259,6 +270,7 @@ struct FriendsView: View {
 // MARK: - Friends List View (Enhanced)
 struct FriendsListView: View {
     let friends: [Friend]
+    let currentUserId: String
     
     var body: some View {
         if friends.isEmpty {
@@ -285,7 +297,7 @@ struct FriendsListView: View {
         } else {
             VStack(spacing: Design.Spacing.md) {
                 ForEach(friends, id: \.id) { friend in
-                    NavigationLink(destination: FriendDetailsView(friend: friend)) {
+                    NavigationLink(destination: FriendDetailsView(friend: friend, currentUserId: currentUserId)) {
                         FriendCardView(friend: friend)
                     }
                 }
@@ -674,6 +686,7 @@ struct SearchFriendsView: View {
 // MARK: - Friend Details View
 struct FriendDetailsView: View {
     let friend: Friend
+    let currentUserId: String
     @EnvironmentObject private var auth: AuthViewModel
     @StateObject private var friendsService = FriendsService()
     @State private var friendStats: FriendStats?
@@ -825,6 +838,9 @@ struct NearbyPeopleView: View {
     let isLoading: Bool
     @Binding var optIn: Bool
     @Binding var radiusKm: Double
+    @Binding var ageMin: Int
+    @Binding var ageMax: Int
+    @Binding var goal: String
     let authorizationStatus: CLAuthorizationStatus
     let onRequestPermission: () -> Void
     let onRefresh: () -> Void
@@ -858,6 +874,31 @@ struct NearbyPeopleView: View {
                             }
                         }
 
+                        HStack(spacing: 12) {
+                            Stepper(value: $ageMin, in: 13...80) {
+                                Text("Min Age: \(ageMin)")
+                                    .font(.caption)
+                            }
+                            Stepper(value: $ageMax, in: ageMin...90) {
+                                Text("Max Age: \(ageMax)")
+                                    .font(.caption)
+                            }
+                        }
+
+                        Menu {
+                            Button("Any") { goal = "any" }
+                            Button("Lose") { goal = "lose" }
+                            Button("Maintain") { goal = "maintain" }
+                            Button("Gain") { goal = "gain" }
+                        } label: {
+                            HStack {
+                                Text("Goal: \(goal.capitalized)")
+                                    .font(.caption)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption)
+                            }
+                        }
+
                         Button("Refresh Nearby") {
                             onRefresh()
                         }
@@ -882,6 +923,21 @@ struct NearbyPeopleView: View {
                         nearbyCard(user)
                     }
                 }
+            }
+
+            NavigationLink {
+                ChatView(friend: friend, currentUserId: currentUserId)
+            } label: {
+                HStack {
+                    Image(systemName: "bubble.right.fill")
+                    Text("Message")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Design.Colors.primary)
+                .foregroundColor(.white)
+                .cornerRadius(12)
             }
 
             Spacer()

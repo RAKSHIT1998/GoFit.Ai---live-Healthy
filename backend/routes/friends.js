@@ -405,6 +405,9 @@ router.get('/nearby', authenticateToken, async (req, res) => {
     const { userId } = req.user;
     const radiusKm = parseFloat(req.query.radiusKm || '5');
     const limit = parseInt(req.query.limit || '20');
+    const ageMin = req.query.ageMin ? parseInt(req.query.ageMin) : null;
+    const ageMax = req.query.ageMax ? parseInt(req.query.ageMax) : null;
+    const goal = req.query.goal || null;
 
     try {
         const me = await User.findById(userId).select('location nearbyOptIn');
@@ -414,6 +417,21 @@ router.get('/nearby', authenticateToken, async (req, res) => {
 
         const [lon, lat] = me.location.coordinates;
 
+        const geoQuery = {
+            _id: { $ne: me._id },
+            nearbyOptIn: true
+        };
+
+        if (goal && ['lose', 'maintain', 'gain'].includes(goal)) {
+            geoQuery.goals = goal;
+        }
+
+        if (ageMin !== null || ageMax !== null) {
+            geoQuery['metrics.age'] = {};
+            if (ageMin !== null) geoQuery['metrics.age'].$gte = ageMin;
+            if (ageMax !== null) geoQuery['metrics.age'].$lte = ageMax;
+        }
+
         const users = await User.aggregate([
             {
                 $geoNear: {
@@ -421,10 +439,7 @@ router.get('/nearby', authenticateToken, async (req, res) => {
                     distanceField: 'distanceMeters',
                     maxDistance: radiusKm * 1000,
                     spherical: true,
-                    query: {
-                        _id: { $ne: me._id },
-                        nearbyOptIn: true
-                    }
+                    query: geoQuery
                 }
             },
             { $limit: limit },

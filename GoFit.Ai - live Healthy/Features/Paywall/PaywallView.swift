@@ -43,6 +43,9 @@ struct PaywallView: View {
                         features
                         plans
                         ctaButton
+                        if !isBlocking {
+                            skipWithAdsButton
+                        }
                         terms
                     }
                     .padding(.bottom, Design.Spacing.xl)
@@ -255,6 +258,28 @@ struct PaywallView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
+        }
+        .padding(.horizontal)
+    }
+
+    private var skipWithAdsButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            HStack {
+                Image(systemName: "rectangle.stack.badge.play.fill")
+                Text("Skip and use with ads")
+                    .fontWeight(.medium)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Design.Colors.cardBackground)
+            .foregroundColor(.secondary)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+            )
         }
         .padding(.horizontal)
     }
