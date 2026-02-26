@@ -67,7 +67,7 @@ class AdManager: NSObject, ObservableObject {
         #endif
         
         // Initialize Google Mobile Ads SDK
-        MobileAds.shared.start { [weak self] (status: InitializationStatus) in
+        GADMobileAds.sharedInstance().start { [weak self] (status: GADInitializationStatus) in
             print("✅ AdMob SDK initialized successfully")
             print("📊 Adapter statuses:")
             for (adapterName, status) in status.adapterStatusesByClassName {
