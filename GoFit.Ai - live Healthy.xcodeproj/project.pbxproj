@@ -313,7 +313,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Ensure Google AdMob dSYMs are copied into the archive\nif [ \"${CONFIGURATION}\" == \"Release\" ]; then\n  echo \"🔎 Searching for Google framework dSYMs...\"\n  FOUND=0\n  SEARCH_ROOTS=(\"${BUILT_PRODUCTS_DIR}\" \"${BUILD_DIR}\" \"${BUILD_DIR}/SourcePackages\" \"${BUILD_DIR}/../SourcePackages\" \"${DERIVED_DATA_DIR}/SourcePackages\")\n  for NAME in \"GoogleMobileAds.framework.dSYM\" \"UserMessagingPlatform.framework.dSYM\"; do\n    for ROOT in \"${SEARCH_ROOTS[@]}\"; do\n      if [ -d \"${ROOT}/${NAME}\" ]; then\n        rsync -a \"${ROOT}/${NAME}\" \"${DWARF_DSYM_FOLDER_PATH}/\"\n        FOUND=1\n        break\n      else\n        FOUND_PATH=$(find \"${ROOT}\" -name \"${NAME}\" -maxdepth 12 2>/dev/null | head -n 1)\n        if [ -n \"${FOUND_PATH}\" ]; then\n          rsync -a \"${FOUND_PATH}\" \"${DWARF_DSYM_FOLDER_PATH}/\"\n          FOUND=1\n          break\n        fi\n      fi\n    done\n  done\n  if [ \"${FOUND}\" -eq 0 ]; then\n    echo \"⚠️ Google dSYMs not found to copy\"\n  fi\nfi\n";
+			shellScript = "#!/bin/bash\nset -e\n\nif [ \"${CONFIGURATION}\" == \"Release\" ]; then\n  echo \"🔎 [dSYM Copy Script] Starting search for Google framework dSYMs...\"\n  echo \"📁 DWARF_DSYM_FOLDER_PATH: ${DWARF_DSYM_FOLDER_PATH}\"\n  echo \"📁 BUILT_PRODUCTS_DIR: ${BUILT_PRODUCTS_DIR}\"\n  echo \"📁 BUILD_DIR: ${BUILD_DIR}\"\n  echo \"📁 HOME: ${HOME}\"\n  \n  # Extended search paths\n  SEARCH_ROOTS=(\n    \"${BUILT_PRODUCTS_DIR}\"\n    \"${BUILD_DIR}\"\n    \"${BUILD_DIR}/SourcePackages\"\n    \"${BUILD_DIR}/../SourcePackages\"\n    \"${DERIVED_DATA_DIR}/SourcePackages\"\n    \"${HOME}/Library/Developer/Xcode/DerivedData\"\n    \"${HOME}/.cache/swiftpm\"\n  )\n  \n  for FRAMEWORK_NAME in \"GoogleMobileAds\" \"UserMessagingPlatform\"; do\n    echo \"\\n🔍 Searching for ${FRAMEWORK_NAME}.framework.dSYM...\"\n    FOUND=0\n    \n    for ROOT in \"${SEARCH_ROOTS[@]}\"; do\n      [ -d \"${ROOT}\" ] || continue\n      \n      echo \"  Checking: ${ROOT}\"\n      \n      # Direct path check\n      if [ -d \"${ROOT}/${FRAMEWORK_NAME}.framework.dSYM\" ]; then\n        echo \"  ✅ Found at: ${ROOT}/${FRAMEWORK_NAME}.framework.dSYM\"\n        cp -r \"${ROOT}/${FRAMEWORK_NAME}.framework.dSYM\" \"${DWARF_DSYM_FOLDER_PATH}/\"\n        FOUND=1\n        break\n      fi\n      \n      # Deep search\n      FOUND_PATH=$(find \"${ROOT}\" -name \"${FRAMEWORK_NAME}.framework.dSYM\" -type d 2>/dev/null | head -n 1)\n      if [ -n \"${FOUND_PATH}\" ]; then\n        echo \"  ✅ Found at: ${FOUND_PATH}\"\n        cp -r \"${FOUND_PATH}\" \"${DWARF_DSYM_FOLDER_PATH}/\"\n        FOUND=1\n        break\n      fi\n    done\n    \n    if [ ${FOUND} -eq 0 ]; then\n      echo \"  ⚠️ ${FRAMEWORK_NAME}.framework.dSYM not found (may be normal for binary frameworks)\"\n    fi\n  done\n  \n  echo \"\\n✅ dSYM copy phase completed\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -365,10 +365,12 @@
 				CODE_SIGN_ENTITLEMENTS = "GoFit.Ai - live Healthy/GoFit_Ai___live_Healthy.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"GoFit.Ai - live Healthy/Preview Content\"";
 				DEVELOPMENT_TEAM = 48TGY734WW;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
@@ -390,6 +392,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakshit.gofitai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -410,10 +413,12 @@
 				CODE_SIGN_ENTITLEMENTS = "GoFit.Ai - live Healthy/GoFit.Ai - live HealthyRelease.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"GoFit.Ai - live Healthy/Preview Content\"";
 				DEVELOPMENT_TEAM = 48TGY734WW;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "GoFit.Ai - live Healthy/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GoFit.AI;
@@ -435,6 +440,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakshit.gofitai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;

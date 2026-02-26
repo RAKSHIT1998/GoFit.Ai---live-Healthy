@@ -57,10 +57,22 @@ class AdManager: NSObject, ObservableObject {
     
     // MARK: - Setup
     func initialize() {
+        // Configure test device IDs for development
+        #if DEBUG
+        var requestConfiguration = GADMobileAds.sharedInstance().requestConfiguration
+        requestConfiguration.keywords = ["test"]
+        // Add your test device ID here for testing:
+        // requestConfiguration.testDeviceIdentifiers = ["YOUR_TEST_DEVICE_ID"]
+        GADMobileAds.sharedInstance().requestConfiguration = requestConfiguration
+        #endif
+        
         // Initialize Google Mobile Ads SDK
         MobileAds.shared.start { [weak self] (status: InitializationStatus) in
-            print("✅ AdMob SDK initialized")
-            print("Adapter statuses: \(status.adapterStatusesByClassName)")
+            print("✅ AdMob SDK initialized successfully")
+            print("📊 Adapter statuses:")
+            for (adapterName, status) in status.adapterStatusesByClassName {
+                print("  - \(adapterName): \(status.state.rawValue)")
+            }
             
             // Pre-load app open ad
             Task { @MainActor in
@@ -120,30 +132,36 @@ class AdManager: NSObject, ObservableObject {
         if let lastShown = lastAdShownTime {
             let timeSinceLastAd = Date().timeIntervalSince(lastShown)
             if timeSinceLastAd < minimumAdInterval {
-                print("⏱️ Not enough time passed since last ad")
+                print("⏱️ Not enough time passed since last ad (\(timeSinceLastAd)s)")
                 return
             }
         }
         
         guard let ad = appOpenAd else {
-            print("⚠️ App open ad not ready")
+            print("⚠️ App open ad not ready, will retry when loaded")
             // Try to load ad and show as soon as it becomes ready
             shouldShowWhenLoaded = true
             Task {
+                print("🔄 Attempting to load app open ad...")
                 await loadAppOpenAd()
             }
             return
         }
         
         guard let rootViewController = topViewController() else {
-            print("❌ No root view controller found")
+            print("❌ No root view controller available - cannot present ad")
             return
         }
         
         isShowingAd = true
         ad.present(from: rootViewController)
         lastAdShownTime = Date()
-        print("📺 Showing app open ad")
+        print("✅ App open ad is now presenting")
+        
+        // Pre-load next ad for future display
+        Task {
+            await loadAppOpenAd()
+        }
     }
 
     private func topViewController() -> UIViewController? {
@@ -237,8 +255,10 @@ extension AdManager: FullScreenContentDelegate {
             
             // Load a new ad
             if ad is AppOpenAd {
+                print("🔄 Reloading app open ad...")
                 await self.loadAppOpenAd()
             } else if ad is InterstitialAd {
+                print("🔄 Reloading interstitial ad...")
                 await self.loadInterstitialAd()
             }
         }
@@ -253,11 +273,20 @@ extension AdManager: FullScreenContentDelegate {
     
     nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         Task { @MainActor in
-            print("✅ Ad dismissed")
+            print("✅ Ad dismissed by user")
             self.isShowingAd = false
             
             // Load a new ad for next time
             if ad is AppOpenAd {
+                print("🔄 Preloading next app open ad...")
+                await self.loadAppOpenAd()
+            } else if ad is InterstitialAd {
+                print("🔄 Preloading next interstitial ad...")
+                await self.loadInterstitialAd()
+            }
+        }
+    }
+}
                 await self.loadAppOpenAd()
             } else if ad is InterstitialAd {
                 await self.loadInterstitialAd()
