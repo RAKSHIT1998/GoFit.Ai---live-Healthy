@@ -287,13 +287,6 @@ extension AdManager: FullScreenContentDelegate {
         }
     }
 }
-                await self.loadAppOpenAd()
-            } else if ad is InterstitialAd {
-                await self.loadInterstitialAd()
-            }
-        }
-    }
-}
 
 // MARK: - UIApplication Extension
 extension UIApplication {
