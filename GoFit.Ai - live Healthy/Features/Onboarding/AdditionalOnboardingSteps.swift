@@ -996,103 +996,10 @@ struct TargetWeightStep: View {
                         }
                     }
                     
-                    // Calculate Button
-                    if viewModel.targetWeightKg != nil && viewModel.targetWeightKg! > 0 {
-                        Button(action: {
-                            calculateRecommendations()
-                        }) {
-                            HStack {
-                                if isLoading {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Image(systemName: "sparkles")
-                                    Text("Get AI Recommendations")
-                                }
-                            }
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Design.Colors.primaryGradient)
-                            .cornerRadius(16)
-                        }
-                        .disabled(isLoading)
-                    }
+
                     
-                    // Error Message
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.subheadline)
-                            .foregroundColor(.red)
-                            .padding()
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(12)
-                    }
-                    
-                    // Recommendations Display
-                    if let recs = recommendations {
-                        VStack(spacing: 20) {
-                            Text("Your Personalized Plan")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                            
-                            VStack(spacing: 16) {
-                                // Calories Card
-                                RecommendationCard(
-                                    icon: "flame.fill",
-                                    title: "Daily Calories",
-                                    value: "\(recs.dailyCalories)",
-                                    unit: "kcal",
-                                    color: Design.Colors.calories,
-                                    description: "Based on your target weight and activity level"
-                                )
-                                
-                                // Protein Card
-                                RecommendationCard(
-                                    icon: "figure.strengthtraining.traditional",
-                                    title: "Daily Protein",
-                                    value: "\(recs.dailyProtein)",
-                                    unit: "g",
-                                    color: Design.Colors.protein,
-                                    description: "\(recs.proteinPercent)% of your daily calories"
-                                )
-                                
-                                // Carbs Card
-                                RecommendationCard(
-                                    icon: "leaf.fill",
-                                    title: "Daily Carbs",
-                                    value: "\(recs.dailyCarbs)",
-                                    unit: "g",
-                                    color: Design.Colors.carbs,
-                                    description: "\(recs.carbsPercent)% of your daily calories"
-                                )
-                                
-                                // Fat Card
-                                RecommendationCard(
-                                    icon: "drop.fill",
-                                    title: "Daily Fat",
-                                    value: "\(recs.dailyFat)",
-                                    unit: "g",
-                                    color: Design.Colors.fat,
-                                    description: "\(recs.fatPercent)% of your daily calories"
-                                )
-                            }
-                            
-                            Text(recs.message)
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                                .padding()
-                                .background(Design.Colors.cardBackground.opacity(0.5))
-                                .cornerRadius(12)
-                        }
-                        .padding()
-                        .background(Design.Colors.cardBackground.opacity(0.3))
-                        .cornerRadius(20)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+
+
                 }
                 .padding(.horizontal, 24)
                 
