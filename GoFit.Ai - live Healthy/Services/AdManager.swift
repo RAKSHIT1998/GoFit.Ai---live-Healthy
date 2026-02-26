@@ -19,16 +19,9 @@ class AdManager: NSObject, ObservableObject {
     @Published var adLoadError: String?
     
     // MARK: - Ad Unit IDs
-    // TODO: Replace with your real AdMob IDs before production
-    // Use test IDs for development
-    #if DEBUG
-    private let appOpenAdUnitID = "ca-app-pub-3940256099942544/5575463023" // Test ID
-    private let interstitialAdUnitID = "ca-app-pub-3940256099942544/4411468910" // Test ID
-    #else
-    // TODO: Replace these with your production Ad Unit IDs from AdMob console
-    private let appOpenAdUnitID = "ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY"
-    private let interstitialAdUnitID = "ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY"
-    #endif
+    // Production Ad Unit IDs from AdMob console
+    private let appOpenAdUnitID = "ca-app-pub-5156494121502262/7631513040" // Production App Open Ad
+    private let interstitialAdUnitID = "ca-app-pub-5156494121502262/7631513040" // Production Interstitial Ad
     
     // MARK: - Ad Objects
     private var appOpenAd: AppOpenAd?
@@ -57,13 +50,7 @@ class AdManager: NSObject, ObservableObject {
     
     // MARK: - Setup
     func initialize() {
-        // Configure test device IDs for development
-        #if DEBUG
-        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [
-            "2077ef9a63d50154590b6020a5e961be" // Simulator default test device
-            // Add your physical test device ID here: "YOUR_TEST_DEVICE_UDID"
-        ]
-        #endif
+        // Production mode - no test device configuration needed
         
         // Initialize Google Mobile Ads SDK
         MobileAds.shared.start { [weak self] (status: InitializationStatus) in
