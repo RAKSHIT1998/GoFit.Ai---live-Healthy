@@ -59,15 +59,14 @@ class AdManager: NSObject, ObservableObject {
     func initialize() {
         // Configure test device IDs for development
         #if DEBUG
-        var requestConfiguration = GADMobileAds.sharedInstance().requestConfiguration
-        requestConfiguration.keywords = ["test"]
-        // Add your test device ID here for testing:
-        // requestConfiguration.testDeviceIdentifiers = ["YOUR_TEST_DEVICE_ID"]
-        GADMobileAds.sharedInstance().requestConfiguration = requestConfiguration
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [
+            "2077ef9a63d50154590b6020a5e961be" // Simulator default test device
+            // Add your physical test device ID here: "YOUR_TEST_DEVICE_UDID"
+        ]
         #endif
         
         // Initialize Google Mobile Ads SDK
-        GADMobileAds.sharedInstance().start { [weak self] (status: GADInitializationStatus) in
+        MobileAds.shared.start { [weak self] (status: InitializationStatus) in
             print("✅ AdMob SDK initialized successfully")
             print("📊 Adapter statuses:")
             for (adapterName, status) in status.adapterStatusesByClassName {
