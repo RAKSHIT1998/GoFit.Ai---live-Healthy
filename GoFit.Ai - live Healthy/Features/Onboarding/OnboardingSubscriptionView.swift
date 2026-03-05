@@ -17,6 +17,8 @@ struct OnboardingSubscriptionView: View {
     @State private var loading = false
     @State private var error: String?
     @State private var animateFeatures = false
+    @State private var showingPrivacyPolicy = false
+    @State private var showingTermsOfUse = false
     
     enum PlanType {
         case monthly
@@ -71,6 +73,12 @@ struct OnboardingSubscriptionView: View {
             withAnimation(.spring().delay(0.1)) {
                 animateFeatures = true
             }
+        }
+        .sheet(isPresented: $showingPrivacyPolicy) {
+            PrivacyPolicyView()
+        }
+        .sheet(isPresented: $showingTermsOfUse) {
+            TermsOfUseView()
         }
     }
     
@@ -273,13 +281,13 @@ struct OnboardingSubscriptionView: View {
             
             HStack(spacing: 16) {
                 Button("Privacy Policy") {
-                    // Open privacy policy
+                    showingPrivacyPolicy = true
                 }
                 .font(.caption2)
                 .foregroundColor(.secondary)
                 
-                Button("Terms of Service") {
-                    // Open terms
+                Button("Terms of Use (EULA)") {
+                    showingTermsOfUse = true
                 }
                 .font(.caption2)
                 .foregroundColor(.secondary)

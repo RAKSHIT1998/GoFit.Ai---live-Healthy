@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Privacy Disclosure View
 struct PrivacyDisclosureView: View {
     @Environment(\.dismiss) var dismiss
+    @State private var showingPrivacyPolicy = false
     let onAccept: () -> Void
     let onDecline: () -> Void
     
@@ -159,7 +160,7 @@ struct PrivacyDisclosureView: View {
                                     .font(Design.Typography.headline)
                                     .foregroundColor(.primary)
                                 
-                                Link(destination: URL(string: "https://gofitai.org/privacy-policy") ?? URL(string: "about:blank")!) {
+                                Button(action: { showingPrivacyPolicy = true }) {
                                     HStack(spacing: Design.Spacing.md) {
                                         Image(systemName: "doc.text.fill")
                                             .foregroundColor(Design.Colors.primary)
@@ -175,7 +176,7 @@ struct PrivacyDisclosureView: View {
                                         }
                                         
                                         Spacer()
-                                        Image(systemName: "arrow.up.right")
+                                        Image(systemName: "chevron.right")
                                             .font(.caption)
                                             .foregroundColor(Design.Colors.primary)
                                     }
@@ -200,6 +201,9 @@ struct PrivacyDisclosureView: View {
                     }
                     .fontWeight(.semibold)
                 }
+            }
+            .sheet(isPresented: $showingPrivacyPolicy) {
+                PrivacyPolicyView()
             }
         }
     }

@@ -10,6 +10,8 @@ struct PaywallView: View {
     @State private var error: String?
     @State private var animateFeatures = false
     @State private var isBlocking = false // True when trial expired and blocking access
+    @State private var showingPrivacyPolicy = false
+    @State private var showingTermsOfUse = false
     
     enum PlanType {
         case monthly
@@ -88,6 +90,12 @@ struct PaywallView: View {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingPrivacyPolicy) {
+                PrivacyPolicyView()
+            }
+            .sheet(isPresented: $showingTermsOfUse) {
+                TermsOfUseView()
             }
         }
     }
@@ -351,51 +359,27 @@ struct PaywallView: View {
             // Required Links (Apple Guidelines 3.1.2)
             VStack(spacing: Design.Spacing.sm) {
                 // Terms of Use (EULA) Link - Must be functional
-                if let termsURL = URL(string: "https://gofitai.org/terms-and-conditions") {
-                    Link(destination: termsURL) {
-                        HStack(spacing: 4) {
-                            Text("Terms of Use")
-                                .font(Design.Typography.caption)
-                                .foregroundColor(Design.Colors.primary)
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption2)
-                                .foregroundColor(Design.Colors.primary)
-                        }
+                Button(action: { showingTermsOfUse = true }) {
+                    HStack(spacing: 4) {
+                        Text("Terms of Use (EULA)")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(Design.Colors.primary)
+                        Image(systemName: "doc.text")
+                            .font(.caption2)
+                            .foregroundColor(Design.Colors.primary)
                     }
-                } else {
-                    // Fallback if URL is invalid
-                    Text("Terms of Use")
-                        .font(Design.Typography.caption)
-                        .foregroundColor(Design.Colors.primary)
-                        .onTapGesture {
-                            if let url = URL(string: "https://gofitai.org/terms-and-conditions") {
-                                UIApplication.shared.open(url)
-                            }
-                        }
                 }
                 
                 // Privacy Policy Link - Must be functional
-                if let privacyURL = URL(string: "https://gofitai.org/privacy-policy") {
-                    Link(destination: privacyURL) {
-                        HStack(spacing: 4) {
-                            Text("Privacy Policy")
-                                .font(Design.Typography.caption)
-                                .foregroundColor(Design.Colors.primary)
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.caption2)
-                                .foregroundColor(Design.Colors.primary)
-                        }
+                Button(action: { showingPrivacyPolicy = true }) {
+                    HStack(spacing: 4) {
+                        Text("Privacy Policy")
+                            .font(Design.Typography.caption)
+                            .foregroundColor(Design.Colors.primary)
+                        Image(systemName: "doc.text")
+                            .font(.caption2)
+                            .foregroundColor(Design.Colors.primary)
                     }
-                } else {
-                    // Fallback if URL is invalid
-                    Text("Privacy Policy")
-                        .font(Design.Typography.caption)
-                        .foregroundColor(Design.Colors.primary)
-                        .onTapGesture {
-                            if let url = URL(string: "https://gofitai.org/privacy-policy") {
-                                UIApplication.shared.open(url)
-                            }
-                        }
                 }
             }
             .padding(.vertical, Design.Spacing.sm)

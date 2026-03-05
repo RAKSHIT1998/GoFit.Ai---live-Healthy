@@ -21,6 +21,7 @@ struct ProfileView: View {
     @State private var isUploadingProfilePicture = false
     @State private var showingAIConsent = false
     @State private var showingMedicalCitations = false
+    @State private var showingPrivacyPolicy = false
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
     @State private var healthSyncEnabled = true
@@ -99,6 +100,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showingMedicalCitations) {
                 MedicalCitationsView()
+            }
+            .sheet(isPresented: $showingPrivacyPolicy) {
+                PrivacyPolicyView()
             }
             .onAppear {
                 // Refresh subscription status when profile appears
@@ -804,9 +808,7 @@ struct ProfileView: View {
                 title: "Privacy Policy",
                 showChevron: true,
                 action: {
-                    if let url = URL(string: "https://gofit-ai-live-healthy-1.onrender.com/privacy") {
-                        UIApplication.shared.open(url)
-                    }
+                    showingPrivacyPolicy = true
                 }
             )
             
