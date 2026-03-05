@@ -50,6 +50,11 @@ class AdManager: NSObject, ObservableObject {
     
     // MARK: - Setup
     func initialize() {
+        #if targetEnvironment(simulator)
+        print("ℹ️ Running on Simulator - AdMob presentation disabled")
+        return
+        #endif
+
         // Production mode - no test device configuration needed
         
         // Initialize Google Mobile Ads SDK
@@ -73,6 +78,10 @@ class AdManager: NSObject, ObservableObject {
     
     // MARK: - App Open Ad
     func loadAppOpenAd() async {
+        #if targetEnvironment(simulator)
+        return
+        #endif
+
         guard !hasActiveSubscription else {
             print("ℹ️ User has subscription - skipping ad load")
             return
@@ -108,6 +117,11 @@ class AdManager: NSObject, ObservableObject {
     }
     
     func showAppOpenAd() {
+        #if targetEnvironment(simulator)
+        print("ℹ️ Simulator run - skipping app open ad presentation")
+        return
+        #endif
+
         // Don't show ads for subscribers
         guard !hasActiveSubscription else {
             print("ℹ️ User has subscription - skipping ad display")

@@ -24,7 +24,6 @@ struct GoFitAiApp: App {
     @AppStorage("darkModePreference") private var darkModePreference: String = "light"
     @StateObject private var webSocketService = WebSocketService.shared
     @StateObject private var adManager = AdManager.shared
-    @Environment(\.scenePhase) private var scenePhase
     
     var body: some Scene {
         WindowGroup {
@@ -73,16 +72,6 @@ struct GoFitAiApp: App {
                             message: "\(achievement.name): \(achievement.description)",
                             icon: "star.fill"
                         )
-                    }
-                }
-                .onChange(of: scenePhase) { oldPhase, newPhase in
-                    // Show ad every time app becomes active
-                    if newPhase == .active && oldPhase != .active {
-                        // Small delay to ensure app is fully loaded
-                        Task {
-                            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
-                            adManager.showAppOpenAd()
-                        }
                     }
                 }
         }
