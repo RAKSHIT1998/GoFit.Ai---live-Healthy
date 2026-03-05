@@ -21,6 +21,14 @@ post_install do |installer|
     end
   end
 
+  # CocoaPods can set this to YES in aggregate target xcconfigs (Pods-*.xcconfig),
+  # which breaks static library pod targets with a PhaseScriptExecution error.
+  Dir.glob(File.join(installer.sandbox.root.to_s, 'Target Support Files', 'Pods-*', '*.xcconfig')).each do |xcconfig_path|
+    content = File.read(xcconfig_path)
+    updated = content.gsub(/^ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES\s*=\s*YES$/, 'ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO')
+    File.write(xcconfig_path, updated) if updated != content
+  end
+
   # Update Pods project-level settings to recommended values
   installer.pods_project.build_configurations.each do |config|
     config.build_settings['DEAD_CODE_STRIPPING'] = 'YES'
