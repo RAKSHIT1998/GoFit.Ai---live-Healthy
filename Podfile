@@ -26,4 +26,8 @@ post_install do |installer|
     config.build_settings['DEAD_CODE_STRIPPING'] = 'YES'
     config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'gnu++20'
   end
+
+  # Prevent recurring "Update to recommended settings" prompts in Pods.xcodeproj
+  installer.pods_project.root_object.attributes['LastUpgradeCheck'] = '1620'
+  installer.pods_project.root_object.attributes['LastSwiftUpdateCheck'] = '1620'
 end
