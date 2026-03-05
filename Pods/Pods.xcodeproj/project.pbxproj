@@ -614,6 +614,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 050B74D888016C08CBF800BE284F1B05 /* Google-Mobile-Ads-SDK.debug.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -644,6 +645,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 86BE5C81C5568AF63BF317A3648D2856 /* Google-Mobile-Ads-SDK.release.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/Google-Mobile-Ads-SDK";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
@@ -735,6 +737,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 86BE5C81C5568AF63BF317A3648D2856 /* Google-Mobile-Ads-SDK.release.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -791,6 +794,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C8DDFA20AB0B140629838909D35A1F91 /* GoogleUserMessagingPlatform.release.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -938,6 +942,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 050B74D888016C08CBF800BE284F1B05 /* Google-Mobile-Ads-SDK.debug.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/Google-Mobile-Ads-SDK";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
@@ -1007,6 +1012,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8BD9B44CD25EDC5AD58DC48C3DE0D94A /* GoogleUserMessagingPlatform.debug.xcconfig */;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
