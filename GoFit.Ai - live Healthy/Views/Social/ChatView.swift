@@ -125,7 +125,8 @@ struct ChatView: View {
 
     private func sendTodaySummary() {
         let stats = cache.calculateTodaysStats()
-        let summary = "Today: \(Int(stats.totalCaloriesConsumed)) kcal, P \(Int(stats.protein))g, C \(Int(stats.carbs))g, F \(Int(stats.fat))g, Workouts \(stats.workoutsCompleted), Meals \(stats.mealsLogged), Water \(String(format: "%.1f", stats.waterIntake))L, Steps \(stats.steps)"
+        let water = String(format: "%.1f", stats.waterIntake)
+        let summary = "Today: \(Int(stats.totalCaloriesConsumed)) kcal, P \(Int(stats.protein))g, C \(Int(stats.carbs))g, F \(Int(stats.fat))g, Workouts \(stats.workoutsCompleted), Meals \(stats.mealsLogged), Water \(water)L, Steps \(stats.steps)"
         isSending = true
         messagesService.sendMessage(friendId: friend.id, message: summary) { result in
             DispatchQueue.main.async {
